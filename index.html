@@ -263,6 +263,50 @@
   .icon-mbk .p1 { background: #00bcd4; transform: rotate(-4deg); }
   .icon-mbk .p2 { background: #ff9800; transform: rotate(2deg); }
   .icon-mbk .p3 { background: #66bb6a; transform: rotate(-2deg); }
+  /* Slipshot — neon green action letters with a target/crosshair vibe */
+  .icon-slp {
+    letter-spacing: 8px;
+    padding: 18px 8px;
+    border-color: rgba(74, 222, 128, 0.35);
+    position: relative;
+    overflow: visible;
+  }
+  .icon-slp span {
+    color: #4ade80;
+    text-shadow:
+      0 0 10px #4ade80,
+      0 0 20px rgba(74, 222, 128, 0.7),
+      0 0 32px rgba(74, 222, 128, 0.4);
+    display: inline-block;
+    animation: slp-glow 2s infinite alternate;
+    position: relative;
+  }
+  .icon-slp .s2 { animation-delay: 0.25s; }
+  .icon-slp .s3 { animation-delay: 0.5s; }
+  /* tiny crosshair sweeping across the icon */
+  .icon-slp::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid #4ade80;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #4ade80;
+    transform: translate(0, -50%);
+    animation: slp-target 3.5s infinite ease-in-out;
+    pointer-events: none;
+  }
+  @keyframes slp-glow {
+    0%   { filter: brightness(1)    drop-shadow(0 0 4px #4ade80); }
+    100% { filter: brightness(1.25) drop-shadow(0 0 14px #4ade80); }
+  }
+  @keyframes slp-target {
+    0%, 100% { left: 6%;  opacity: 0.5; transform: translate(0, -50%) scale(1); }
+    45%      { left: 92%; opacity: 1;   transform: translate(-100%, -50%) scale(1.15); }
+    55%      { left: 92%; opacity: 1;   transform: translate(-100%, -50%) scale(1.15); }
+  }
   .game-genre {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.55);
@@ -391,6 +435,17 @@ const games = [
     description: "Navigate 24 hand-crafted maze levels with arrow keys or WASD. Dodge deadly spikes and find the glowing exit. Levels 11-20 are pitch-dark fog mazes that reveal as you walk near them. Levels 21-24 add bounce pads — step on a yellow pad and your next move launches you 3 cells in that direction, flying safely over walls and spikes. Progress saves automatically.",
     tags: ["24 Levels", "Fog of War", "Bounce Pads", "Spikes"],
     url: "mazebreaker.html",
+    available: true,
+  },
+  {
+    title: "Slipshot",
+    icon: "SLP",
+    iconHtml: '<div class="game-icon icon-slp"><span class="s1">S</span><span class="s2">L</span><span class="s3">P</span></div>',
+    genre: "Action",
+    category: "action",
+    description: "Top-down sliding action. You're a green circle on an icy floor — momentum carries you. Dodge bullets from hexagonal towers and the melee enemies that chase you down. Hold the mouse to aim while time slows around you, then release to fire a 3-bullet burst. One shot kills a tower or enemy. Survive as long as you can.",
+    tags: ["Bullet Time", "Ice Physics", "Burst Fire", "Endless"],
+    url: "slipshot.html",
     available: true,
   },
 ];

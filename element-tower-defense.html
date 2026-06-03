@@ -2662,11 +2662,14 @@ function findTowerAt(x, y) {
 }
 
 function attemptMerge(a, b) {
+  // `a` is the tower being dragged, `b` is the tower it was dropped on.
+  // The merged tower lands on the DROP TARGET's spot (b), so dragging A→B
+  // leaves the result on B's tile and dragging B→A leaves it on A's tile.
   const ka = a.elem, kb = b.elem;
   const result = getMergeResult(ka, kb);
   if (result) {
-    const nx = (a.x + b.x) / 2;
-    const ny = (a.y + b.y) / 2;
+    const nx = b.x;
+    const ny = b.y;
     game.towers = game.towers.filter(t => t !== a && t !== b);
     game.towers.push({
       id: game.nextTowerId++,
