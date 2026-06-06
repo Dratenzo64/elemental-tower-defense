@@ -575,6 +575,13 @@
     text-align: center;
     transition: border-color 0.15s;
   }
+  .ap-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  }
+  .ap-icon svg { display: block; }
   .ap-slot .ap-name {
     font-family: 'Orbitron', monospace;
     font-size: 10px;
@@ -611,15 +618,14 @@
   .equipped-armor .ea-total {
     text-align: center;
     font-family: 'Orbitron', monospace;
-    font-size: 12px;
-    letter-spacing: 2px;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.55);
   }
-  .equipped-armor .ea-total strong {
-    color: #4ade80;
-    font-size: 15px;
-    margin-left: 4px;
-  }
+  .equipped-armor .ea-total .ts-hp  { color: #f87171; font-weight: 700; }
+  .equipped-armor .ea-total .ts-dr  { color: #38bdf8; font-weight: 700; }
+  .equipped-armor .ea-total .ts-dmg { color: #fbbf24; font-weight: 700; }
+  .equipped-armor .ea-total .ts-spd { color: #4ade80; font-weight: 700; }
 
   /* Armor inventory grid (rows per piece, columns per rarity) */
   .armor-inv-list {
@@ -656,11 +662,24 @@
     padding: 7px 6px;
     text-align: center;
   }
+  .inv-cell .ic-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2px;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+  }
+  .inv-cell .ic-icon svg { display: block; transform: scale(0.85); }
   .inv-cell .ic-tier {
     font-family: 'Orbitron', monospace;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 1.2px;
+  }
+  .inv-cell .ic-stat {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    margin-top: 1px;
+    letter-spacing: 0.5px;
   }
   .inv-cell .ic-count {
     font-family: 'Orbitron', monospace;
@@ -804,6 +823,12 @@
     box-shadow: 0 0 60px var(--reveal-color, #fff);
     animation: cr-pop 0.5s ease;
   }
+  #crate-reveal .reveal-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  #crate-reveal .reveal-icon svg { display: block; transform: scale(2.2); }
   #crate-reveal .reveal-name {
     font-family: 'Orbitron', monospace;
     font-size: 34px;
@@ -834,6 +859,145 @@
     0%   { transform: scale(0.5) rotate(-8deg); opacity: 0; }
     60%  { transform: scale(1.08) rotate(2deg); opacity: 1; }
     100% { transform: scale(1) rotate(0deg); }
+  }
+
+  /* === MODE PICKER === */
+  #mode-overlay, #match-finder {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 25% 15%, #1a3050 0%, transparent 60%),
+      radial-gradient(circle at 75% 85%, #1a0a30 0%, transparent 60%),
+      linear-gradient(135deg, #050810 0%, #0a1428 100%);
+    z-index: 4500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #mode-overlay.show, #match-finder.show { display: flex; }
+  .mode-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(74, 222, 128, 0.35);
+    border-radius: 16px;
+    padding: 38px 44px;
+    text-align: center;
+    max-width: 760px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 50px rgba(74, 222, 128, 0.12);
+  }
+  .mode-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 32px;
+    letter-spacing: 9px;
+    color: #4ade80;
+    text-shadow: 0 0 24px rgba(74, 222, 128, 0.5);
+    margin-bottom: 4px;
+  }
+  .mode-sub {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+  .mode-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .mode-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    border-radius: 12px;
+    padding: 18px 14px;
+    cursor: pointer;
+    transition: transform 0.12s, border-color 0.15s, background 0.15s;
+    font-family: 'Orbitron', monospace;
+    text-align: center;
+  }
+  .mode-btn:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.12);
+  }
+  .mode-btn.solo { border-color: rgba(96, 165, 250, 0.45); }
+  .mode-btn.solo:hover { border-color: #60a5fa; box-shadow: 0 0 18px rgba(96, 165, 250, 0.4); }
+  .mode-btn.pvp { border-color: rgba(244, 114, 182, 0.45); }
+  .mode-btn.pvp:hover { border-color: #f472b6; box-shadow: 0 0 18px rgba(244, 114, 182, 0.4); }
+  .mode-btn.random { border-color: rgba(251, 191, 36, 0.5); }
+  .mode-btn.random:hover { border-color: #fbbf24; box-shadow: 0 0 18px rgba(251, 191, 36, 0.4); }
+  .mode-btn .m-name {
+    font-size: 22px;
+    letter-spacing: 3px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .mode-btn .m-tag {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 8px;
+  }
+  .mode-btn .m-desc {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.35;
+  }
+  .mode-note {
+    color: rgba(255, 255, 255, 0.4);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  /* Match finder loader */
+  .mf-card {
+    text-align: center;
+    padding: 36px 60px;
+    border: 2px solid rgba(244, 114, 182, 0.6);
+    border-radius: 16px;
+    background: rgba(5, 8, 16, 0.95);
+    box-shadow: 0 0 60px rgba(244, 114, 182, 0.3);
+  }
+  .mf-spinner {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 22px;
+    border: 4px solid rgba(244, 114, 182, 0.2);
+    border-top-color: #f472b6;
+    border-radius: 50%;
+    animation: mf-spin 0.9s linear infinite;
+  }
+  .mf-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    letter-spacing: 4px;
+    color: #f472b6;
+    margin-bottom: 4px;
+  }
+  .mf-mode {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px;
+    letter-spacing: 8px;
+    color: #fff;
+    margin: 6px 0 14px;
+    text-shadow: 0 0 18px rgba(244, 114, 182, 0.5);
+  }
+  .mf-dots span {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #f472b6;
+    margin: 0 3px;
+    animation: mf-bounce 1.2s infinite;
+  }
+  .mf-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .mf-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes mf-spin { to { transform: rotate(360deg); } }
+  @keyframes mf-bounce {
+    0%, 100% { transform: scale(0.6); opacity: 0.5; }
+    50%      { transform: scale(1.2); opacity: 1; }
   }
 
   /* === AUTH SCREEN === */
@@ -1059,10 +1223,60 @@
 
 <div id="shop-overlay"><div id="shop-content"></div></div>
 <div id="crate-reveal"><div class="reveal-card">
+  <div class="reveal-icon" id="reveal-icon"></div>
   <div class="reveal-name" id="reveal-name"></div>
   <div class="reveal-sub" id="reveal-sub"></div>
   <button class="reveal-close" id="reveal-close">CONTINUE</button>
 </div></div>
+
+<div id="mode-overlay">
+  <div class="mode-card">
+    <div class="mode-title">SELECT MODE</div>
+    <div class="mode-sub">// CHOOSE YOUR FIGHT //</div>
+    <div class="mode-buttons">
+      <button class="mode-btn solo" data-mode="solo">
+        <div class="m-name">SOLO</div>
+        <div class="m-tag">Survival</div>
+        <div class="m-desc">Fight endless waves of melee enemies and towers</div>
+      </button>
+      <button class="mode-btn pvp" data-mode="ffa">
+        <div class="m-name">FFA</div>
+        <div class="m-tag">4 players</div>
+        <div class="m-desc">Free-for-all · last one alive wins</div>
+      </button>
+      <button class="mode-btn pvp" data-mode="1v1">
+        <div class="m-name">1 v 1</div>
+        <div class="m-tag">Duel</div>
+        <div class="m-desc">Pure 1-on-1 showdown</div>
+      </button>
+      <button class="mode-btn pvp" data-mode="2v2">
+        <div class="m-name">2 v 2</div>
+        <div class="m-tag">Squad</div>
+        <div class="m-desc">You + 1 teammate vs 2 opponents</div>
+      </button>
+      <button class="mode-btn pvp" data-mode="3v3">
+        <div class="m-name">3 v 3</div>
+        <div class="m-tag">Team fight</div>
+        <div class="m-desc">You + 2 teammates vs 3 opponents</div>
+      </button>
+      <button class="mode-btn random" data-mode="random">
+        <div class="m-name">RANDOM</div>
+        <div class="m-tag">Surprise</div>
+        <div class="m-desc">Throw me into any mode</div>
+      </button>
+    </div>
+    <div class="mode-note">Note: PvP uses AI bots — true online play needs a backend server.</div>
+  </div>
+</div>
+
+<div id="match-finder">
+  <div class="mf-card">
+    <div class="mf-spinner"></div>
+    <div class="mf-title">FINDING MATCH</div>
+    <div class="mf-mode" id="mf-mode-text">FFA</div>
+    <div class="mf-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
 
 <div id="auth-overlay">
   <div class="auth-card">
@@ -1217,12 +1431,14 @@ const ctx = canvas.getContext("2d");
 // WEAPONS — 5 types. Each defines its release-burst behaviour.
 // ============================================================
 function spawnPlayerBullet(p, ang, speed, dmg) {
+  // leggings boost bullet damage
+  const finalDmg = dmg * getDmgMult();
   game.bullets.push({
     x: p.x + Math.cos(ang) * PLAYER_R,
     y: p.y + Math.sin(ang) * PLAYER_R,
     vx: Math.cos(ang) * speed,
     vy: Math.sin(ang) * speed,
-    dmg: dmg,
+    dmg: finalDmg,
     life: 80,
     dead: false,
   });
@@ -1598,10 +1814,9 @@ document.getElementById("do-signin").addEventListener("click", async () => {
   const res = await doSignIn(u, p);
   if (res.ok) {
     hideAuthOverlay();
-    if (typeof newGame === "function") newGame();
-    if (typeof updateLoadoutDisplay === "function") updateLoadoutDisplay();
-    if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
     if (typeof updateAccountBadge === "function") updateAccountBadge();
+    // After sign-in, go to mode picker instead of straight into a game
+    showModePicker();
   } else {
     document.getElementById("auth-error").textContent = res.error;
   }
@@ -1612,10 +1827,9 @@ document.getElementById("do-create").addEventListener("click", async () => {
   const res = await doCreate(u, p);
   if (res.ok) {
     hideAuthOverlay();
-    if (typeof newGame === "function") newGame();
-    if (typeof updateLoadoutDisplay === "function") updateLoadoutDisplay();
-    if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
     if (typeof updateAccountBadge === "function") updateAccountBadge();
+    // After sign-in, go to mode picker instead of straight into a game
+    showModePicker();
   } else {
     document.getElementById("auth-error").textContent = res.error;
   }
@@ -1638,22 +1852,86 @@ const ARMOR_PIECE_LABELS = {
   leggings:   "LEGGINGS",
   boots:      "BOOTS",
 };
-// DR per equipped piece — 4 pieces stacked → up to 60% DR at full legendary
+// Rarity → just name + color now (stats moved to ARMOR_STATS per-piece)
 const ARMOR_TIERS = {
-  common:    { name: "COMMON",    color: "#9ca3af", dr: 0.03 },
-  rare:      { name: "RARE",      color: "#3b82f6", dr: 0.07 },
-  epic:      { name: "EPIC",      color: "#a855f7", dr: 0.10 },
-  legendary: { name: "LEGENDARY", color: "#fbbf24", dr: 0.15 },
+  common:    { name: "COMMON",    color: "#9ca3af" },
+  rare:      { name: "RARE",      color: "#3b82f6" },
+  epic:      { name: "EPIC",      color: "#a855f7" },
+  legendary: { name: "LEGENDARY", color: "#fbbf24" },
 };
 const RARITY_ORDER = ["common", "rare", "epic", "legendary"];
 
-function getArmorDR() {
-  let dr = 0;
+// Each piece type has a unique stat + per-rarity scale.
+// Helmet  → bonus max HP
+// Chest   → damage reduction
+// Leggings→ bonus bullet damage
+// Boots   → bonus movement speed
+const ARMOR_STATS = {
+  helmet:     { type: "hp",    suffix: "HP",  values: { common: 10,    rare: 25,    epic: 50,    legendary: 100 } },
+  chestplate: { type: "dr",    suffix: "DR",  values: { common: 0.05,  rare: 0.12,  epic: 0.20,  legendary: 0.35 } },
+  leggings:   { type: "dmg",   suffix: "DMG", values: { common: 0.05,  rare: 0.12,  epic: 0.20,  legendary: 0.35 } },
+  boots:      { type: "speed", suffix: "SPD", values: { common: 0.05,  rare: 0.12,  epic: 0.20,  legendary: 0.35 } },
+};
+function pieceStat(piece, rarity) {
+  if (!piece || !rarity || !ARMOR_STATS[piece]) return 0;
+  return ARMOR_STATS[piece].values[rarity] || 0;
+}
+function pieceStatLabel(piece, rarity) {
+  if (!piece || !rarity) return "";
+  const v = pieceStat(piece, rarity);
+  if (ARMOR_STATS[piece].type === "hp") return "+" + v + " HP";
+  return "+" + Math.round(v * 100) + "% " + ARMOR_STATS[piece].suffix;
+}
+function getEquippedBonus(statType) {
+  let total = 0;
   for (const piece of ARMOR_PIECES) {
-    const r = persistent.equippedArmor && persistent.equippedArmor[piece];
-    if (r && ARMOR_TIERS[r]) dr += ARMOR_TIERS[r].dr;
+    if (ARMOR_STATS[piece].type !== statType) continue;
+    const r = persistent.equippedArmor[piece];
+    if (r) total += pieceStat(piece, r);
   }
-  return Math.min(dr, 0.85);
+  return total;
+}
+function getArmorDR()          { return Math.min(getEquippedBonus("dr"), 0.85); }
+function getArmorHpBonus()     { return getEquippedBonus("hp"); }
+function getArmorDmgBonus()    { return getEquippedBonus("dmg"); }
+function getArmorSpeedBonus()  { return getEquippedBonus("speed"); }
+function getEffectiveMaxHp()   { return MAX_HP + getArmorHpBonus(); }
+function getDmgMult()          { return 1 + getArmorDmgBonus(); }
+function getSpeedMult()        { return 1 + getArmorSpeedBonus(); }
+
+// SVG icons per piece (color is filled from the rarity color)
+function pieceIcon(piece, color) {
+  const SZ = 38;
+  const stroke = "rgba(0,0,0,0.55)";
+  if (piece === "helmet") {
+    return `<svg viewBox="0 0 40 40" width="${SZ}" height="${SZ}">
+      <path d="M8 24 Q8 8 20 8 Q32 8 32 24 V30 H8 Z" fill="${color}" stroke="${stroke}" stroke-width="1.4"/>
+      <rect x="13" y="20" width="14" height="4" fill="rgba(0,0,0,0.55)" rx="1"/>
+      <circle cx="32" cy="22" r="1.5" fill="rgba(255,255,255,0.55)"/>
+    </svg>`;
+  } else if (piece === "chestplate") {
+    return `<svg viewBox="0 0 40 40" width="${SZ}" height="${SZ}">
+      <path d="M11 14 L15 9 H25 L29 14 V32 H11 Z" fill="${color}" stroke="${stroke}" stroke-width="1.4"/>
+      <line x1="20" y1="16" x2="20" y2="30" stroke="rgba(0,0,0,0.4)" stroke-width="1.5"/>
+      <line x1="14" y1="20" x2="26" y2="20" stroke="rgba(0,0,0,0.3)" stroke-width="1.2"/>
+      <circle cx="20" cy="22" r="2" fill="rgba(0,0,0,0.4)"/>
+    </svg>`;
+  } else if (piece === "leggings") {
+    return `<svg viewBox="0 0 40 40" width="${SZ}" height="${SZ}">
+      <path d="M12 8 H18 V20 L16 32 H12 Z" fill="${color}" stroke="${stroke}" stroke-width="1.4"/>
+      <path d="M22 8 H28 V32 H24 L22 20 Z" fill="${color}" stroke="${stroke}" stroke-width="1.4"/>
+      <line x1="14" y1="14" x2="14" y2="28" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>
+      <line x1="26" y1="14" x2="26" y2="28" stroke="rgba(0,0,0,0.25)" stroke-width="1"/>
+    </svg>`;
+  } else if (piece === "boots") {
+    return `<svg viewBox="0 0 40 40" width="${SZ}" height="${SZ}">
+      <path d="M8 18 H14 V26 H22 V32 H8 Z" fill="${color}" stroke="${stroke}" stroke-width="1.4"/>
+      <path d="M26 18 H32 V32 H18 V26 H26 Z" fill="${color}" stroke="${stroke}" stroke-width="1.4"/>
+      <line x1="11" y1="22" x2="14" y2="22" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+      <line x1="26" y1="22" x2="29" y2="22" stroke="rgba(0,0,0,0.5)" stroke-width="1.5"/>
+    </svg>`;
+  }
+  return "";
 }
 function equipArmor(piece, rarity) {
   const inv = persistent.armorInventory[piece];
@@ -1920,16 +2198,24 @@ window.addEventListener("pagehide",    () => { try { savePersistent(); } catch (
 let game;
 // (highScore is now stored on `persistent.highScore`)
 
-function newGame() {
+let gameMode = "solo"; // "solo" | "ffa" | "1v1" | "2v2" | "3v3"
+
+function newGame(mode) {
+  if (mode) gameMode = mode;
+  const effMax = getEffectiveMaxHp();
   game = {
     player: {
       x: W / 2, y: H / 2, vx: 0, vy: 0,
-      hp: MAX_HP, lastShot: 0, hitFlash: 0,
+      hp: effMax, maxHp: effMax,
+      lastShot: 0, hitFlash: 0,
+      team: "ally",
     },
     bullets: [],
     enemyBullets: [],
     enemies: [],
     towers: [],
+    bots: [],
+    botBullets: [],
     particles: [],
     mouse: { x: W / 2, y: H / 2, down: false },
     timeScale: 1,
@@ -1937,17 +2223,216 @@ function newGame() {
     score: 0,
     gameOver: false,
     spawnTimer: 60,
-    spawnInterval: 110,        // ↓ harder: enemies spawn faster from the start
+    spawnInterval: 110,
     towerSpawnTimer: 280,
-    towerSpawnInterval: 300,   // ↓ harder: new towers drop sooner
+    towerSpawnInterval: 300,
     tick: 0,
     flashRed: 0,
-    activeSlot: 0,  // which equipment slot (0-3) is currently selected
-    weaponCooldowns: {}, // weaponId → ticks remaining until usable again
+    activeSlot: 0,
+    weaponCooldowns: {},
+    mode: gameMode,
   };
-  // ↑ harder: start with 2 towers AND spawn an enemy quickly
-  spawnTower();
-  spawnTower();
+  if (gameMode === "solo") {
+    spawnTower();
+    spawnTower();
+  } else {
+    spawnPvpBots(gameMode);
+  }
+}
+
+// ============================================================
+// PVP BOTS — AI-controlled "players"
+// ============================================================
+const BOT_NAMES = ["ECHO", "VIPER", "GHOST", "RAVEN", "PHOENIX", "ORBIT", "ZENITH", "VEX", "AXIS", "WRAITH", "FLUX", "DRIFT"];
+let usedBotNames = [];
+function pickBotName() {
+  if (usedBotNames.length >= BOT_NAMES.length) usedBotNames = [];
+  let n;
+  do { n = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]; }
+  while (usedBotNames.includes(n));
+  usedBotNames.push(n);
+  return n;
+}
+const MATCH_CONFIG = {
+  ffa: { allies: 0, enemies: 3, name: "FREE FOR ALL" },
+  "1v1": { allies: 0, enemies: 1, name: "1 v 1 DUEL" },
+  "2v2": { allies: 1, enemies: 2, name: "2 v 2 SQUAD" },
+  "3v3": { allies: 2, enemies: 3, name: "3 v 3 TEAM FIGHT" },
+};
+function spawnPvpBots(mode) {
+  usedBotNames = [];
+  const cfg = MATCH_CONFIG[mode];
+  if (!cfg) return;
+  // For FFA, every bot is its own team (so they fight each other AND the player)
+  if (mode === "ffa") {
+    for (let i = 0; i < cfg.enemies; i++) spawnBot("ffa-" + i);
+  } else {
+    for (let i = 0; i < cfg.allies; i++) spawnBot("ally");
+    for (let i = 0; i < cfg.enemies; i++) spawnBot("enemy");
+  }
+}
+function spawnBot(team) {
+  // spawn at random edge
+  const edge = Math.floor(Math.random() * 4);
+  let x, y;
+  if      (edge === 0) { x = 60 + Math.random() * (W - 120);  y = 60; }
+  else if (edge === 1) { x = W - 60;                          y = 60 + Math.random() * (H - 120); }
+  else if (edge === 2) { x = 60 + Math.random() * (W - 120);  y = H - 60; }
+  else                 { x = 60;                              y = 60 + Math.random() * (H - 120); }
+  const isAlly = team === "ally";
+  const color = isAlly ? "#4ade80" : (team === "enemy" ? "#f43f5e" : null);
+  // FFA bots get unique colors
+  const ffaColors = ["#f472b6", "#facc15", "#a855f7", "#38bdf8"];
+  game.bots.push({
+    team: team,
+    name: pickBotName(),
+    x, y, vx: 0, vy: 0,
+    hp: 100, maxHp: 100,
+    lastShot: 0,
+    fireCD: 35 + Math.floor(Math.random() * 25),
+    target: null,
+    hitFlash: 0,
+    dead: false,
+    color: color || ffaColors[parseInt(team.split("-")[1]) % ffaColors.length] || "#f472b6",
+    decisionTimer: 0,
+    moveDir: { x: 0, y: 0 },
+  });
+}
+function botEnemiesOf(bot) {
+  // Returns list of valid targets for this bot.
+  const out = [];
+  if (gameMode === "ffa") {
+    // Everyone is an enemy of everyone in FFA
+    if (game.player.hp > 0) out.push(game.player);
+    for (const b of game.bots) if (b !== bot && !b.dead) out.push(b);
+  } else if (bot.team === "ally") {
+    // Ally bots target enemy bots
+    for (const b of game.bots) if (b.team === "enemy" && !b.dead) out.push(b);
+  } else {
+    // Enemy bots target the player + ally bots
+    if (game.player.hp > 0) out.push(game.player);
+    for (const b of game.bots) if (b.team === "ally" && !b.dead) out.push(b);
+  }
+  return out;
+}
+function updateBot(bot, ts) {
+  if (bot.dead) return;
+  if (bot.hitFlash > 0) bot.hitFlash--;
+  // pick / refresh target every ~1.5 seconds
+  bot.decisionTimer -= ts;
+  if (!bot.target || bot.target.hp <= 0 || bot.target.dead || bot.decisionTimer <= 0) {
+    const opts = botEnemiesOf(bot);
+    if (opts.length === 0) { bot.target = null; return; }
+    bot.target = opts[Math.floor(Math.random() * opts.length)];
+    bot.decisionTimer = 90 + Math.random() * 60;
+  }
+  if (!bot.target) return;
+  const dx = bot.target.x - bot.x;
+  const dy = bot.target.y - bot.y;
+  const d = Math.hypot(dx, dy);
+  const idealDist = 150;
+  // movement: kite at ideal distance + strafe
+  let mx = 0, my = 0;
+  if (d > idealDist + 30) {
+    mx = dx / d;
+    my = dy / d;
+  } else if (d < idealDist - 30) {
+    mx = -dx / d;
+    my = -dy / d;
+  } else {
+    // strafe — perpendicular to target line
+    const side = (Math.floor(bot.decisionTimer / 30) % 2) ? 1 : -1;
+    mx = -dy / d * side;
+    my =  dx / d * side;
+  }
+  bot.vx += mx * 0.38;
+  bot.vy += my * 0.38;
+  bot.vx *= 0.93;
+  bot.vy *= 0.93;
+  const sp = Math.hypot(bot.vx, bot.vy);
+  const maxBotSp = 4.2;
+  if (sp > maxBotSp) { bot.vx = bot.vx / sp * maxBotSp; bot.vy = bot.vy / sp * maxBotSp; }
+  bot.x += bot.vx * ts;
+  bot.y += bot.vy * ts;
+  // arena bounds (soft bounce)
+  if (bot.x < PLAYER_R) { bot.x = PLAYER_R; bot.vx = Math.abs(bot.vx) * 0.5; }
+  if (bot.x > W - PLAYER_R) { bot.x = W - PLAYER_R; bot.vx = -Math.abs(bot.vx) * 0.5; }
+  if (bot.y < PLAYER_R) { bot.y = PLAYER_R; bot.vy = Math.abs(bot.vy) * 0.5; }
+  if (bot.y > H - PLAYER_R) { bot.y = H - PLAYER_R; bot.vy = -Math.abs(bot.vy) * 0.5; }
+  // shoot — 3-bullet burst toward target
+  if (d < 320 && game.tick - bot.lastShot > bot.fireCD) {
+    bot.lastShot = game.tick;
+    const ang = Math.atan2(dy, dx);
+    const spread = 0.16;
+    for (let i = -1; i <= 1; i++) {
+      const a = ang + spread * i + (Math.random() - 0.5) * 0.06;
+      game.botBullets.push({
+        x: bot.x + Math.cos(a) * PLAYER_R,
+        y: bot.y + Math.sin(a) * PLAYER_R,
+        vx: Math.cos(a) * 9,
+        vy: Math.sin(a) * 9,
+        dmg: 12,
+        life: 80,
+        team: bot.team,
+        owner: bot,
+        dead: false,
+      });
+    }
+  }
+}
+function drawBot(b) {
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.beginPath();
+  ctx.ellipse(b.x + 3, b.y + PLAYER_R, PLAYER_R * 0.85, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // glow
+  const rgb = hexToRgb(b.color);
+  const glow = ctx.createRadialGradient(b.x, b.y, PLAYER_R * 0.3, b.x, b.y, PLAYER_R * 2.2);
+  glow.addColorStop(0, `rgba(${rgb}, 0.4)`);
+  glow.addColorStop(1, `rgba(${rgb}, 0)`);
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, PLAYER_R * 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  // body
+  const body = ctx.createRadialGradient(b.x - 4, b.y - 4, 2, b.x, b.y, PLAYER_R);
+  body.addColorStop(0, "#fff");
+  body.addColorStop(1, b.color);
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, PLAYER_R, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.6)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // eyes
+  ctx.fillStyle = "#1a0533";
+  ctx.beginPath();
+  ctx.arc(b.x - 4, b.y - 2, 1.6, 0, Math.PI * 2);
+  ctx.arc(b.x + 4, b.y - 2, 1.6, 0, Math.PI * 2);
+  ctx.fill();
+  // hit flash
+  if (b.hitFlash > 0) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${b.hitFlash / 8 * 0.85})`;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, PLAYER_R, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // name tag + HP bar
+  const hpR = Math.max(0, b.hp / b.maxHp);
+  ctx.font = "bold 10px Orbitron, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(b.x - 22, b.y - PLAYER_R - 22, 44, 13);
+  ctx.fillStyle = b.color;
+  ctx.fillText(b.name, b.x, b.y - PLAYER_R - 12);
+  // hp bar
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(b.x - 22, b.y - PLAYER_R - 8, 44, 4);
+  ctx.fillStyle = hpR > 0.5 ? "#4ade80" : hpR > 0.25 ? "#fbbf24" : "#f43f5e";
+  ctx.fillRect(b.x - 22, b.y - PLAYER_R - 8, 44 * hpR, 4);
 }
 
 // ============================================================
@@ -2100,17 +2585,20 @@ function update() {
   const ts = game.timeScale;
 
   const p = game.player;
-  // --- player input + ICE physics ---
-  if (game.keys.up)    p.vy -= ACCEL;
-  if (game.keys.down)  p.vy += ACCEL;
-  if (game.keys.left)  p.vx -= ACCEL;
-  if (game.keys.right) p.vx += ACCEL;
+  // --- player input + ICE physics (boots add speed) ---
+  const spdMult = getSpeedMult();
+  const accel    = ACCEL * spdMult;
+  const maxSpeed = MAX_SPEED * spdMult;
+  if (game.keys.up)    p.vy -= accel;
+  if (game.keys.down)  p.vy += accel;
+  if (game.keys.left)  p.vx -= accel;
+  if (game.keys.right) p.vx += accel;
   p.vx *= FRICTION;
   p.vy *= FRICTION;
   const sp = Math.hypot(p.vx, p.vy);
-  if (sp > MAX_SPEED) {
-    p.vx = (p.vx / sp) * MAX_SPEED;
-    p.vy = (p.vy / sp) * MAX_SPEED;
+  if (sp > maxSpeed) {
+    p.vx = (p.vx / sp) * maxSpeed;
+    p.vy = (p.vy / sp) * maxSpeed;
   }
   // move (scaled by time)
   p.x += p.vx * ts;
@@ -2366,26 +2854,123 @@ function update() {
   }
   game.particles = game.particles.filter(pp => pp.life > 0);
 
-  // --- spawning (only counts when time isn't slow, so bullet-time doesn't farm waves) ---
-  game.spawnTimer += ts;
-  if (game.spawnTimer > game.spawnInterval) {
-    game.spawnTimer = 0;
-    spawnEnemy();
-    // ↑ harder: every few waves spawn TWO enemies instead of one
-    if (Math.random() < 0.35) spawnEnemy();
-    if (game.spawnInterval > 35) game.spawnInterval -= 3;  // ramps much faster
+  // --- PVP: bots update + bot bullets ---
+  if (gameMode !== "solo") {
+    for (const bot of game.bots) updateBot(bot, ts);
+    // bot bullets
+    for (const bb of game.botBullets) {
+      if (bb.dead) continue;
+      bb.x += bb.vx * ts;
+      bb.y += bb.vy * ts;
+      bb.life -= ts;
+      if (bb.life <= 0 || bb.x < -10 || bb.x > W + 10 || bb.y < -10 || bb.y > H + 10) {
+        bb.dead = true; continue;
+      }
+      // hit player (skip ally bots in team modes)
+      if (gameMode === "ffa" || bb.team === "enemy") {
+        if (Math.hypot(bb.x - p.x, bb.y - p.y) < PLAYER_R + ENEMY_BULL_R) {
+          p.hp -= bb.dmg * (1 - getArmorDR());
+          p.hitFlash = 10;
+          game.flashRed = Math.max(game.flashRed, 14);
+          bb.dead = true;
+          continue;
+        }
+      }
+      // hit bots (skip same-team bots in team modes; FFA = anyone)
+      for (const bt of game.bots) {
+        if (bt.dead || bt === bb.owner) continue;
+        if (gameMode !== "ffa" && bt.team === bb.team) continue;
+        if (Math.hypot(bb.x - bt.x, bb.y - bt.y) < PLAYER_R + ENEMY_BULL_R) {
+          bt.hp -= bb.dmg;
+          bt.hitFlash = 8;
+          if (bt.hp <= 0) {
+            bt.dead = true;
+            // explosion particles
+            const rgb = hexToRgb(bt.color);
+            for (let i = 0; i < 18; i++) {
+              const ang = Math.random() * Math.PI * 2;
+              const ss = 1.5 + Math.random() * 3;
+              game.particles.push({
+                x: bt.x, y: bt.y,
+                vx: Math.cos(ang) * ss, vy: Math.sin(ang) * ss,
+                life: 26, maxLife: 26, color: rgb, size: 3.5
+              });
+            }
+          }
+          bb.dead = true;
+          break;
+        }
+      }
+    }
+    game.botBullets = game.botBullets.filter(b => !b.dead);
+    // player bullets vs bots (extra collision check beyond enemies/towers)
+    for (const b of game.bullets) {
+      if (b.dead) continue;
+      for (const bt of game.bots) {
+        if (bt.dead) continue;
+        // In team modes, friendly fire OFF (player can't hit allies)
+        if (gameMode !== "ffa" && bt.team === "ally") continue;
+        if (Math.hypot(b.x - bt.x, b.y - bt.y) < PLAYER_R + PLAYER_BULL_R) {
+          bt.hp -= b.dmg;
+          bt.hitFlash = 8;
+          b.dead = true;
+          if (bt.hp <= 0) {
+            bt.dead = true;
+            game.score += 80; // bot kill = 80 score
+            const rgb = hexToRgb(bt.color);
+            for (let i = 0; i < 22; i++) {
+              const ang = Math.random() * Math.PI * 2;
+              const ss = 2 + Math.random() * 4;
+              game.particles.push({
+                x: bt.x, y: bt.y,
+                vx: Math.cos(ang) * ss, vy: Math.sin(ang) * ss,
+                life: 30, maxLife: 30, color: rgb, size: 4
+              });
+            }
+          }
+          break;
+        }
+      }
+    }
+    // win condition: PvP outcome
+    const result = checkPvpResult();
+    if (result === "win" && !game.gameOver) {
+      game.gameOver = true;
+      game.score += 250; // bonus
+      if (game.score > persistent.highScore) persistent.highScore = game.score;
+      persistent.coins += game.score;
+      savePersistent();
+      showPvpResult("win");
+    } else if (result === "lose" && !game.gameOver) {
+      game.gameOver = true;
+      if (game.score > persistent.highScore) persistent.highScore = game.score;
+      persistent.coins += game.score;
+      savePersistent();
+      showPvpResult("lose");
+    }
   }
-  game.towerSpawnTimer += ts;
-  if (game.towerSpawnTimer > game.towerSpawnInterval && game.towers.length < 12) {
-    game.towerSpawnTimer = 0;
-    spawnTower();
-    if (game.towerSpawnInterval > 150) game.towerSpawnInterval -= 18;
-  }
-  // boss spawning (every ~25s once we reach minTime, only 1 boss at a time)
-  game.bossTimer = (game.bossTimer || 0) + ts;
-  if (game.bossTimer > 1500) {
-    game.bossTimer = 0;
-    trySpawnBoss();
+
+  // --- spawning (only in SOLO mode; PvP has no waves) ---
+  if (gameMode === "solo") {
+    game.spawnTimer += ts;
+    if (game.spawnTimer > game.spawnInterval) {
+      game.spawnTimer = 0;
+      spawnEnemy();
+      if (Math.random() < 0.35) spawnEnemy();
+      if (game.spawnInterval > 35) game.spawnInterval -= 3;
+    }
+    game.towerSpawnTimer += ts;
+    if (game.towerSpawnTimer > game.towerSpawnInterval && game.towers.length < 12) {
+      game.towerSpawnTimer = 0;
+      spawnTower();
+      if (game.towerSpawnInterval > 150) game.towerSpawnInterval -= 18;
+    }
+    // boss spawning (every ~25s once we reach minTime, only 1 boss at a time)
+    game.bossTimer = (game.bossTimer || 0) + ts;
+    if (game.bossTimer > 1500) {
+      game.bossTimer = 0;
+      trySpawnBoss();
+    }
   }
 
   if (game.flashRed > 0) game.flashRed--;
@@ -2691,6 +3276,19 @@ function render() {
   // entities
   for (const t of game.towers)  drawTower(t);
   for (const e of game.enemies) drawEnemy(e);
+  // PvP bots
+  for (const b of game.bots) if (!b.dead) drawBot(b);
+  // bot bullets (same orange style as enemy bullets)
+  for (const bb of game.botBullets) {
+    if (bb.dead) continue;
+    ctx.fillStyle = "#fb923c";
+    ctx.shadowColor = "#fb923c";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(bb.x, bb.y, ENEMY_BULL_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
 
   // bullets
   for (const b of game.bullets) {
@@ -2761,7 +3359,7 @@ function updateHud() {
   document.getElementById("hud-coins").textContent = persistent.coins;
   document.getElementById("hud-best").textContent = Math.max(persistent.highScore, game.score);
   const fill = document.getElementById("hp-fill");
-  const pct = (game.player.hp / MAX_HP) * 100;
+  const pct = (game.player.hp / (game.player.maxHp || MAX_HP)) * 100;
   fill.style.width = pct + "%";
   fill.classList.toggle("low", pct < 25);
   fill.classList.toggle("mid", pct >= 25 && pct < 55);
@@ -2821,6 +3419,41 @@ function refreshLoadoutCooldowns() {
   });
 }
 
+function checkPvpResult() {
+  if (gameMode === "solo") return null;
+  const playerAlive = game.player.hp > 0;
+  if (gameMode === "ffa") {
+    // last alive (including player) wins
+    const aliveBots = game.bots.filter(b => !b.dead).length;
+    if (!playerAlive) return "lose";
+    if (aliveBots === 0) return "win";
+  } else {
+    const aliveAllies = game.bots.filter(b => !b.dead && b.team === "ally").length;
+    const aliveEnemies = game.bots.filter(b => !b.dead && b.team === "enemy").length;
+    if (!playerAlive && aliveAllies === 0) return "lose";
+    if (aliveEnemies === 0) return "win";
+  }
+  return null;
+}
+function showPvpResult(result) {
+  const m = document.getElementById("message");
+  const isWin = result === "win";
+  const title = isWin ? "VICTORY" : "DEFEATED";
+  m.innerHTML = `
+    <div class="title" style="color:${isWin ? '#4ade80' : '#f43f5e'};text-shadow:0 0 20px ${isWin ? '#4ade80' : '#f43f5e'};">${title}</div>
+    <div class="stat-line">MODE — <strong>${(MATCH_CONFIG[gameMode] && MATCH_CONFIG[gameMode].name) || gameMode.toUpperCase()}</strong></div>
+    <div class="stat-line">SCORE — <strong>${game.score}</strong></div>
+    <div class="stat-line">EARNED — <strong style="color:#fbbf24;">+${game.score}c</strong></div>
+    <button id="restart-btn">CONTINUE</button>
+  `;
+  m.classList.add("show");
+  document.getElementById("restart-btn").addEventListener("click", () => {
+    m.classList.remove("show");
+    renderShop();
+    document.getElementById("shop-overlay").classList.add("show");
+  });
+}
+
 function showGameOver() {
   // bank score as coins
   persistent.coins += game.score;
@@ -2873,19 +3506,26 @@ function renderCratesSection() {
   const equippedRow = ARMOR_PIECES.map(piece => {
     const r = persistent.equippedArmor[piece];
     const tier = r ? ARMOR_TIERS[r] : null;
+    const icColor = tier ? tier.color : "rgba(255,255,255,0.15)";
+    const iconHtml = `<div class="ap-icon">${pieceIcon(piece, icColor)}</div>`;
     const inner = tier
       ? `<div class="ap-tier" style="color:${tier.color};">${tier.name}</div>
-         <div class="ap-dr">+${(tier.dr * 100)|0}% DR</div>
+         <div class="ap-dr">${pieceStatLabel(piece, r)}</div>
          <button class="ap-clear" data-clear="${piece}">UNEQUIP</button>`
       : `<div class="ap-tier" style="color:rgba(255,255,255,0.35);">EMPTY</div>
-         <div class="ap-dr" style="color:rgba(255,255,255,0.35);">+0% DR</div>`;
+         <div class="ap-dr" style="color:rgba(255,255,255,0.35);">— —</div>`;
     const borderColor = tier ? tier.color : "rgba(255,255,255,0.2)";
     return `<div class="ap-slot" style="border-color:${borderColor};">
+      ${iconHtml}
       <div class="ap-name">${ARMOR_PIECE_LABELS[piece]}</div>
       ${inner}
     </div>`;
   }).join("");
-  const totalDR = (getArmorDR() * 100) | 0;
+  const hpB = getArmorHpBonus();
+  const drB = (getArmorDR() * 100) | 0;
+  const dmgB = Math.round(getArmorDmgBonus() * 100);
+  const spdB = Math.round(getArmorSpeedBonus() * 100);
+  const totalStatsLine = `<span class="ts-hp">+${hpB} HP</span> · <span class="ts-dr">${drB}% DR</span> · <span class="ts-dmg">+${dmgB}% DMG</span> · <span class="ts-spd">+${spdB}% SPD</span>`;
 
   // ----- INVENTORY rows (one per piece type) -----
   const invRows = ARMOR_PIECES.map(piece => {
@@ -2906,7 +3546,9 @@ function renderCratesSection() {
           ? `<div class="inv-max">MAX</div>`
           : `<button class="inv-btn merge" disabled>MERGE 3→1</button>`;
       return `<div class="inv-cell" style="border-color:${tier.color}66;">
+        <div class="ic-icon">${pieceIcon(piece, tier.color)}</div>
         <div class="ic-tier" style="color:${tier.color};">${tier.name}</div>
+        <div class="ic-stat" style="color:${tier.color}cc;">${pieceStatLabel(piece, r)}</div>
         <div class="ic-count">×${ct}</div>
         ${equipBtn}
         ${mergeBtn}
@@ -2939,7 +3581,7 @@ function renderCratesSection() {
     <h3>ARMORY · ARMOR</h3>
     <div class="equipped-armor">
       <div class="ea-row">${equippedRow}</div>
-      <div class="ea-total">TOTAL DAMAGE REDUCTION · <strong>${totalDR}%</strong></div>
+      <div class="ea-total">TOTAL · ${totalStatsLine}</div>
     </div>
     <div class="armor-inv-list">${invRows}</div>
     <h3 style="margin-top:18px;">CRATES</h3>
@@ -2949,19 +3591,23 @@ function renderCratesSection() {
 
 function showCrateReveal(result) {
   const root = document.getElementById("crate-reveal");
+  const iconEl = document.getElementById("reveal-icon");
   const nameEl = document.getElementById("reveal-name");
   const subEl = document.getElementById("reveal-sub");
-  let color, name, sub;
+  let color, name, sub, iconHtml = "";
   if (result.type === "coins") {
     color = "#fbbf24";
     name = "+" + result.amount + "c";
-    sub = "COINS ADDED";
+    sub = "COINS ADDED TO YOUR BALANCE";
+    iconHtml = `<div style="font-size:48px;line-height:1;">¢</div>`;
   } else {
     const tier = ARMOR_TIERS[result.rarity];
     color = tier.color;
     name = tier.name + " " + ARMOR_PIECE_LABELS[result.piece];
-    sub = `+${(tier.dr * 100)|0}% damage reduction · added to inventory`;
+    sub = pieceStatLabel(result.piece, result.rarity) + " · added to inventory";
+    iconHtml = pieceIcon(result.piece, color);
   }
+  iconEl.innerHTML = iconHtml;
   nameEl.textContent = name;
   nameEl.style.setProperty("color", color);
   nameEl.style.setProperty("text-shadow", `0 0 22px ${color}`);
@@ -3083,14 +3729,13 @@ function bindShopEvents() {
     });
   }
   document.getElementById("run-again-btn").addEventListener("click", () => {
-    // make sure active slot is a valid equipped weapon
     if (!persistent.equippedSlots[game.activeSlot || 0]) {
       const firstEquipped = persistent.equippedSlots.findIndex(s => s);
       if (firstEquipped >= 0) game.activeSlot = firstEquipped;
     }
     document.getElementById("shop-overlay").classList.remove("show");
-    newGame();
-    updateLoadoutDisplay();
+    // Go through mode picker again so the player can change modes between runs
+    showModePicker();
   });
 }
 
@@ -3107,6 +3752,34 @@ function loop() {
   }
   requestAnimationFrame(loop);
 }
+
+// ============================================================
+// MODE PICKER (Solo / FFA / 1v1 / 2v2 / 3v3 / Random)
+// ============================================================
+function showModePicker() {
+  document.getElementById("mode-overlay").classList.add("show");
+}
+function hideModePicker() {
+  document.getElementById("mode-overlay").classList.remove("show");
+}
+function startMatchmaking(mode) {
+  if (mode === "random") {
+    const pool = ["solo", "ffa", "1v1", "2v2", "3v3"];
+    mode = pool[Math.floor(Math.random() * pool.length)];
+  }
+  hideModePicker();
+  document.getElementById("mf-mode-text").textContent =
+    (MATCH_CONFIG[mode] && MATCH_CONFIG[mode].name) || mode.toUpperCase();
+  document.getElementById("match-finder").classList.add("show");
+  // brief animation for the "finding match..." feel
+  setTimeout(() => {
+    document.getElementById("match-finder").classList.remove("show");
+    newGame(mode);
+  }, mode === "solo" ? 600 : 1700);
+}
+document.querySelectorAll(".mode-btn").forEach(btn => {
+  btn.addEventListener("click", () => startMatchmaking(btn.dataset.mode));
+});
 
 // ============================================================
 // MOBILE: dual virtual joysticks + weapon-slot buttons
@@ -3266,12 +3939,17 @@ document.querySelectorAll("#mobile-weapons button").forEach(btn => {
 const _origUpdateHud = updateHud;
 updateHud = function () { _origUpdateHud(); refreshWeaponButtons(); };
 
-newGame();
+newGame("solo");
 updateLoadoutDisplay();
 refreshWeaponButtons();
 updateAccountBadge();
 // If nobody is signed in, show the auth screen on top of everything.
-if (!isSignedIn) showAuthOverlay();
+// If signed in, jump straight to mode selection.
+if (!isSignedIn) {
+  showAuthOverlay();
+} else {
+  showModePicker();
+}
 loop();
 </script>
 </body>
