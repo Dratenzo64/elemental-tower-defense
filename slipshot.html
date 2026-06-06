@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Slipshot</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -177,6 +177,138 @@
     box-shadow: 0 0 12px rgba(74, 222, 128, 0.35);
   }
   #save-indicator.show { opacity: 1; }
+
+  /* Account badge (top-left, beside BACK) */
+  #account-badge {
+    position: fixed;
+    top: 14px;
+    left: 90px;
+    background: rgba(74, 222, 128, 0.15);
+    border: 1px solid rgba(74, 222, 128, 0.5);
+    color: #86efac;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  /* Accounts section in the shop */
+  .accounts-section {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid rgba(255, 255, 255, 0.13);
+    border-radius: 12px;
+    padding: 18px 16px;
+    margin: 24px 0 16px;
+  }
+  .accounts-section h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    letter-spacing: 4px;
+    color: #4ade80;
+    text-shadow: 0 0 12px rgba(74, 222, 128, 0.45);
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .accounts-current {
+    text-align: center;
+    margin-bottom: 14px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .accounts-current strong { color: #4ade80; margin-left: 6px; font-size: 14px; }
+  .account-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .account-item {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: center;
+  }
+  .account-item.active {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+  }
+  .account-item .ai-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #fff;
+  }
+  .account-item .ai-stats {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.65);
+    margin-top: 2px;
+  }
+  .account-item .ai-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .account-item .ai-btn.switch { background: rgba(74, 222, 128, 0.2); border-color: rgba(74, 222, 128, 0.5); color: #86efac; }
+  .account-item .ai-btn.switch:hover { background: rgba(74, 222, 128, 0.35); }
+  .account-item .ai-btn.delete { background: rgba(244, 63, 94, 0.2); border-color: rgba(244, 63, 94, 0.5); color: #fda4af; }
+  .account-item .ai-btn.delete:hover { background: rgba(244, 63, 94, 0.35); }
+  .account-item.active .ai-btn.switch { opacity: 0.4; cursor: default; }
+  .account-create {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .account-create input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    outline: none;
+  }
+  .account-create input:focus { border-color: #4ade80; }
+  .account-create button {
+    background: #4ade80;
+    color: #050810;
+    border: none;
+    padding: 0 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+  }
+  .account-create button:hover { background: #22c55e; }
+  .account-error {
+    color: #fda4af;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 6px;
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 16px;
+  }
 
   /* Loadout strip under HUD */
   #loadout {
@@ -389,11 +521,401 @@
     box-shadow: 0 6px 18px rgba(74, 222, 128, 0.4);
   }
   #run-again-btn:hover { background: #22c55e; transform: translateY(-1px); }
+
+  /* Crates */
+  .crates-section {
+    margin: 24px 0 16px;
+    padding: 18px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid rgba(255, 255, 255, 0.13);
+    border-radius: 12px;
+  }
+  .crates-section h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    letter-spacing: 4px;
+    color: #fbbf24;
+    text-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .armor-status {
+    text-align: center;
+    margin-bottom: 14px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.75);
+  }
+  .armor-status .rarity {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+  /* Equipped armor row (Surviv.io style) */
+  .equipped-armor {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .equipped-armor .ea-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .ap-slot {
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+    transition: border-color 0.15s;
+  }
+  .ap-slot .ap-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 4px;
+  }
+  .ap-slot .ap-tier {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+  .ap-slot .ap-dr {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    color: #4ade80;
+    margin-bottom: 6px;
+  }
+  .ap-slot .ap-clear {
+    background: rgba(244, 63, 94, 0.2);
+    border: 1px solid rgba(244, 63, 94, 0.5);
+    color: #fda4af;
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .ap-slot .ap-clear:hover { background: rgba(244, 63, 94, 0.35); }
+  .equipped-armor .ea-total {
+    text-align: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .equipped-armor .ea-total strong {
+    color: #4ade80;
+    font-size: 15px;
+    margin-left: 4px;
+  }
+
+  /* Armor inventory grid (rows per piece, columns per rarity) */
+  .armor-inv-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .inv-row {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+  .inv-row .ir-piece {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+  .inv-row .ir-cells {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .inv-cell {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 7px 6px;
+    text-align: center;
+  }
+  .inv-cell .ic-tier {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+  }
+  .inv-cell .ic-count {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    color: #fff;
+    margin: 3px 0 4px;
+  }
+  .inv-cell .inv-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    padding: 3px 4px;
+    cursor: pointer;
+    margin: 2px 0;
+    width: 100%;
+  }
+  .inv-cell .inv-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  .inv-cell .inv-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .inv-cell .inv-btn.equip {
+    background: rgba(74, 222, 128, 0.18);
+    border-color: rgba(74, 222, 128, 0.5);
+    color: #86efac;
+  }
+  .inv-cell .inv-btn.equip:hover:not(:disabled) {
+    background: rgba(74, 222, 128, 0.32);
+  }
+  .inv-cell .inv-btn.merge {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.45);
+    color: #fcd34d;
+  }
+  .inv-cell .inv-btn.merge:hover:not(:disabled) {
+    background: rgba(251, 191, 36, 0.3);
+  }
+  .inv-cell .inv-equipped {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    color: #4ade80;
+    letter-spacing: 1px;
+    padding: 3px 0;
+    border: 1px solid rgba(74, 222, 128, 0.5);
+    background: rgba(74, 222, 128, 0.15);
+    border-radius: 4px;
+    margin: 2px 0;
+  }
+  .inv-cell .inv-max {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    color: #fbbf24;
+    letter-spacing: 1px;
+    padding: 3px 0;
+    margin: 2px 0;
+  }
+  .crates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px;
+  }
+  .crate-card {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border: 1.5px solid rgba(255, 255, 255, 0.18);
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+    font-family: 'Rajdhani', sans-serif;
+  }
+  .crate-card .c-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .crate-card .c-cost {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    color: #4ade80;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+  .crate-card .c-odds {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 10px;
+    line-height: 1.45;
+  }
+  .crate-card .c-odds .pip {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    margin-right: 3px;
+    vertical-align: middle;
+  }
+  .crate-card .open-btn {
+    background: #4ade80;
+    color: #050810;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .crate-card .open-btn:hover { background: #22c55e; }
+  .crate-card .open-btn:disabled {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.4);
+    cursor: not-allowed;
+  }
+  /* Reveal popup */
+  #crate-reveal {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 16, 0.85);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #crate-reveal.show { display: flex; animation: cr-fade 0.25s ease; }
+  #crate-reveal .reveal-card {
+    text-align: center;
+    padding: 36px 56px;
+    background: rgba(5, 8, 16, 0.95);
+    border-radius: 16px;
+    border: 3px solid var(--reveal-color, #fff);
+    box-shadow: 0 0 60px var(--reveal-color, #fff);
+    animation: cr-pop 0.5s ease;
+  }
+  #crate-reveal .reveal-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 34px;
+    letter-spacing: 6px;
+    color: var(--reveal-color, #fff);
+    text-shadow: 0 0 22px var(--reveal-color, #fff);
+    margin-bottom: 6px;
+  }
+  #crate-reveal .reveal-sub {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    margin-bottom: 14px;
+  }
+  #crate-reveal .reveal-close {
+    background: var(--reveal-color, #4ade80);
+    color: #050810;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 8px;
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+  @keyframes cr-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes cr-pop {
+    0%   { transform: scale(0.5) rotate(-8deg); opacity: 0; }
+    60%  { transform: scale(1.08) rotate(2deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+
+  /* --- MOBILE CONTROLS (Brawl Stars style dual joysticks) --- */
+  #mobile-controls { display: none; }
+  @media (pointer: coarse), (max-width: 900px) {
+    #mobile-controls { display: block; }
+    canvas { max-width: 100vw; height: auto; }
+    #canvas-wrap { max-width: 100vw; }
+    #hud { flex-wrap: wrap; justify-content: center; font-size: 11px; padding: 8px 10px; }
+    #loadout { flex-wrap: wrap; justify-content: center; }
+    #info { font-size: 11px; padding: 8px 12px; }
+    body { padding-bottom: 200px; }
+  }
+  .joy-base {
+    position: fixed;
+    bottom: 30px;
+    width: 130px;
+    height: 130px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2.5px solid rgba(255, 255, 255, 0.28);
+    border-radius: 50%;
+    z-index: 50;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .joy-base.left  { left: 24px; }
+  .joy-base.right { right: 24px; border-color: rgba(244, 63, 94, 0.5); background: rgba(244, 63, 94, 0.08); }
+  .joy-base.active { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.55); }
+  .joy-base.right.active { background: rgba(244, 63, 94, 0.22); border-color: rgba(244, 63, 94, 0.85); }
+  .joy-knob {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 56px; height: 56px;
+    background: rgba(255, 255, 255, 0.45);
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    transition: transform 0.08s linear;
+  }
+  .joy-base.right .joy-knob { background: rgba(244, 63, 94, 0.55); border-color: rgba(248, 113, 130, 0.85); }
+  #mobile-weapons {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 50;
+  }
+  #mobile-weapons button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    min-width: 56px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #mobile-weapons button.active {
+    background: rgba(74, 222, 128, 0.3);
+    border-color: #4ade80;
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
+  }
+  #mobile-weapons button.cooling {
+    background: rgba(244, 63, 94, 0.2);
+    border-color: rgba(244, 63, 94, 0.6);
+    color: #fda4af;
+  }
 </style>
 </head>
 <body>
 
 <a href="index.html" class="home-link">‹ BACK</a>
+<div id="account-badge"></div>
 <div id="save-indicator">SAVED ✓</div>
 
 <h1>SLIPSHOT</h1>
@@ -419,6 +941,23 @@
 </div>
 
 <div id="shop-overlay"><div id="shop-content"></div></div>
+<div id="crate-reveal"><div class="reveal-card">
+  <div class="reveal-name" id="reveal-name"></div>
+  <div class="reveal-sub" id="reveal-sub"></div>
+  <button class="reveal-close" id="reveal-close">CONTINUE</button>
+</div></div>
+
+<!-- Mobile controls (hidden on desktop via CSS) -->
+<div id="mobile-controls">
+  <div id="mobile-weapons">
+    <button data-slot="0">1</button>
+    <button data-slot="1">2</button>
+    <button data-slot="2">3</button>
+    <button data-slot="3">4</button>
+  </div>
+  <div id="joy-left" class="joy-base left"><div class="joy-knob"></div></div>
+  <div id="joy-right" class="joy-base right"><div class="joy-knob"></div></div>
+</div>
 
 <script>
 // ============================================================
@@ -500,7 +1039,7 @@ function triggerExplosion(x, y, radius, dmg) {
   // damage player
   const dToPlayer = Math.hypot(game.player.x - x, game.player.y - y);
   if (dToPlayer < radius) {
-    game.player.hp -= dmg;
+    game.player.hp -= dmg * (1 - getArmorDR());
     game.player.hitFlash = 12;
     game.flashRed = Math.max(game.flashRed, 18);
   }
@@ -748,12 +1287,238 @@ const WEAPONS = {
 // ============================================================
 const SAVE_KEY = "slipshot-save-v3";
 const HASH_PREFIX = "#s=";
-const persistent = {
-  coins: 0,
-  ownedWeapons: ["burst"],
-  equippedSlots: ["burst", null, null, null],
-  highScore: 0,
+function defaultProfile() {
+  return {
+    coins: 0,
+    ownedWeapons: ["burst"],
+    equippedSlots: ["burst", null, null, null],
+    highScore: 0,
+    armorInventory: {
+      helmet:     { common: 0, rare: 0, epic: 0, legendary: 0 },
+      chestplate: { common: 0, rare: 0, epic: 0, legendary: 0 },
+      leggings:   { common: 0, rare: 0, epic: 0, legendary: 0 },
+      boots:      { common: 0, rare: 0, epic: 0, legendary: 0 },
+    },
+    equippedArmor: { helmet: null, chestplate: null, leggings: null, boots: null },
+  };
+}
+const persistent = defaultProfile();
+
+// ============================================================
+// ACCOUNTS — multi-profile support
+// ============================================================
+const ACCOUNTS_KEY = "slipshot-accounts-v1";
+const accountsState = { current: "PLAYER 1", accounts: {} };
+
+function loadAccountsList() {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (data.accounts && typeof data.accounts === "object") {
+      accountsState.accounts = data.accounts;
+    }
+    if (data.current && accountsState.accounts[data.current]) {
+      accountsState.current = data.current;
+    } else if (Object.keys(accountsState.accounts).length > 0) {
+      accountsState.current = Object.keys(accountsState.accounts)[0];
+    }
+    return Object.keys(accountsState.accounts).length > 0;
+  } catch (e) { return false; }
+}
+function saveAccountsList() {
+  // sync current persistent state into the active account before saving
+  accountsState.accounts[accountsState.current] = {
+    coins: persistent.coins,
+    ownedWeapons: persistent.ownedWeapons,
+    equippedSlots: persistent.equippedSlots,
+    highScore: persistent.highScore,
+    armorInventory: persistent.armorInventory,
+    equippedArmor: persistent.equippedArmor,
+  };
+  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsState)); } catch (e) {}
+}
+function copyProfileInto(target, src) {
+  if (!src) return;
+  if (typeof src.coins === "number") target.coins = src.coins;
+  if (typeof src.highScore === "number") target.highScore = src.highScore;
+  if (Array.isArray(src.ownedWeapons)) target.ownedWeapons = src.ownedWeapons.slice();
+  if (Array.isArray(src.equippedSlots) && src.equippedSlots.length === 4) target.equippedSlots = src.equippedSlots.slice();
+  if (src.armorInventory) {
+    for (const piece of ARMOR_PIECES) {
+      if (src.armorInventory[piece]) {
+        target.armorInventory[piece] = Object.assign({ common: 0, rare: 0, epic: 0, legendary: 0 }, src.armorInventory[piece]);
+      }
+    }
+  }
+  if (src.equippedArmor) {
+    for (const piece of ARMOR_PIECES) {
+      if (src.equippedArmor[piece] && ARMOR_TIERS[src.equippedArmor[piece]]) {
+        target.equippedArmor[piece] = src.equippedArmor[piece];
+      }
+    }
+  }
+}
+function switchAccount(name) {
+  if (!accountsState.accounts[name]) return false;
+  // save out current first
+  saveAccountsList();
+  accountsState.current = name;
+  // reset persistent and load new one
+  const fresh = defaultProfile();
+  Object.assign(persistent, fresh);
+  copyProfileInto(persistent, accountsState.accounts[name]);
+  saveAccountsList();
+  savePersistent();
+  return true;
+}
+function createAccount(name) {
+  name = String(name || "").trim().slice(0, 20);
+  if (!name) return { ok: false, reason: "Name required" };
+  if (accountsState.accounts[name]) return { ok: false, reason: "Name already taken" };
+  accountsState.accounts[name] = defaultProfile();
+  saveAccountsList();
+  return { ok: true };
+}
+function deleteAccount(name) {
+  if (!accountsState.accounts[name]) return false;
+  if (Object.keys(accountsState.accounts).length <= 1) return false; // keep at least 1
+  delete accountsState.accounts[name];
+  if (accountsState.current === name) {
+    const first = Object.keys(accountsState.accounts)[0];
+    accountsState.current = first;
+    const fresh = defaultProfile();
+    Object.assign(persistent, fresh);
+    copyProfileInto(persistent, accountsState.accounts[first]);
+  }
+  saveAccountsList();
+  savePersistent();
+  return true;
+}
+
+// ============================================================
+// ARMOR + CRATES
+// ============================================================
+const ARMOR_PIECES = ["helmet", "chestplate", "leggings", "boots"];
+const ARMOR_PIECE_LABELS = {
+  helmet:     "HELMET",
+  chestplate: "CHESTPLATE",
+  leggings:   "LEGGINGS",
+  boots:      "BOOTS",
 };
+// DR per equipped piece — 4 pieces stacked → up to 60% DR at full legendary
+const ARMOR_TIERS = {
+  common:    { name: "COMMON",    color: "#9ca3af", dr: 0.03 },
+  rare:      { name: "RARE",      color: "#3b82f6", dr: 0.07 },
+  epic:      { name: "EPIC",      color: "#a855f7", dr: 0.10 },
+  legendary: { name: "LEGENDARY", color: "#fbbf24", dr: 0.15 },
+};
+const RARITY_ORDER = ["common", "rare", "epic", "legendary"];
+
+function getArmorDR() {
+  let dr = 0;
+  for (const piece of ARMOR_PIECES) {
+    const r = persistent.equippedArmor && persistent.equippedArmor[piece];
+    if (r && ARMOR_TIERS[r]) dr += ARMOR_TIERS[r].dr;
+  }
+  return Math.min(dr, 0.85);
+}
+function equipArmor(piece, rarity) {
+  const inv = persistent.armorInventory[piece];
+  if (!inv || (rarity && (inv[rarity] || 0) <= 0)) return false;
+  persistent.equippedArmor[piece] = rarity;
+  savePersistent();
+  return true;
+}
+function unequipArmor(piece) {
+  persistent.equippedArmor[piece] = null;
+  savePersistent();
+}
+function mergePieces(piece, rarity) {
+  const inv = persistent.armorInventory[piece];
+  if (!inv || (inv[rarity] || 0) < 3) return false;
+  const idx = RARITY_ORDER.indexOf(rarity);
+  if (idx < 0 || idx >= RARITY_ORDER.length - 1) return false; // can't merge legendaries
+  inv[rarity] -= 3;
+  inv[RARITY_ORDER[idx + 1]]++;
+  // auto-unequip if the piece we were wearing was just consumed to zero
+  if (persistent.equippedArmor[piece] === rarity && inv[rarity] === 0) {
+    persistent.equippedArmor[piece] = null;
+  }
+  savePersistent();
+  return true;
+}
+
+const CRATE_TIERS = {
+  t1: {
+    name: "TIER I",
+    cost: 10,
+    color: "#9ca3af",
+    drops: [
+      { rarity: "common", weight: 90, label: "Common Armor" },
+      { rarity: "rare",   weight: 10, label: "Rare Armor"   },
+    ],
+  },
+  t2: {
+    name: "TIER II",
+    cost: 50,
+    color: "#3b82f6",
+    drops: [
+      { rarity: "common", weight: 65, label: "Common Armor" },
+      { rarity: "rare",   weight: 15, label: "Rare Armor"   },
+      { coins:   100,     weight: 15, label: "+100 coins"   },
+      { rarity: "epic",   weight:  5, label: "Epic Armor"   },
+    ],
+  },
+  t3: {
+    name: "TIER III",
+    cost: 200,
+    color: "#a855f7",
+    drops: [
+      { rarity: "rare",      weight: 25, label: "Rare Armor"    },
+      { rarity: "epic",      weight: 35, label: "Epic Armor"    },
+      { rarity: "legendary", weight: 10, label: "Legendary Armor" },
+      { coins:   500,        weight: 30, label: "+500 coins"    },
+    ],
+  },
+  t4: {
+    name: "TIER IV",
+    cost: 1000,
+    color: "#fbbf24",
+    drops: [
+      { rarity: "legendary", weight: 100, label: "Legendary Armor" },
+    ],
+  },
+};
+
+function openCrate(tierId) {
+  const tier = CRATE_TIERS[tierId];
+  if (!tier || persistent.coins < tier.cost) return null;
+  persistent.coins -= tier.cost;
+  const total = tier.drops.reduce((s, d) => s + d.weight, 0);
+  let r = Math.random() * total;
+  let result = tier.drops[tier.drops.length - 1];
+  for (const d of tier.drops) {
+    r -= d.weight;
+    if (r <= 0) { result = d; break; }
+  }
+  if (result.coins) {
+    persistent.coins += result.coins;
+    savePersistent();
+    return { type: "coins", amount: result.coins, label: result.label };
+  } else {
+    // pick a random armor piece type for this rarity
+    const piece = ARMOR_PIECES[Math.floor(Math.random() * ARMOR_PIECES.length)];
+    persistent.armorInventory[piece][result.rarity]++;
+    savePersistent();
+    return {
+      type: "armor",
+      rarity: result.rarity,
+      piece: piece,
+      label: ARMOR_TIERS[result.rarity].name + " " + ARMOR_PIECE_LABELS[piece],
+    };
+  }
+}
 
 // URL-safe base64 — avoids the +,/,= chars that the browser may
 // percent-encode inside the URL hash (which would break decode).
@@ -785,6 +1550,8 @@ function decodeSaveData(str) {
   }
 }
 function savePersistent() {
+  // Sync into the active account before encoding
+  try { saveAccountsList(); } catch (e) {}
   const enc = encodeSaveData();
   if (!enc) return;
   let ok = false;
@@ -843,9 +1610,51 @@ function loadPersistent() {
   if (Array.isArray(data.equippedSlots) && data.equippedSlots.length === 4) {
     persistent.equippedSlots = data.equippedSlots;
   }
+  if (data.armorInventory && typeof data.armorInventory === "object") {
+    for (const piece of ARMOR_PIECES) {
+      const slot = data.armorInventory[piece];
+      if (slot && typeof slot === "object") {
+        persistent.armorInventory[piece] = Object.assign(
+          { common: 0, rare: 0, epic: 0, legendary: 0 },
+          slot
+        );
+      }
+    }
+  }
+  if (data.equippedArmor && typeof data.equippedArmor === "object") {
+    for (const piece of ARMOR_PIECES) {
+      const r = data.equippedArmor[piece];
+      if (r && ARMOR_TIERS[r]) persistent.equippedArmor[piece] = r;
+    }
+  }
+  // Legacy migration: old flat armorCounts → treat as helmets
+  if (data.armorCounts && typeof data.armorCounts === "object" && !data.armorInventory) {
+    for (const r of RARITY_ORDER) {
+      const ct = data.armorCounts[r] || 0;
+      if (ct > 0) persistent.armorInventory.helmet[r] += ct;
+    }
+  }
 }
 
-loadPersistent();
+// ---- ACCOUNT-AWARE BOOT SEQUENCE ----
+// 1. If we have an accounts list, load the active account into persistent
+const hadAccounts = loadAccountsList();
+if (hadAccounts) {
+  copyProfileInto(persistent, accountsState.accounts[accountsState.current]);
+} else {
+  // 2. No accounts yet — fall back to legacy single-save loader (URL hash / old key)
+  loadPersistent();
+  // promote it to the new "PLAYER 1" account
+  accountsState.accounts[accountsState.current] = {
+    coins: persistent.coins,
+    ownedWeapons: persistent.ownedWeapons.slice(),
+    equippedSlots: persistent.equippedSlots.slice(),
+    highScore: persistent.highScore,
+    armorInventory: JSON.parse(JSON.stringify(persistent.armorInventory)),
+    equippedArmor: Object.assign({}, persistent.equippedArmor),
+  };
+  saveAccountsList();
+}
 // always have burst owned and in slot 0
 if (!persistent.ownedWeapons.includes("burst")) persistent.ownedWeapons.unshift("burst");
 if (!persistent.equippedSlots[0]) persistent.equippedSlots[0] = "burst";
@@ -1231,7 +2040,7 @@ function update() {
         triggerExplosion(e.x, e.y, t.explodeRadius, t.explodeDmg);
         e.dead = true;
       } else {
-        p.hp -= (t.dmg || 1) * MELEE_DMG_RATE * ts;
+        p.hp -= (t.dmg || 1) * MELEE_DMG_RATE * ts * (1 - getArmorDR());
         p.hitFlash = 4;
       }
     }
@@ -1274,7 +2083,7 @@ function update() {
       b.dead = true; continue;
     }
     if (Math.hypot(b.x - p.x, b.y - p.y) < PLAYER_R + ENEMY_BULL_R) {
-      p.hp -= TOWER_DMG;
+      p.hp -= TOWER_DMG * (1 - getArmorDR());
       p.hitFlash = 10;
       game.flashRed = 14;
       b.dead = true;
@@ -1781,10 +2590,150 @@ function renderShop() {
     <div class="weapons-grid">
       ${Object.keys(WEAPONS).map(id => renderWeaponCard(id)).join("")}
     </div>
+    ${renderCratesSection()}
+    ${renderAccountsSection()}
     <button id="run-again-btn">DEPLOY ›</button>
   `;
   bindShopEvents();
 }
+
+function renderAccountsSection() {
+  const items = Object.keys(accountsState.accounts).map(name => {
+    const acc = accountsState.accounts[name];
+    const isCur = name === accountsState.current;
+    return `<div class="account-item ${isCur ? 'active' : ''}">
+      <div>
+        <div class="ai-name">${escapeHtml(name)}${isCur ? ' ●' : ''}</div>
+        <div class="ai-stats">${acc.coins|0}c · ${acc.highScore|0} best</div>
+      </div>
+      <button class="ai-btn switch" data-switch="${escapeHtml(name)}" ${isCur ? 'disabled' : ''}>${isCur ? 'CURRENT' : 'SWITCH'}</button>
+      <button class="ai-btn delete" data-delete="${escapeHtml(name)}" ${Object.keys(accountsState.accounts).length <= 1 ? 'disabled' : ''}>DELETE</button>
+    </div>`;
+  }).join("");
+  return `<div class="accounts-section">
+    <h3>ACCOUNTS</h3>
+    <div class="accounts-current">PLAYING AS <strong>${escapeHtml(accountsState.current)}</strong></div>
+    <div class="account-list">${items}</div>
+    <div class="account-create">
+      <input type="text" id="new-account-name" placeholder="NEW ACCOUNT NAME" maxlength="20" autocomplete="off" />
+      <button id="create-account-btn">CREATE</button>
+    </div>
+    <div class="account-error" id="account-error"></div>
+  </div>`;
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function updateAccountBadge() {
+  const el = document.getElementById("account-badge");
+  if (el) el.textContent = accountsState.current;
+}
+
+function renderCratesSection() {
+  // ----- EQUIPPED SLOTS row -----
+  const equippedRow = ARMOR_PIECES.map(piece => {
+    const r = persistent.equippedArmor[piece];
+    const tier = r ? ARMOR_TIERS[r] : null;
+    const inner = tier
+      ? `<div class="ap-tier" style="color:${tier.color};">${tier.name}</div>
+         <div class="ap-dr">+${(tier.dr * 100)|0}% DR</div>
+         <button class="ap-clear" data-clear="${piece}">UNEQUIP</button>`
+      : `<div class="ap-tier" style="color:rgba(255,255,255,0.35);">EMPTY</div>
+         <div class="ap-dr" style="color:rgba(255,255,255,0.35);">+0% DR</div>`;
+    const borderColor = tier ? tier.color : "rgba(255,255,255,0.2)";
+    return `<div class="ap-slot" style="border-color:${borderColor};">
+      <div class="ap-name">${ARMOR_PIECE_LABELS[piece]}</div>
+      ${inner}
+    </div>`;
+  }).join("");
+  const totalDR = (getArmorDR() * 100) | 0;
+
+  // ----- INVENTORY rows (one per piece type) -----
+  const invRows = ARMOR_PIECES.map(piece => {
+    const cells = RARITY_ORDER.map(r => {
+      const ct = persistent.armorInventory[piece][r] || 0;
+      const tier = ARMOR_TIERS[r];
+      const isEquipped = persistent.equippedArmor[piece] === r;
+      const canEquip = ct > 0 && !isEquipped;
+      const canMerge = ct >= 3 && r !== "legendary";
+      const equipBtn = isEquipped
+        ? `<div class="inv-equipped">EQUIPPED</div>`
+        : canEquip
+          ? `<button class="inv-btn equip" data-equip-piece="${piece}" data-equip-rarity="${r}">EQUIP</button>`
+          : `<button class="inv-btn equip" disabled>EQUIP</button>`;
+      const mergeBtn = canMerge
+        ? `<button class="inv-btn merge" data-merge-piece="${piece}" data-merge-rarity="${r}">MERGE 3→1</button>`
+        : r === "legendary"
+          ? `<div class="inv-max">MAX</div>`
+          : `<button class="inv-btn merge" disabled>MERGE 3→1</button>`;
+      return `<div class="inv-cell" style="border-color:${tier.color}66;">
+        <div class="ic-tier" style="color:${tier.color};">${tier.name}</div>
+        <div class="ic-count">×${ct}</div>
+        ${equipBtn}
+        ${mergeBtn}
+      </div>`;
+    }).join("");
+    return `<div class="inv-row">
+      <div class="ir-piece">${ARMOR_PIECE_LABELS[piece]}</div>
+      <div class="ir-cells">${cells}</div>
+    </div>`;
+  }).join("");
+
+  // ----- CRATE cards -----
+  const crates = Object.entries(CRATE_TIERS).map(([id, t]) => {
+    const canAfford = persistent.coins >= t.cost;
+    const total = t.drops.reduce((s, d) => s + d.weight, 0);
+    const odds = t.drops.map(d => {
+      const pct = ((d.weight / total) * 100).toFixed(0);
+      const col = d.coins ? "#fbbf24" : ARMOR_TIERS[d.rarity].color;
+      return `<div><span class="pip" style="background:${col};"></span>${pct}% ${d.label}</div>`;
+    }).join("");
+    return `<div class="crate-card" style="border-color:${t.color};">
+      <div class="c-name" style="color:${t.color};">${t.name}</div>
+      <div class="c-cost">${t.cost}c</div>
+      <div class="c-odds">${odds}</div>
+      <button class="open-btn" data-crate="${id}" ${canAfford ? "" : "disabled"}>${canAfford ? "OPEN" : "TOO POOR"}</button>
+    </div>`;
+  }).join("");
+
+  return `<div class="crates-section">
+    <h3>ARMORY · ARMOR</h3>
+    <div class="equipped-armor">
+      <div class="ea-row">${equippedRow}</div>
+      <div class="ea-total">TOTAL DAMAGE REDUCTION · <strong>${totalDR}%</strong></div>
+    </div>
+    <div class="armor-inv-list">${invRows}</div>
+    <h3 style="margin-top:18px;">CRATES</h3>
+    <div class="crates-grid">${crates}</div>
+  </div>`;
+}
+
+function showCrateReveal(result) {
+  const root = document.getElementById("crate-reveal");
+  const nameEl = document.getElementById("reveal-name");
+  const subEl = document.getElementById("reveal-sub");
+  let color, name, sub;
+  if (result.type === "coins") {
+    color = "#fbbf24";
+    name = "+" + result.amount + "c";
+    sub = "COINS ADDED";
+  } else {
+    const tier = ARMOR_TIERS[result.rarity];
+    color = tier.color;
+    name = tier.name + " " + ARMOR_PIECE_LABELS[result.piece];
+    sub = `+${(tier.dr * 100)|0}% damage reduction · added to inventory`;
+  }
+  nameEl.textContent = name;
+  nameEl.style.setProperty("color", color);
+  nameEl.style.setProperty("text-shadow", `0 0 22px ${color}`);
+  subEl.textContent = sub;
+  root.style.setProperty("--reveal-color", color);
+  root.classList.add("show");
+}
+document.getElementById("reveal-close").addEventListener("click", () => {
+  document.getElementById("crate-reveal").classList.remove("show");
+});
 
 function renderWeaponCard(id) {
   const w = WEAPONS[id];
@@ -1854,6 +2803,80 @@ function bindShopEvents() {
       }
     });
   });
+  // Crate opens
+  document.querySelectorAll("[data-crate]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tierId = btn.dataset.crate;
+      const result = openCrate(tierId);
+      if (!result) return;
+      showCrateReveal(result);
+      renderShop(); // refresh coins + inventory
+    });
+  });
+  // Armor: equip a specific piece+rarity
+  document.querySelectorAll("[data-equip-piece]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      equipArmor(btn.dataset.equipPiece, btn.dataset.equipRarity);
+      renderShop();
+    });
+  });
+  // Armor: clear an equipped slot
+  document.querySelectorAll("[data-clear]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      unequipArmor(btn.dataset.clear);
+      renderShop();
+    });
+  });
+  // Armor: merge 3 of same piece+rarity into 1 of the next rarity
+  document.querySelectorAll("[data-merge-piece]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      mergePieces(btn.dataset.mergePiece, btn.dataset.mergeRarity);
+      renderShop();
+    });
+  });
+  // Accounts: switch
+  document.querySelectorAll("[data-switch]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (switchAccount(btn.dataset.switch)) {
+        updateAccountBadge();
+        // Reset the current run so loadout matches the new account
+        newGame();
+        updateLoadoutDisplay();
+        if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
+        renderShop();
+      }
+    });
+  });
+  // Accounts: delete
+  document.querySelectorAll("[data-delete]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.delete;
+      if (!confirm(`Delete account "${name}"? This can't be undone.`)) return;
+      if (deleteAccount(name)) {
+        updateAccountBadge();
+        updateLoadoutDisplay();
+        if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
+        renderShop();
+      }
+    });
+  });
+  // Accounts: create new
+  const createBtn = document.getElementById("create-account-btn");
+  const errEl = document.getElementById("account-error");
+  if (createBtn) {
+    createBtn.addEventListener("click", () => {
+      const input = document.getElementById("new-account-name");
+      const name = input.value;
+      const res = createAccount(name);
+      if (!res.ok) {
+        errEl.textContent = res.reason;
+        return;
+      }
+      input.value = "";
+      errEl.textContent = "";
+      renderShop();
+    });
+  }
   document.getElementById("run-again-btn").addEventListener("click", () => {
     // make sure active slot is a valid equipped weapon
     if (!persistent.equippedSlots[game.activeSlot || 0]) {
@@ -1880,8 +2903,168 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+// ============================================================
+// MOBILE: dual virtual joysticks + weapon-slot buttons
+// ============================================================
+function bindJoystick(baseId, onMove, onEnd) {
+  const base = document.getElementById(baseId);
+  if (!base) return;
+  const knob = base.querySelector(".joy-knob");
+  const maxR = 50; // max drag distance from center
+  let active = false;
+  let activeTouchId = null;
+  let cx = 0, cy = 0;
+
+  function recalcCenter() {
+    const r = base.getBoundingClientRect();
+    cx = r.left + r.width / 2;
+    cy = r.top + r.height / 2;
+  }
+  function setKnob(dx, dy) {
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
+  function pickTouch(touches) {
+    if (activeTouchId == null) return null;
+    for (const t of touches) if (t.identifier === activeTouchId) return t;
+    return null;
+  }
+
+  function onStart(e) {
+    e.preventDefault();
+    if (active) return;
+    const t = e.touches ? e.touches[0] : e;
+    activeTouchId = e.touches ? t.identifier : "mouse";
+    active = true;
+    base.classList.add("active");
+    recalcCenter();
+    handleMove(t.clientX, t.clientY);
+  }
+  function handleMove(x, y) {
+    let dx = x - cx, dy = y - cy;
+    const d = Math.hypot(dx, dy);
+    if (d > maxR) { dx = dx / d * maxR; dy = dy / d * maxR; }
+    setKnob(dx, dy);
+    onMove(dx / maxR, dy / maxR);
+  }
+  function onMoveEvt(e) {
+    if (!active) return;
+    e.preventDefault();
+    let t;
+    if (e.touches) {
+      t = pickTouch(e.touches);
+      if (!t) return;
+    } else {
+      t = e;
+    }
+    handleMove(t.clientX, t.clientY);
+  }
+  function onEndEvt(e) {
+    if (!active) return;
+    if (e.touches) {
+      // confirm OUR touch ended
+      if (pickTouch(e.touches)) return;
+    }
+    e.preventDefault();
+    active = false;
+    activeTouchId = null;
+    base.classList.remove("active");
+    setKnob(0, 0);
+    onEnd();
+  }
+
+  base.addEventListener("touchstart",  onStart,  { passive: false });
+  window.addEventListener("touchmove",  onMoveEvt, { passive: false });
+  window.addEventListener("touchend",   onEndEvt,  { passive: false });
+  window.addEventListener("touchcancel",onEndEvt,  { passive: false });
+  base.addEventListener("mousedown",   onStart);
+  window.addEventListener("mousemove", e => { if (active) onMoveEvt(e); });
+  window.addEventListener("mouseup",   e => { if (active) onEndEvt(e); });
+}
+
+// Left joystick = movement (drives game.keys so existing physics path works)
+bindJoystick("joy-left",
+  (nx, ny) => {
+    const dz = 0.18; // dead zone
+    game.keys.left  = nx < -dz;
+    game.keys.right = nx >  dz;
+    game.keys.up    = ny < -dz;
+    game.keys.down  = ny >  dz;
+  },
+  () => {
+    game.keys.left = game.keys.right = game.keys.up = game.keys.down = false;
+  });
+
+// Right joystick = aim + auto-fire on release (matches mouse hold/release flow)
+let rightJoyActive = false;
+bindJoystick("joy-right",
+  (nx, ny) => {
+    if (game.gameOver) return;
+    // first frame of touch: enter "aiming" (bullet time on)
+    if (!rightJoyActive) {
+      rightJoyActive = true;
+      game.mouse.down = true;
+    }
+    // Use joystick direction to place virtual mouse aim relative to player.
+    // Magnitude 1 → 240 px out in that direction. Tiny offsets still pick a direction.
+    const mag = Math.hypot(nx, ny);
+    const ang = mag > 0.001 ? Math.atan2(ny, nx) : 0;
+    const dist = Math.max(40, mag * 240);
+    game.mouse.x = game.player.x + Math.cos(ang) * dist;
+    game.mouse.y = game.player.y + Math.sin(ang) * dist;
+  },
+  () => {
+    if (!rightJoyActive) return;
+    rightJoyActive = false;
+    // simulate mouseup so the existing fire-on-release handler runs
+    game.mouse.down = false;
+    if (game.gameOver) return;
+    const p = game.player;
+    const dx = game.mouse.x - p.x;
+    const dy = game.mouse.y - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 1) return;
+    const baseAng = Math.atan2(dy, dx);
+    const weaponId = persistent.equippedSlots[game.activeSlot];
+    if (!weaponId) return;
+    const weapon = WEAPONS[weaponId];
+    if (weapon.continuous) return;
+    const remaining = game.weaponCooldowns[weaponId] || 0;
+    if (remaining > 0) return;
+    weapon.fire(p, baseAng);
+    if (weapon.cooldown) game.weaponCooldowns[weaponId] = weapon.cooldown;
+  });
+
+// Weapon slot buttons (Brawl Stars-style row at top)
+function refreshWeaponButtons() {
+  document.querySelectorAll("#mobile-weapons button").forEach((btn, i) => {
+    const id = persistent.equippedSlots[i];
+    const w = id ? WEAPONS[id] : null;
+    const cd = id ? (game.weaponCooldowns[id] || 0) : 0;
+    if (!w) { btn.textContent = "—"; btn.disabled = true; }
+    else if (cd > 0) { btn.textContent = (cd / 60).toFixed(1) + "s"; btn.disabled = false; }
+    else { btn.textContent = w.name; btn.disabled = false; }
+    btn.classList.toggle("active", game.activeSlot === i);
+    btn.classList.toggle("cooling", cd > 0);
+  });
+}
+document.querySelectorAll("#mobile-weapons button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const idx = parseInt(btn.dataset.slot);
+    if (persistent.equippedSlots[idx]) {
+      game.activeSlot = idx;
+      updateLoadoutDisplay();
+      refreshWeaponButtons();
+    }
+  });
+});
+// re-render the slot button states every frame (so cooldowns count down)
+const _origUpdateHud = updateHud;
+updateHud = function () { _origUpdateHud(); refreshWeaponButtons(); };
+
 newGame();
 updateLoadoutDisplay();
+refreshWeaponButtons();
+updateAccountBadge();
 loop();
 </script>
 </body>

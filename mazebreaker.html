@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Mazebreaker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -174,6 +174,58 @@
     transition: opacity 0.3s;
   }
   .toast.show { opacity: 1; }
+
+  /* --- MOBILE D-PAD ------------------------------------- */
+  #mobile-dpad { display: none; }
+  @media (pointer: coarse), (max-width: 800px) {
+    canvas { max-width: 100vw; height: auto; }
+    #canvas-wrap { max-width: 100vw; }
+    #hud { flex-wrap: wrap; justify-content: center; font-size: 11px; }
+    #info-panel { font-size: 11px; }
+    body { padding-bottom: 220px; }
+    #mobile-dpad {
+      display: grid;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      grid-template-columns: 60px 60px 60px;
+      grid-template-rows: 60px 60px 60px;
+      gap: 6px;
+      z-index: 50;
+      touch-action: none;
+      user-select: none;
+    }
+    #mobile-dpad button {
+      background: rgba(192, 132, 252, 0.25);
+      border: 2px solid rgba(192, 132, 252, 0.65);
+      color: #fff;
+      font-size: 26px;
+      font-weight: bold;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    #mobile-dpad button:active {
+      background: rgba(192, 132, 252, 0.55);
+      transform: scale(0.94);
+    }
+    #m-up    { grid-row: 1; grid-column: 2; }
+    #m-left  { grid-row: 2; grid-column: 1; }
+    #m-right { grid-row: 2; grid-column: 3; }
+    #m-down  { grid-row: 3; grid-column: 2; }
+    #m-restart {
+      grid-row: 2; grid-column: 2;
+      background: rgba(255, 255, 255, 0.12) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+      font-size: 14px !important;
+      letter-spacing: 1px;
+    }
+  }
+
   .home-link {
     position: fixed;
     top: 14px;
@@ -217,6 +269,14 @@
 
 <div id="info-panel">
   MOVE: <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> · REACH the green exit · AVOID spikes (instant respawn) · YELLOW pads launch you 3 cells in your next direction · Progress saves automatically
+</div>
+
+<div id="mobile-dpad">
+  <button id="m-up">▲</button>
+  <button id="m-left">◀</button>
+  <button id="m-restart">↻</button>
+  <button id="m-right">▶</button>
+  <button id="m-down">▼</button>
 </div>
 
 <script>
@@ -1216,6 +1276,52 @@ document.getElementById("btn-reset").addEventListener("click", () => {
   if (confirm("Reset all progress and start from level 1?")) resetProgress();
   document.getElementById("btn-reset").blur();
 });
+
+// ============================================================
+// MOBILE D-PAD
+// ============================================================
+let dpadTimer = null;
+function bindDpad(elId, dx, dy) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  function start(e) {
+    e.preventDefault();
+    if (game.gameOver || game.completed) return;
+    tryMove(dx, dy);
+    // hold-to-repeat with accelerating cadence
+    clearTimeout(dpadTimer);
+    let delay = 280;
+    function repeat() {
+      tryMove(dx, dy);
+      delay = Math.max(80, delay * 0.82);
+      dpadTimer = setTimeout(repeat, delay);
+    }
+    dpadTimer = setTimeout(repeat, delay);
+  }
+  function end(e) {
+    if (e) e.preventDefault();
+    clearTimeout(dpadTimer);
+    dpadTimer = null;
+  }
+  el.addEventListener("touchstart", start, { passive: false });
+  el.addEventListener("touchend", end, { passive: false });
+  el.addEventListener("touchcancel", end, { passive: false });
+  el.addEventListener("mousedown", start);
+  el.addEventListener("mouseup", end);
+  el.addEventListener("mouseleave", end);
+}
+bindDpad("m-up",    0, -1);
+bindDpad("m-down",  0,  1);
+bindDpad("m-left", -1,  0);
+bindDpad("m-right", 1,  0);
+// Center button: restart current level
+{
+  const rb = document.getElementById("m-restart");
+  if (rb) {
+    rb.addEventListener("touchstart", e => { e.preventDefault(); loadLevel(game.levelIdx); }, { passive: false });
+    rb.addEventListener("click", () => loadLevel(game.levelIdx));
+  }
+}
 
 // ============================================================
 // INIT
