@@ -836,6 +836,123 @@
     100% { transform: scale(1) rotate(0deg); }
   }
 
+  /* === AUTH SCREEN === */
+  #auth-overlay {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 20% 10%, #1a3050 0%, transparent 60%),
+      radial-gradient(circle at 80% 90%, #1a0a30 0%, transparent 60%),
+      linear-gradient(135deg, #050810 0%, #0a1428 100%);
+    z-index: 5000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #auth-overlay.show { display: flex; }
+  .auth-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(74, 222, 128, 0.35);
+    border-radius: 16px;
+    padding: 40px 48px;
+    text-align: center;
+    max-width: 440px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 50px rgba(74, 222, 128, 0.15);
+    backdrop-filter: blur(8px);
+  }
+  .auth-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 38px;
+    letter-spacing: 10px;
+    color: #4ade80;
+    text-shadow: 0 0 26px rgba(74, 222, 128, 0.55), 0 4px 10px rgba(0, 0, 0, 0.5);
+    margin-bottom: 6px;
+  }
+  .auth-sub {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+  }
+  #auth-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .auth-btn {
+    border: none;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.15s, background 0.15s;
+  }
+  .auth-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+  .auth-btn.primary {
+    background: #4ade80;
+    color: #050810;
+    box-shadow: 0 6px 18px rgba(74, 222, 128, 0.4);
+  }
+  .auth-btn.primary:hover { background: #22c55e; }
+  .auth-btn.secondary {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1.5px solid rgba(255, 255, 255, 0.28);
+    color: #fff;
+  }
+  .auth-btn.secondary:hover { background: rgba(255, 255, 255, 0.16); }
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .auth-form input {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1.5px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .auth-form input:focus { border-color: #4ade80; }
+  .auth-back {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.55);
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    padding: 8px;
+    margin-top: 4px;
+  }
+  .auth-back:hover { color: #fff; }
+  .auth-error {
+    color: #f87171;
+    font-size: 13px;
+    margin-top: 14px;
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .auth-note {
+    margin-top: 16px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    line-height: 1.5;
+    letter-spacing: 0.3px;
+  }
+
   /* --- MOBILE CONTROLS (Brawl Stars style dual joysticks) --- */
   #mobile-controls { display: none; }
   @media (pointer: coarse), (max-width: 900px) {
@@ -946,6 +1063,31 @@
   <div class="reveal-sub" id="reveal-sub"></div>
   <button class="reveal-close" id="reveal-close">CONTINUE</button>
 </div></div>
+
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-title">SLIPSHOT</div>
+    <div class="auth-sub">// SIGN IN TO PLAY //</div>
+    <div id="auth-buttons">
+      <button id="show-signin" class="auth-btn primary">SIGN IN</button>
+      <button id="show-create" class="auth-btn secondary">CREATE ACCOUNT</button>
+    </div>
+    <div id="auth-form-signin" class="auth-form" style="display:none;">
+      <input type="text" id="signin-user" placeholder="USERNAME" maxlength="20" autocomplete="username" />
+      <input type="password" id="signin-pass" placeholder="PASSWORD" autocomplete="current-password" />
+      <button id="do-signin" class="auth-btn primary">SIGN IN</button>
+      <button class="auth-back" data-auth-back>‹ BACK</button>
+    </div>
+    <div id="auth-form-create" class="auth-form" style="display:none;">
+      <input type="text" id="create-user" placeholder="USERNAME (2-20 chars)" maxlength="20" autocomplete="username" />
+      <input type="password" id="create-pass" placeholder="PASSWORD (min 4 chars)" autocomplete="new-password" />
+      <button id="do-create" class="auth-btn primary">CREATE ACCOUNT</button>
+      <button class="auth-back" data-auth-back>‹ BACK</button>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <div class="auth-note">Progress is saved on this device only. To play on another device, sign in there too (and add coins on each separately).</div>
+  </div>
+</div>
 
 <!-- Mobile controls (hidden on desktop via CSS) -->
 <div id="mobile-controls">
@@ -1359,42 +1501,132 @@ function copyProfileInto(target, src) {
     }
   }
 }
-function switchAccount(name) {
-  if (!accountsState.accounts[name]) return false;
-  // save out current first
-  saveAccountsList();
-  accountsState.current = name;
-  // reset persistent and load new one
+// ---- AUTH: sign-in / create-account / sign-out ----
+async function hashPassword(pass) {
+  const enc = new TextEncoder().encode(String(pass));
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function doSignIn(username, password) {
+  username = String(username || "").trim();
+  if (!username) return { ok: false, error: "Enter a username" };
+  if (!password) return { ok: false, error: "Enter a password" };
+  const acc = accountsState.accounts[username];
+  if (!acc) return { ok: false, error: "No account with that username" };
+  const hash = await hashPassword(password);
+  if (!acc.passwordHash) {
+    // Legacy/un-claimed account — claim it by setting this password.
+    acc.passwordHash = hash;
+  } else if (acc.passwordHash !== hash) {
+    return { ok: false, error: "Wrong password" };
+  }
+  accountsState.current = username;
   const fresh = defaultProfile();
   Object.assign(persistent, fresh);
-  copyProfileInto(persistent, accountsState.accounts[name]);
+  copyProfileInto(persistent, acc);
   saveAccountsList();
   savePersistent();
-  return true;
-}
-function createAccount(name) {
-  name = String(name || "").trim().slice(0, 20);
-  if (!name) return { ok: false, reason: "Name required" };
-  if (accountsState.accounts[name]) return { ok: false, reason: "Name already taken" };
-  accountsState.accounts[name] = defaultProfile();
-  saveAccountsList();
   return { ok: true };
 }
-function deleteAccount(name) {
-  if (!accountsState.accounts[name]) return false;
-  if (Object.keys(accountsState.accounts).length <= 1) return false; // keep at least 1
-  delete accountsState.accounts[name];
-  if (accountsState.current === name) {
-    const first = Object.keys(accountsState.accounts)[0];
-    accountsState.current = first;
-    const fresh = defaultProfile();
-    Object.assign(persistent, fresh);
-    copyProfileInto(persistent, accountsState.accounts[first]);
-  }
+async function doCreate(username, password) {
+  username = String(username || "").trim().slice(0, 20);
+  if (!username) return { ok: false, error: "Username required" };
+  if (username.length < 2) return { ok: false, error: "Username must be at least 2 characters" };
+  if (accountsState.accounts[username]) return { ok: false, error: "Username already taken" };
+  if (!password || password.length < 4) return { ok: false, error: "Password must be at least 4 characters" };
+  const hash = await hashPassword(password);
+  accountsState.accounts[username] = Object.assign({ passwordHash: hash }, defaultProfile());
+  accountsState.current = username;
+  Object.assign(persistent, defaultProfile());
   saveAccountsList();
   savePersistent();
-  return true;
+  return { ok: true };
 }
+function doSignOut() {
+  saveAccountsList(); // make sure current state is flushed
+  accountsState.current = null;
+  Object.assign(persistent, defaultProfile());
+  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsState)); } catch (e) {}
+  showAuthOverlay();
+}
+
+// ---- Auth UI controllers ----
+function showAuthOverlay() {
+  const el = document.getElementById("auth-overlay");
+  if (el) el.classList.add("show");
+  showAuthMain();
+}
+function hideAuthOverlay() {
+  const el = document.getElementById("auth-overlay");
+  if (el) el.classList.remove("show");
+  if (typeof updateAccountBadge === "function") updateAccountBadge();
+  if (typeof updateLoadoutDisplay === "function") updateLoadoutDisplay();
+  if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
+}
+function showAuthMain() {
+  const buttons = document.getElementById("auth-buttons");
+  const signin = document.getElementById("auth-form-signin");
+  const create = document.getElementById("auth-form-create");
+  const err = document.getElementById("auth-error");
+  if (buttons) buttons.style.display = "flex";
+  if (signin) signin.style.display = "none";
+  if (create) create.style.display = "none";
+  if (err) err.textContent = "";
+}
+function showAuthSignIn() {
+  document.getElementById("auth-buttons").style.display = "none";
+  document.getElementById("auth-form-signin").style.display = "flex";
+  document.getElementById("auth-form-create").style.display = "none";
+  document.getElementById("auth-error").textContent = "";
+  setTimeout(() => { const i = document.getElementById("signin-user"); if (i) i.focus(); }, 50);
+}
+function showAuthCreate() {
+  document.getElementById("auth-buttons").style.display = "none";
+  document.getElementById("auth-form-signin").style.display = "none";
+  document.getElementById("auth-form-create").style.display = "flex";
+  document.getElementById("auth-error").textContent = "";
+  setTimeout(() => { const i = document.getElementById("create-user"); if (i) i.focus(); }, 50);
+}
+
+// Wire auth buttons
+document.getElementById("show-signin").addEventListener("click", showAuthSignIn);
+document.getElementById("show-create").addEventListener("click", showAuthCreate);
+document.querySelectorAll("[data-auth-back]").forEach(b => b.addEventListener("click", showAuthMain));
+document.getElementById("do-signin").addEventListener("click", async () => {
+  const u = document.getElementById("signin-user").value;
+  const p = document.getElementById("signin-pass").value;
+  const res = await doSignIn(u, p);
+  if (res.ok) {
+    hideAuthOverlay();
+    if (typeof newGame === "function") newGame();
+    if (typeof updateLoadoutDisplay === "function") updateLoadoutDisplay();
+    if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
+    if (typeof updateAccountBadge === "function") updateAccountBadge();
+  } else {
+    document.getElementById("auth-error").textContent = res.error;
+  }
+});
+document.getElementById("do-create").addEventListener("click", async () => {
+  const u = document.getElementById("create-user").value;
+  const p = document.getElementById("create-pass").value;
+  const res = await doCreate(u, p);
+  if (res.ok) {
+    hideAuthOverlay();
+    if (typeof newGame === "function") newGame();
+    if (typeof updateLoadoutDisplay === "function") updateLoadoutDisplay();
+    if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
+    if (typeof updateAccountBadge === "function") updateAccountBadge();
+  } else {
+    document.getElementById("auth-error").textContent = res.error;
+  }
+});
+// Enter key submits
+document.getElementById("signin-pass").addEventListener("keypress", e => {
+  if (e.key === "Enter") document.getElementById("do-signin").click();
+});
+document.getElementById("create-pass").addEventListener("keypress", e => {
+  if (e.key === "Enter") document.getElementById("do-create").click();
+});
 
 // ============================================================
 // ARMOR + CRATES
@@ -1636,25 +1868,44 @@ function loadPersistent() {
   }
 }
 
-// ---- ACCOUNT-AWARE BOOT SEQUENCE ----
-// 1. If we have an accounts list, load the active account into persistent
+// ---- AUTH BOOT SEQUENCE ----
+// Load whatever accounts exist locally.
 const hadAccounts = loadAccountsList();
-if (hadAccounts) {
-  copyProfileInto(persistent, accountsState.accounts[accountsState.current]);
-} else {
-  // 2. No accounts yet — fall back to legacy single-save loader (URL hash / old key)
+
+// If no accounts yet, AND we have a legacy save (URL hash or old key), migrate it
+// into an un-claimed "PLAYER 1" account that the user can sign into.
+if (!hadAccounts) {
   loadPersistent();
-  // promote it to the new "PLAYER 1" account
-  accountsState.accounts[accountsState.current] = {
-    coins: persistent.coins,
-    ownedWeapons: persistent.ownedWeapons.slice(),
-    equippedSlots: persistent.equippedSlots.slice(),
-    highScore: persistent.highScore,
-    armorInventory: JSON.parse(JSON.stringify(persistent.armorInventory)),
-    equippedArmor: Object.assign({}, persistent.equippedArmor),
-  };
-  saveAccountsList();
+  if (persistent.coins > 0 || persistent.highScore > 0 ||
+      persistent.ownedWeapons.length > 1 ||
+      Object.values(persistent.armorInventory).some(s => Object.values(s).some(c => c > 0))) {
+    accountsState.accounts["PLAYER 1"] = Object.assign(
+      { passwordHash: null }, // un-claimed; first sign-in sets a password
+      {
+        coins: persistent.coins,
+        ownedWeapons: persistent.ownedWeapons.slice(),
+        equippedSlots: persistent.equippedSlots.slice(),
+        highScore: persistent.highScore,
+        armorInventory: JSON.parse(JSON.stringify(persistent.armorInventory)),
+        equippedArmor: Object.assign({}, persistent.equippedArmor),
+      }
+    );
+    try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsState)); } catch (e) {}
+  }
+  // Don't auto-sign-in — require the user to sign in or create.
+  accountsState.current = null;
 }
+
+// If there's an active user, load their data; otherwise we'll show the auth screen.
+let isSignedIn = false;
+if (accountsState.current && accountsState.accounts[accountsState.current]) {
+  copyProfileInto(persistent, accountsState.accounts[accountsState.current]);
+  isSignedIn = true;
+} else {
+  // Reset persistent to defaults until they sign in
+  Object.assign(persistent, defaultProfile());
+}
+
 // always have burst owned and in slot 0
 if (!persistent.ownedWeapons.includes("burst")) persistent.ownedWeapons.unshift("burst");
 if (!persistent.equippedSlots[0]) persistent.equippedSlots[0] = "burst";
@@ -2591,35 +2842,12 @@ function renderShop() {
       ${Object.keys(WEAPONS).map(id => renderWeaponCard(id)).join("")}
     </div>
     ${renderCratesSection()}
-    ${renderAccountsSection()}
+    <div style="margin-top:18px;text-align:center;">
+      <button id="sign-out-shop-btn" style="background:rgba(244,63,94,0.2);border:1px solid rgba(244,63,94,0.5);color:#fda4af;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;padding:8px 18px;border-radius:6px;cursor:pointer;">SIGN OUT</button>
+    </div>
     <button id="run-again-btn">DEPLOY ›</button>
   `;
   bindShopEvents();
-}
-
-function renderAccountsSection() {
-  const items = Object.keys(accountsState.accounts).map(name => {
-    const acc = accountsState.accounts[name];
-    const isCur = name === accountsState.current;
-    return `<div class="account-item ${isCur ? 'active' : ''}">
-      <div>
-        <div class="ai-name">${escapeHtml(name)}${isCur ? ' ●' : ''}</div>
-        <div class="ai-stats">${acc.coins|0}c · ${acc.highScore|0} best</div>
-      </div>
-      <button class="ai-btn switch" data-switch="${escapeHtml(name)}" ${isCur ? 'disabled' : ''}>${isCur ? 'CURRENT' : 'SWITCH'}</button>
-      <button class="ai-btn delete" data-delete="${escapeHtml(name)}" ${Object.keys(accountsState.accounts).length <= 1 ? 'disabled' : ''}>DELETE</button>
-    </div>`;
-  }).join("");
-  return `<div class="accounts-section">
-    <h3>ACCOUNTS</h3>
-    <div class="accounts-current">PLAYING AS <strong>${escapeHtml(accountsState.current)}</strong></div>
-    <div class="account-list">${items}</div>
-    <div class="account-create">
-      <input type="text" id="new-account-name" placeholder="NEW ACCOUNT NAME" maxlength="20" autocomplete="off" />
-      <button id="create-account-btn">CREATE</button>
-    </div>
-    <div class="account-error" id="account-error"></div>
-  </div>`;
 }
 function escapeHtml(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -2834,47 +3062,14 @@ function bindShopEvents() {
       renderShop();
     });
   });
-  // Accounts: switch
-  document.querySelectorAll("[data-switch]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (switchAccount(btn.dataset.switch)) {
-        updateAccountBadge();
-        // Reset the current run so loadout matches the new account
-        newGame();
-        updateLoadoutDisplay();
-        if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
-        renderShop();
+  // Sign out from inside the shop
+  const signOutBtn = document.getElementById("sign-out-shop-btn");
+  if (signOutBtn) {
+    signOutBtn.addEventListener("click", () => {
+      if (confirm("Sign out? Your progress is saved.")) {
+        document.getElementById("shop-overlay").classList.remove("show");
+        doSignOut();
       }
-    });
-  });
-  // Accounts: delete
-  document.querySelectorAll("[data-delete]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const name = btn.dataset.delete;
-      if (!confirm(`Delete account "${name}"? This can't be undone.`)) return;
-      if (deleteAccount(name)) {
-        updateAccountBadge();
-        updateLoadoutDisplay();
-        if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
-        renderShop();
-      }
-    });
-  });
-  // Accounts: create new
-  const createBtn = document.getElementById("create-account-btn");
-  const errEl = document.getElementById("account-error");
-  if (createBtn) {
-    createBtn.addEventListener("click", () => {
-      const input = document.getElementById("new-account-name");
-      const name = input.value;
-      const res = createAccount(name);
-      if (!res.ok) {
-        errEl.textContent = res.reason;
-        return;
-      }
-      input.value = "";
-      errEl.textContent = "";
-      renderShop();
     });
   }
   document.getElementById("run-again-btn").addEventListener("click", () => {
@@ -3065,6 +3260,8 @@ newGame();
 updateLoadoutDisplay();
 refreshWeaponButtons();
 updateAccountBadge();
+// If nobody is signed in, show the auth screen on top of everything.
+if (!isSignedIn) showAuthOverlay();
 loop();
 </script>
 </body>
