@@ -2020,7 +2020,16 @@ const keyMap = {
   "a": "left", "A": "left", "ArrowLeft": "left",
   "d": "right", "D": "right", "ArrowRight": "right",
 };
+// helper: skip keyboard handling while a text input is focused
+// (otherwise WASD / arrows / 1-4 can't be typed into the auth form etc.)
+function _isTypingInField() {
+  const ae = document.activeElement;
+  if (!ae) return false;
+  const tag = ae.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || ae.isContentEditable;
+}
 document.addEventListener("keydown", (e) => {
+  if (_isTypingInField()) return;
   const k = keyMap[e.key];
   if (k) { game.keys[k] = true; e.preventDefault(); return; }
   // number keys 1-4 switch equipped slot
@@ -2034,6 +2043,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 document.addEventListener("keyup", (e) => {
+  if (_isTypingInField()) return;
   const k = keyMap[e.key];
   if (k) { game.keys[k] = false; e.preventDefault(); }
 });
