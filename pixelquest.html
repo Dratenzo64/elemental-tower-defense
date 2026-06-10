@@ -285,7 +285,7 @@
 </div>
 
 <div id="info-panel">
-  MOVE: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows · Your weapon attacks automatically · Survive waves to earn coins and pick new abilities · Every 10 waves you reach a city.
+  MOVE: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows · All equipped weapons attack at once · Survive waves to earn coins and pick new abilities · Every 10 waves visit the city to buy MORE weapons (up to 6 equipped).
 </div>
 
 <div id="mobile-dpad">
@@ -357,6 +357,7 @@ const BULLET_SPEED = 4.5;
 const MELEE_SPIN_SPEED = 0.08;  // radians/tick
 const BLEED_DURATION = 180;     // 3 sec
 const BLEED_TICK_INTERVAL = 12; // tick every 0.2s
+const MAX_WEAPONS = 6;          // max weapons equipped at once
 
 // ============================================================
 // WEAPONS
@@ -689,7 +690,7 @@ function newGame(startingWeaponId) {
       x: W / 2, y: H / 2, vx: 0, vy: 0,
       hp: 100, maxHp: 100,
       hitFlash: 0,
-      weapon: startingWeaponId,
+      weapons: startingWeaponId ? [{ id: startingWeaponId, cd: 0 }] : [],
       facingX: 1, facingY: 0,
     },
     enemies: [],
@@ -698,8 +699,8 @@ function newGame(startingWeaponId) {
     orbs: [],
     particles: [],
     floatingText: [],
+    meleeBlades: [],
     keys: {},
-    weaponCD: 0,
     meleeAngle: 0,
     coins: 0,
     wave: 0,
@@ -717,6 +718,18 @@ function newGame(startingWeaponId) {
   game.player.maxHp = 100;
   game.player.hp = 100;
   updateHud();
+}
+// Helpers to manipulate the player's weapon loadout
+function addWeapon(id) {
+  if (!game) return false;
+  if (game.player.weapons.length >= MAX_WEAPONS) return false;
+  game.player.weapons.push({ id, cd: 0 });
+  return true;
+}
+function dropWeapon(index) {
+  if (!game) return;
+  if (game.player.weapons.length <= 1) return; // can't drop your last weapon
+  game.player.weapons.splice(index, 1);
 }
 
 function startQuest(weaponId) {
@@ -824,52 +837,61 @@ function update() {
     p.hp = Math.min(p.maxHp, p.hp + regen);
   }
 
-  // weapon
-  const w = WEAPONS[p.weapon];
-  if (w) {
+  // weapons — every equipped weapon fires/spins simultaneously
+  game.meleeAngle += MELEE_SPIN_SPEED * 1.5;
+  game.meleeBlades = [];
+  const dmgMult = abilityValue("bloodlust", "mult", 1);
+  // count melee weapons so we can space their orbit angles evenly
+  const meleeCount = p.weapons.filter(wi => WEAPONS[wi.id].type === "melee").length;
+  let meleeIdx = 0;
+  for (let i = 0; i < p.weapons.length; i++) {
+    const wi = p.weapons[i];
+    const w = WEAPONS[wi.id];
+    if (!w) continue;
     if (w.type === "ranged") {
-      game.weaponCD--;
-      if (game.weaponCD <= 0) {
+      wi.cd--;
+      if (wi.cd <= 0) {
         const tgt = nearestEnemy(p.x, p.y);
         if (tgt) {
           const dx = tgt.x - p.x, dy = tgt.y - p.y;
-          const d = Math.hypot(dx, dy);
           const ang = Math.atan2(dy, dx);
           game.bullets.push({
             x: p.x + Math.cos(ang) * 10,
             y: p.y + Math.sin(ang) * 10,
             vx: Math.cos(ang) * BULLET_SPEED,
             vy: Math.sin(ang) * BULLET_SPEED,
-            dmg: w.dmg * abilityValue("bloodlust", "mult", 1),
+            dmg: w.dmg * dmgMult,
             color: w.color,
             life: 90,
             dead: false,
           });
-          game.weaponCD = RANGED_FIRE_CD;
+          wi.cd = RANGED_FIRE_CD;
         }
       }
     } else if (w.type === "melee") {
-      // spinning blade — orbits at `radius` and damages enemies it touches
-      game.meleeAngle += MELEE_SPIN_SPEED * 1.5;
+      const offset = meleeCount > 0 ? (Math.PI * 2 / meleeCount) * meleeIdx : 0;
+      meleeIdx++;
+      const angle = game.meleeAngle + offset;
       const r = w.radius;
-      const bx = p.x + Math.cos(game.meleeAngle) * r;
-      const by = p.y + Math.sin(game.meleeAngle) * r;
+      const bx = p.x + Math.cos(angle) * r;
+      const by = p.y + Math.sin(angle) * r;
       // hit check
-      const dmg = w.dmg * abilityValue("bloodlust", "mult", 1);
+      const dmg = w.dmg * dmgMult;
+      const hitKey = "blade" + i; // unique per equipped weapon slot
       for (const e of game.enemies) {
         if (e.dead) continue;
         if (Math.hypot(e.x - bx, e.y - by) < e.size + 8) {
-          if (!e.lastHitBy || game.tick - e.lastHitBy > 18) {
+          if (!e.bladeHits) e.bladeHits = {};
+          if (!e.bladeHits[hitKey] || game.tick - e.bladeHits[hitKey] > 18) {
             damageEnemy(e, dmg, "melee");
-            // apply bleed
+            // apply bleed (stack with highest bleed dps)
             e.bleedDps = Math.max(e.bleedDps || 0, w.bleed);
             e.bleedLeft = BLEED_DURATION;
-            e.lastHitBy = game.tick;
+            e.bladeHits[hitKey] = game.tick;
           }
         }
       }
-      // store blade position for rendering
-      game.meleeBlade = { x: bx, y: by, color: w.color };
+      game.meleeBlades.push({ x: bx, y: by, angle, color: w.color });
     }
   }
 
@@ -1591,12 +1613,14 @@ function drawPlayer() {
   }
 }
 
-function drawMeleeBlade() {
-  if (!game.meleeBlade) return;
-  const b = game.meleeBlade;
+function drawMeleeBlades() {
+  if (!game.meleeBlades || game.meleeBlades.length === 0) return;
+  for (const b of game.meleeBlades) drawOneBlade(b);
+}
+function drawOneBlade(b) {
   ctx.save();
   ctx.translate(b.x, b.y);
-  ctx.rotate(game.meleeAngle + Math.PI / 2);
+  ctx.rotate(b.angle + Math.PI / 2);
 
   // motion trail
   ctx.fillStyle = "rgba(255,255,255,0.15)";
@@ -1992,8 +2016,8 @@ function render() {
     sphere(ctx, b.x, b.y, 2.2, b.color);
     ctx.shadowBlur = 0;
   }
-  // melee blade
-  drawMeleeBlade();
+  // melee blades (one per equipped melee weapon)
+  drawMeleeBlades();
   // orbs
   for (const orb of game.orbs) drawOrb(orb);
   // player
@@ -2026,8 +2050,14 @@ function updateHud() {
   document.getElementById("hud-coins").textContent = game.coins;
   document.getElementById("hud-wave").textContent = game.wave;
   document.getElementById("hud-kills").textContent = game.kills;
-  const w = WEAPONS[game.player.weapon];
-  document.getElementById("hud-weapon").textContent = w ? w.name : "—";
+  const names = game.player.weapons.map(wi => {
+    const w = WEAPONS[wi.id];
+    return w ? w.name : "?";
+  });
+  const txt = names.length === 0 ? "—" :
+              names.length <= 2 ? names.join(" + ") :
+              `${names.length}× (${names.slice(0,2).join(", ")}…)`;
+  document.getElementById("hud-weapon").textContent = txt;
 }
 
 // ============================================================
@@ -2126,11 +2156,32 @@ function renderCity() {
   document.getElementById("city-stats").textContent =
     `Coins: ${game.coins} · HP: ${Math.round(game.player.hp)}/${game.player.maxHp} · Wave ${game.wave}`;
   const shop = document.getElementById("city-shop");
-  shop.innerHTML = `<div class="choice-grid">` +
+  const atCap = game.player.weapons.length >= MAX_WEAPONS;
+  const loadout = game.player.weapons.map((wi, idx) => {
+    const wp = w[wi.id];
+    const canDrop = game.player.weapons.length > 1;
+    return `<div class="choice-card rarity-${wp.rarity}" style="padding:8px 10px;">
+      <div class="c-rarity">${wp.rarity.toUpperCase()}</div>
+      <div class="c-name" style="font-size:10px;">${wp.name}</div>
+      <div class="c-desc" style="font-size:11px; min-height:0;">${wp.type === "ranged" ? "RANGED" : "MELEE"} · DMG ${wp.dmg}</div>
+      ${canDrop ? `<button class="pixel-btn danger" data-drop="${idx}" style="font-size:8px; padding:6px 10px; margin-top:6px;">DROP</button>` : ""}
+    </div>`;
+  }).join("");
+
+  shop.innerHTML = `
+    <div style="margin-bottom:6px; font-family:'Press Start 2P', monospace; font-size:10px; color:#fcd34d; letter-spacing:1px;">
+      YOUR LOADOUT (${game.player.weapons.length}/${MAX_WEAPONS})
+    </div>
+    <div class="choice-grid" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:16px;">${loadout}</div>
+    <div style="margin-bottom:6px; font-family:'Press Start 2P', monospace; font-size:10px; color:#fcd34d; letter-spacing:1px;">
+      SHOP ${atCap ? "· LOADOUT FULL — DROP A WEAPON FIRST" : ""}
+    </div>
+    <div class="choice-grid">` +
     cityWeapons.map((wid, i) => {
       const wp = w[wid];
       const canAfford = game.coins >= wp.cost;
-      return `<div class="choice-card rarity-${wp.rarity}" data-buy="${i}" style="opacity:${canAfford ? 1 : 0.5}; cursor:${canAfford ? 'pointer' : 'not-allowed'};">
+      const buyable = canAfford && !atCap;
+      return `<div class="choice-card rarity-${wp.rarity}" data-buy="${i}" style="opacity:${buyable ? 1 : 0.5}; cursor:${buyable ? 'pointer' : 'not-allowed'};">
         <div class="c-rarity">${wp.rarity.toUpperCase()}</div>
         <div class="c-name">${wp.name}</div>
         <div class="c-desc">${wp.type.toUpperCase()} · DMG ${wp.dmg}${wp.bleed ? " · BLEED " + wp.bleed : ""}${wp.radius ? " · R " + wp.radius : ""}</div>
@@ -2141,14 +2192,29 @@ function renderCity() {
     <div style="margin-top:10px;">
       <button class="pixel-btn secondary" id="city-reroll">RE-ROLL SHOP (20c)</button>
     </div>`;
+  // buy
   shop.querySelectorAll("[data-buy]").forEach(card => {
     card.addEventListener("click", () => {
+      if (game.player.weapons.length >= MAX_WEAPONS) return;
       const i = parseInt(card.dataset.buy);
       const wid = cityWeapons[i];
       const wp = WEAPONS[wid];
       if (game.coins < wp.cost) return;
       game.coins -= wp.cost;
-      game.player.weapon = wid;
+      addWeapon(wid);
+      // remove the bought weapon from the shop so you can't buy it again from same stock
+      cityWeapons.splice(i, 1);
+      cityWeapons.push(rollCityWeapon());
+      renderCity();
+      updateHud();
+    });
+  });
+  // drop
+  shop.querySelectorAll("[data-drop]").forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const idx = parseInt(btn.dataset.drop);
+      dropWeapon(idx);
       renderCity();
       updateHud();
     });
