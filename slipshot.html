@@ -978,11 +978,22 @@
   }
   .mf-mode {
     font-family: 'Orbitron', monospace;
-    font-size: 28px;
+    font-size: 26px;
     letter-spacing: 8px;
     color: #fff;
-    margin: 6px 0 14px;
+    margin: 6px 0 8px;
     text-shadow: 0 0 18px rgba(244, 114, 182, 0.5);
+  }
+  .mf-count {
+    font-family: 'Orbitron', monospace;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 12px;
+  }
+  .mf-count.warn {
+    color: #fbbf24;
+    text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
   }
   .mf-dots span {
     display: inline-block;
@@ -1229,6 +1240,44 @@
   <button class="reveal-close" id="reveal-close">CONTINUE</button>
 </div></div>
 
+<!-- ===== Firebase init (runs before the main game script) ===== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC6oPhy7SPfuvpxKIF8kn1ie0EyPyQvSNA",
+  authDomain: "dratenzogames.firebaseapp.com",
+  projectId: "dratenzogames",
+  storageBucket: "dratenzogames.firebasestorage.app",
+  messagingSenderId: "915269447532",
+  appId: "1:915269447532:web:adbd47fcb21976f5838d49",
+  measurementId: "G-S1DMSGZRTM"
+};
+try {
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  window.fb = {
+    available: true,
+    onAuthChange: (cb) => onAuthStateChanged(auth, cb),
+    signIn: (e, p) => signInWithEmailAndPassword(auth, e, p),
+    create: (e, p) => createUserWithEmailAndPassword(auth, e, p),
+    signOut: () => fbSignOut(auth),
+    saveDoc: (col, id, data) => setDoc(doc(db, col, id), data, { merge: true }),
+    loadDoc: async (col, id) => {
+      const s = await getDoc(doc(db, col, id));
+      return s.exists() ? s.data() : null;
+    },
+  };
+} catch (e) {
+  console.error("Firebase init failed:", e);
+  window.fb = { available: false, error: e.message };
+}
+window.dispatchEvent(new CustomEvent("fb-ready"));
+</script>
+
 <div id="mode-overlay">
   <div class="mode-card">
     <div class="mode-title">SELECT MODE</div>
@@ -1272,8 +1321,9 @@
 <div id="match-finder">
   <div class="mf-card">
     <div class="mf-spinner"></div>
-    <div class="mf-title">FINDING MATCH</div>
+    <div class="mf-title" id="mf-title">SEARCHING FOR PLAYERS</div>
     <div class="mf-mode" id="mf-mode-text">FFA</div>
+    <div class="mf-count" id="mf-count">0 of 3 humans found</div>
     <div class="mf-dots"><span></span><span></span><span></span></div>
   </div>
 </div>
@@ -1294,12 +1344,12 @@
     </div>
     <div id="auth-form-create" class="auth-form" style="display:none;">
       <input type="text" id="create-user" placeholder="USERNAME (2-20 chars)" maxlength="20" autocomplete="username" />
-      <input type="password" id="create-pass" placeholder="PASSWORD (min 4 chars)" autocomplete="new-password" />
+      <input type="password" id="create-pass" placeholder="PASSWORD (min 6 chars)" autocomplete="new-password" />
       <button id="do-create" class="auth-btn primary">CREATE ACCOUNT</button>
       <button class="auth-back" data-auth-back>‹ BACK</button>
     </div>
     <div id="auth-error" class="auth-error"></div>
-    <div class="auth-note">Progress is saved on this device only. To play on another device, sign in there too (and add coins on each separately).</div>
+    <div class="auth-note">Cross-device sync is on. Coins, weapons, and armor follow you wherever you sign in.</div>
   </div>
 </div>
 
@@ -1717,53 +1767,100 @@ function copyProfileInto(target, src) {
     }
   }
 }
-// ---- AUTH: sign-in / create-account / sign-out ----
-async function hashPassword(pass) {
-  const enc = new TextEncoder().encode(String(pass));
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+// ---- AUTH: Firebase-backed (cross-device cloud sync) ----
+function usernameToEmail(username) {
+  return String(username).toLowerCase().replace(/[^a-z0-9]/g, "") + "@slipshot.app";
 }
+function firebaseErrorMessage(e) {
+  const c = (e && e.code) || "";
+  if (c.includes("user-not-found") || c.includes("invalid-credential") || c.includes("wrong-password")) return "Wrong username or password";
+  if (c.includes("email-already-in-use")) return "Username already taken";
+  if (c.includes("weak-password")) return "Password must be at least 6 characters";
+  if (c.includes("too-many-requests")) return "Too many attempts — try again in a minute";
+  if (c.includes("network-request-failed")) return "Network error — check your internet";
+  return (e && e.message) || "Sign in failed";
+}
+
+async function loadProfileFromCloud(uid) {
+  if (!window.fb || !window.fb.available) return null;
+  try {
+    const data = await window.fb.loadDoc("users", uid);
+    Object.assign(persistent, defaultProfile());
+    if (data && data.profile) copyProfileInto(persistent, data.profile);
+    if (data && data.username) accountsState.current = data.username;
+    return data;
+  } catch (e) {
+    console.warn("Cloud load failed:", e);
+    return null;
+  }
+}
+async function saveProfileToCloud() {
+  if (!window.fb || !window.fb.available || !accountsState.uid) return;
+  try {
+    await window.fb.saveDoc("users", accountsState.uid, {
+      username: accountsState.current,
+      profile: {
+        coins: persistent.coins,
+        ownedWeapons: persistent.ownedWeapons,
+        equippedSlots: persistent.equippedSlots,
+        highScore: persistent.highScore,
+        armorInventory: persistent.armorInventory,
+        equippedArmor: persistent.equippedArmor,
+      },
+      lastSaved: Date.now(),
+    });
+  } catch (e) { console.warn("Cloud save failed:", e); }
+}
+let _cloudSaveTimer = null;
+function scheduleCloudSave() {
+  if (!accountsState.uid || !window.fb || !window.fb.available) return;
+  if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
+  _cloudSaveTimer = setTimeout(() => { saveProfileToCloud(); }, 1500);
+}
+
 async function doSignIn(username, password) {
   username = String(username || "").trim();
   if (!username) return { ok: false, error: "Enter a username" };
   if (!password) return { ok: false, error: "Enter a password" };
-  const acc = accountsState.accounts[username];
-  if (!acc) return { ok: false, error: "No account with that username" };
-  const hash = await hashPassword(password);
-  if (!acc.passwordHash) {
-    // Legacy/un-claimed account — claim it by setting this password.
-    acc.passwordHash = hash;
-  } else if (acc.passwordHash !== hash) {
-    return { ok: false, error: "Wrong password" };
+  if (!window.fb || !window.fb.available) return { ok: false, error: "Cloud sign-in not available right now" };
+  try {
+    const cred = await window.fb.signIn(usernameToEmail(username), password);
+    accountsState.uid = cred.user.uid;
+    accountsState.current = username;
+    await loadProfileFromCloud(cred.user.uid);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: firebaseErrorMessage(e) };
   }
-  accountsState.current = username;
-  const fresh = defaultProfile();
-  Object.assign(persistent, fresh);
-  copyProfileInto(persistent, acc);
-  saveAccountsList();
-  savePersistent();
-  return { ok: true };
 }
 async function doCreate(username, password) {
   username = String(username || "").trim().slice(0, 20);
   if (!username) return { ok: false, error: "Username required" };
   if (username.length < 2) return { ok: false, error: "Username must be at least 2 characters" };
-  if (accountsState.accounts[username]) return { ok: false, error: "Username already taken" };
-  if (!password || password.length < 4) return { ok: false, error: "Password must be at least 4 characters" };
-  const hash = await hashPassword(password);
-  accountsState.accounts[username] = Object.assign({ passwordHash: hash }, defaultProfile());
-  accountsState.current = username;
-  Object.assign(persistent, defaultProfile());
-  saveAccountsList();
-  savePersistent();
-  return { ok: true };
+  if (!password || password.length < 6) return { ok: false, error: "Password must be at least 6 characters" };
+  if (!window.fb || !window.fb.available) return { ok: false, error: "Cloud sign-up not available right now" };
+  try {
+    const cred = await window.fb.create(usernameToEmail(username), password);
+    accountsState.uid = cred.user.uid;
+    accountsState.current = username;
+    Object.assign(persistent, defaultProfile());
+    await saveProfileToCloud();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: firebaseErrorMessage(e) };
+  }
 }
 function doSignOut() {
-  saveAccountsList(); // make sure current state is flushed
-  accountsState.current = null;
-  Object.assign(persistent, defaultProfile());
-  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsState)); } catch (e) {}
-  showAuthOverlay();
+  // Push final state up to cloud before signing out
+  saveProfileToCloud().finally(() => {
+    if (window.fb && window.fb.available) {
+      window.fb.signOut().catch(() => {});
+    }
+    accountsState.current = null;
+    accountsState.uid = null;
+    Object.assign(persistent, defaultProfile());
+    showAuthOverlay();
+  });
 }
 
 // ---- Auth UI controllers ----
@@ -2060,7 +2157,6 @@ function decodeSaveData(str) {
   }
 }
 function savePersistent() {
-  // Sync into the active account before encoding
   try { saveAccountsList(); } catch (e) {}
   const enc = encodeSaveData();
   if (!enc) return;
@@ -2068,6 +2164,8 @@ function savePersistent() {
   try { localStorage.setItem(SAVE_KEY, enc); ok = true; } catch (e) {}
   try { history.replaceState(null, "", HASH_PREFIX + enc); ok = true; } catch (e) {}
   if (ok) flashSaveIndicator();
+  // Also push to Firebase cloud (debounced)
+  try { scheduleCloudSave(); } catch (e) {}
 }
 let saveIndTimer = null;
 function flashSaveIndicator() {
@@ -2419,17 +2517,24 @@ function drawBot(b) {
     ctx.arc(b.x, b.y, PLAYER_R, 0, Math.PI * 2);
     ctx.fill();
   }
-  // name tag + HP bar
+  // name tag + AI badge + HP bar
   const hpR = Math.max(0, b.hp / b.maxHp);
-  ctx.font = "bold 10px Orbitron, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
+  // "AI" indicator badge above the name (since we don't have real online play)
+  ctx.font = "bold 8px Orbitron, sans-serif";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+  ctx.fillRect(b.x - 14, b.y - PLAYER_R - 34, 28, 10);
+  ctx.fillStyle = "#fbbf24";
+  ctx.fillText("[ AI ]", b.x, b.y - PLAYER_R - 26);
+  // name in the bot's team color
+  ctx.font = "bold 10px Orbitron, sans-serif";
   ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-  ctx.fillRect(b.x - 22, b.y - PLAYER_R - 22, 44, 13);
+  ctx.fillRect(b.x - 24, b.y - PLAYER_R - 22, 48, 13);
   ctx.fillStyle = b.color;
   ctx.fillText(b.name, b.x, b.y - PLAYER_R - 12);
   // hp bar
-  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
   ctx.fillRect(b.x - 22, b.y - PLAYER_R - 8, 44, 4);
   ctx.fillStyle = hpR > 0.5 ? "#4ade80" : hpR > 0.25 ? "#fbbf24" : "#f43f5e";
   ctx.fillRect(b.x - 22, b.y - PLAYER_R - 8, 44 * hpR, 4);
@@ -3754,6 +3859,28 @@ function loop() {
 }
 
 // ============================================================
+// MULTIPLAYER CONFIG
+// Leave `enabled: false` for AI-only PvP (no internet required).
+// To enable REAL online play across devices, you'd need to:
+//   1. Create a free project at console.firebase.google.com
+//   2. Enable Firestore + Authentication
+//   3. Paste your firebaseConfig object below and set enabled: true
+//   4. Wire up real matchmaking calls inside searchForRealPlayers()
+// Until then, every match falls through to AI bots clearly tagged [AI].
+// ============================================================
+const MULTIPLAYER_CONFIG = {
+  enabled: false,
+  // firebaseConfig: { apiKey: "...", projectId: "...", ... },
+};
+async function searchForRealPlayers(mode, slotsNeeded) {
+  // Returns a list of real player profiles found within the timeout.
+  // Currently returns empty since no backend is configured.
+  if (!MULTIPLAYER_CONFIG.enabled) return [];
+  // TODO: real Firebase / Supabase lobby query here.
+  return [];
+}
+
+// ============================================================
 // MODE PICKER (Solo / FFA / 1v1 / 2v2 / 3v3 / Random)
 // ============================================================
 function showModePicker() {
@@ -3762,20 +3889,59 @@ function showModePicker() {
 function hideModePicker() {
   document.getElementById("mode-overlay").classList.remove("show");
 }
-function startMatchmaking(mode) {
+async function startMatchmaking(mode) {
   if (mode === "random") {
     const pool = ["solo", "ffa", "1v1", "2v2", "3v3"];
     mode = pool[Math.floor(Math.random() * pool.length)];
   }
   hideModePicker();
-  document.getElementById("mf-mode-text").textContent =
-    (MATCH_CONFIG[mode] && MATCH_CONFIG[mode].name) || mode.toUpperCase();
-  document.getElementById("match-finder").classList.add("show");
-  // brief animation for the "finding match..." feel
-  setTimeout(() => {
-    document.getElementById("match-finder").classList.remove("show");
-    newGame(mode);
-  }, mode === "solo" ? 600 : 1700);
+  const finderEl    = document.getElementById("match-finder");
+  const titleEl     = document.getElementById("mf-title");
+  const modeTextEl  = document.getElementById("mf-mode-text");
+  const countEl     = document.getElementById("mf-count");
+  // Solo skips matchmaking entirely
+  if (mode === "solo") {
+    titleEl.textContent = "STARTING SOLO RUN";
+    modeTextEl.textContent = "SURVIVAL";
+    countEl.textContent = "";
+    countEl.classList.remove("warn");
+    finderEl.classList.add("show");
+    setTimeout(() => {
+      finderEl.classList.remove("show");
+      newGame("solo");
+    }, 600);
+    return;
+  }
+  // PvP modes: simulate a real matchmaking flow
+  const cfg = MATCH_CONFIG[mode];
+  const slotsNeeded = (cfg.allies || 0) + (cfg.enemies || 0);
+  titleEl.textContent = "SEARCHING FOR PLAYERS";
+  modeTextEl.textContent = cfg.name;
+  countEl.textContent = "0 of " + slotsNeeded + " humans found";
+  countEl.classList.remove("warn");
+  finderEl.classList.add("show");
+  // Phase 1: attempt to find real players (timeout ~3.5s)
+  const SEARCH_TIME = 3500;
+  const found = await new Promise(resolve => {
+    let resolved = false;
+    const t = setTimeout(() => { if (!resolved) { resolved = true; resolve([]); } }, SEARCH_TIME);
+    searchForRealPlayers(mode, slotsNeeded).then(players => {
+      if (!resolved) { resolved = true; clearTimeout(t); resolve(players || []); }
+    }).catch(() => { if (!resolved) { resolved = true; resolve([]); } });
+  });
+  const aiSlots = slotsNeeded - found.length;
+  // Phase 2: announce AI fill if any slots are unfilled
+  if (aiSlots > 0) {
+    titleEl.textContent = aiSlots === slotsNeeded
+      ? "NO HUMANS FOUND"
+      : "ONLY " + found.length + " HUMAN" + (found.length === 1 ? "" : "S") + " FOUND";
+    countEl.textContent = "FILLING " + aiSlots + " SLOT" + (aiSlots === 1 ? "" : "S") + " WITH AI BOTS";
+    countEl.classList.add("warn");
+    await new Promise(r => setTimeout(r, 1600));
+  }
+  finderEl.classList.remove("show");
+  countEl.classList.remove("warn");
+  newGame(mode);
 }
 document.querySelectorAll(".mode-btn").forEach(btn => {
   btn.addEventListener("click", () => startMatchmaking(btn.dataset.mode));
@@ -3943,13 +4109,40 @@ newGame("solo");
 updateLoadoutDisplay();
 refreshWeaponButtons();
 updateAccountBadge();
-// If nobody is signed in, show the auth screen on top of everything.
-// If signed in, jump straight to mode selection.
-if (!isSignedIn) {
-  showAuthOverlay();
-} else {
-  showModePicker();
+
+// Boot sequence with Firebase: wait for auth state, then route.
+// (If Firebase isn't ready yet, show the auth overlay; the auth callback below will hide it once we know the state.)
+showAuthOverlay();
+
+function attachFirebaseAuth() {
+  if (!window.fb || !window.fb.available) {
+    // Firebase failed to load — stay on auth screen with a notice
+    const errEl = document.getElementById("auth-error");
+    if (errEl && window.fb && window.fb.error) errEl.textContent = "Cloud unavailable: " + window.fb.error;
+    return;
+  }
+  window.fb.onAuthChange(async (user) => {
+    if (user) {
+      // already signed in from a previous session — load cloud profile
+      accountsState.uid = user.uid;
+      await loadProfileFromCloud(user.uid);
+      // Make sure burst is always owned & in slot 0
+      if (!persistent.ownedWeapons.includes("burst")) persistent.ownedWeapons.unshift("burst");
+      if (!persistent.equippedSlots[0]) persistent.equippedSlots[0] = "burst";
+      hideAuthOverlay();
+      updateAccountBadge();
+      updateLoadoutDisplay();
+      if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
+      showModePicker();
+    } else {
+      // not signed in — keep auth overlay open
+      showAuthOverlay();
+    }
+  });
 }
+if (window.fb) attachFirebaseAuth();
+else window.addEventListener("fb-ready", attachFirebaseAuth, { once: true });
+
 loop();
 </script>
 </body>
