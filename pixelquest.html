@@ -1,0 +1,2231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>PixelQuest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    color: #f0e6d8;
+    font-family: 'Rajdhani', system-ui, sans-serif;
+    background:
+      radial-gradient(circle at 20% 10%, #2a3050 0%, transparent 60%),
+      radial-gradient(circle at 80% 90%, #2a1530 0%, transparent 60%),
+      linear-gradient(135deg, #0a0a14 0%, #14101e 100%);
+    background-attachment: fixed;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 18px 14px 30px;
+    user-select: none;
+    overflow-x: hidden;
+  }
+  h1, button, .stat, kbd, .pixel-text {
+    font-family: 'Press Start 2P', monospace;
+  }
+  h1 {
+    font-size: 26px;
+    color: #fcd34d;
+    text-shadow: 4px 4px 0 #432418, 0 0 20px rgba(252, 211, 77, 0.4);
+    letter-spacing: 3px;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: rgba(240, 230, 216, 0.55);
+    font-size: 12px;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    font-family: 'Rajdhani', sans-serif;
+  }
+  #hud {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.45);
+    border: 2px solid #5a4030;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+    padding: 8px 14px;
+    margin-bottom: 10px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .stat strong { color: #fcd34d; font-size: 12px; margin-left: 4px; }
+  .stat.hp strong { color: #f87171; }
+  .stat.wave strong { color: #34d399; }
+  #canvas-wrap {
+    position: relative;
+    border: 4px solid #5a4030;
+    box-shadow: 0 0 30px rgba(252, 211, 77, 0.18), 6px 6px 18px rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  /* glossy overlay across the entire canvas for an extra "shiny" feel */
+  #canvas-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,0.18) 100%),
+      radial-gradient(ellipse at 18% 12%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 38%);
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  canvas {
+    display: block;
+    background: #1c2613;
+    cursor: crosshair;
+  }
+  #info-panel {
+    margin-top: 12px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 2px solid #5a4030;
+    padding: 8px 14px;
+    font-size: 11px;
+    text-align: center;
+    max-width: 700px;
+    line-height: 1.6;
+  }
+  kbd {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid #5a4030;
+    padding: 1px 6px;
+    font-size: 9px;
+    margin: 0 1px;
+  }
+  /* Overlays */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .panel {
+    background: linear-gradient(180deg, #2a1f15 0%, #1a120c 100%);
+    border: 4px solid #fcd34d;
+    box-shadow: 0 0 40px rgba(252, 211, 77, 0.3), 8px 8px 0 rgba(0, 0, 0, 0.6);
+    padding: 24px 28px;
+    max-width: 720px;
+    width: 100%;
+    text-align: center;
+  }
+  .panel-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    color: #fcd34d;
+    text-shadow: 3px 3px 0 #432418;
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+  }
+  .panel-sub {
+    color: rgba(240, 230, 216, 0.65);
+    font-size: 13px;
+    margin-bottom: 18px;
+    letter-spacing: 0.5px;
+  }
+  .choice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .choice-card {
+    background: rgba(0, 0, 0, 0.45);
+    border: 3px solid #6b5040;
+    padding: 14px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.1s, box-shadow 0.1s;
+  }
+  .choice-card:hover {
+    transform: translateY(-3px);
+  }
+  .choice-card.rarity-common    { border-color: #9ca3af; }
+  .choice-card.rarity-rare      { border-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4); }
+  .choice-card.rarity-epic      { border-color: #a855f7; box-shadow: 0 0 14px rgba(168, 85, 247, 0.5); }
+  .choice-card.rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 18px rgba(251, 191, 36, 0.6); }
+  .choice-card.rarity-common:hover    { box-shadow: 0 0 14px rgba(156, 163, 175, 0.4); }
+  .choice-card.rarity-rare:hover      { box-shadow: 0 0 18px rgba(59, 130, 246, 0.6); }
+  .choice-card.rarity-epic:hover      { box-shadow: 0 0 22px rgba(168, 85, 247, 0.7); }
+  .choice-card.rarity-legendary:hover { box-shadow: 0 0 26px rgba(251, 191, 36, 0.8); }
+  .choice-card .c-rarity {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .choice-card.rarity-common    .c-rarity { color: #9ca3af; }
+  .choice-card.rarity-rare      .c-rarity { color: #60a5fa; }
+  .choice-card.rarity-epic      .c-rarity { color: #c084fc; }
+  .choice-card.rarity-legendary .c-rarity { color: #fcd34d; }
+  .choice-card .c-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: #f0e6d8;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    line-height: 1.4;
+  }
+  .choice-card .c-desc {
+    color: rgba(240, 230, 216, 0.75);
+    font-size: 12px;
+    line-height: 1.4;
+    min-height: 32px;
+  }
+  .choice-card .c-cost {
+    margin-top: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #fcd34d;
+    letter-spacing: 1px;
+  }
+  .pixel-btn {
+    background: #fcd34d;
+    color: #2a1f15;
+    border: 3px solid #5a4030;
+    padding: 12px 22px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6);
+    transition: transform 0.1s, box-shadow 0.1s;
+    margin: 4px;
+  }
+  .pixel-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6); }
+  .pixel-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6); }
+  .pixel-btn.secondary { background: #6b5040; color: #f0e6d8; }
+  .pixel-btn.danger { background: #b91c1c; color: #fef2f2; }
+  .pixel-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+  .city-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+  .city-stats { margin: 8px 0 16px; font-size: 13px; color: rgba(240, 230, 216, 0.85); }
+  .home-link {
+    position: fixed; top: 14px; left: 14px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 2px solid #5a4030;
+    padding: 6px 12px;
+    color: #fcd34d;
+    text-decoration: none;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    z-index: 100;
+  }
+  .home-link:hover { background: rgba(0, 0, 0, 0.8); }
+
+  /* Mobile D-pad */
+  #mobile-dpad { display: none; }
+  @media (pointer: coarse), (max-width: 800px) {
+    canvas { max-width: 100vw; height: auto; }
+    #canvas-wrap { max-width: 100vw; }
+    body { padding-bottom: 200px; }
+    #mobile-dpad {
+      display: grid;
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      grid-template-columns: 56px 56px 56px;
+      grid-template-rows: 56px 56px 56px;
+      gap: 5px;
+      z-index: 50;
+      touch-action: none;
+    }
+    #mobile-dpad button {
+      background: rgba(252, 211, 77, 0.25);
+      border: 2px solid #fcd34d;
+      color: #fcd34d;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 18px;
+      box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    #mobile-dpad button:active {
+      background: rgba(252, 211, 77, 0.5);
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+    }
+    #m-up    { grid-row: 1; grid-column: 2; }
+    #m-left  { grid-row: 2; grid-column: 1; }
+    #m-right { grid-row: 2; grid-column: 3; }
+    #m-down  { grid-row: 3; grid-column: 2; }
+  }
+  .bleed-tick { color: #fbbf24; }
+  .dmg-tick { color: #f87171; }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="home-link">‹ BACK</a>
+<h1>PIXELQUEST</h1>
+<p class="subtitle">// PIXELATED WAVE-SURVIVAL ADVENTURE //</p>
+
+<div id="hud">
+  <div class="stat hp">HP <strong id="hud-hp">100</strong>/<span id="hud-maxhp">100</span></div>
+  <div class="stat">COINS <strong id="hud-coins">0</strong></div>
+  <div class="stat wave">WAVE <strong id="hud-wave">1</strong></div>
+  <div class="stat">KILLS <strong id="hud-kills">0</strong></div>
+  <div class="stat">WEAPON <strong id="hud-weapon">—</strong></div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="game" width="640" height="480"></canvas>
+</div>
+
+<div id="info-panel">
+  MOVE: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows · Your weapon attacks automatically · Survive waves to earn coins and pick new abilities · Every 10 waves you reach a city.
+</div>
+
+<div id="mobile-dpad">
+  <button id="m-up">▲</button>
+  <button id="m-left">◀</button>
+  <button id="m-right">▶</button>
+  <button id="m-down">▼</button>
+</div>
+
+<!-- Starter weapon picker (also used on death restart) -->
+<div id="start-overlay" class="overlay show">
+  <div class="panel">
+    <div class="panel-title">CHOOSE YOUR WEAPON</div>
+    <div class="panel-sub">A random common weapon is offered. Click START to begin.</div>
+    <div id="start-card" class="choice-grid" style="grid-template-columns:1fr;"></div>
+    <div style="margin-top:14px;">
+      <button class="pixel-btn secondary" id="start-reroll">RE-ROLL</button>
+      <button class="pixel-btn" id="start-go">START QUEST ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ability picker (between waves) -->
+<div id="ability-overlay" class="overlay">
+  <div class="panel">
+    <div class="panel-title" id="ability-title">PICK AN ABILITY</div>
+    <div class="panel-sub" id="ability-sub">Wave cleared! Choose a power-up.</div>
+    <div id="ability-choices" class="choice-grid"></div>
+    <button class="pixel-btn secondary" id="ability-skip" style="margin-top:8px;">SKIP</button>
+  </div>
+</div>
+
+<!-- City overlay (every 10 waves) -->
+<div id="city-overlay" class="overlay">
+  <div class="panel" style="max-width: 760px;">
+    <div class="panel-title">CITY OF EMBERFALL</div>
+    <div class="panel-sub">A safe haven between battles. Spend your coins wisely.</div>
+    <div class="city-stats" id="city-stats">Coins: 0 · HP: 100/100 · Wave 11</div>
+    <div id="city-shop"></div>
+    <div class="city-actions">
+      <button class="pixel-btn secondary" id="city-heal">HEAL (50c)</button>
+      <button class="pixel-btn secondary" id="city-explore">EXPLORE</button>
+      <button class="pixel-btn" id="city-continue">CONTINUE QUEST ›</button>
+    </div>
+    <div id="city-explore-text" style="margin-top:14px; font-size:13px; color:rgba(240,230,216,0.8); min-height:18px;"></div>
+  </div>
+</div>
+
+<!-- Game over -->
+<div id="death-overlay" class="overlay">
+  <div class="panel">
+    <div class="panel-title" style="color:#f87171;">YOU DIED</div>
+    <div class="panel-sub" id="death-stats">You fell on wave 0.</div>
+    <button class="pixel-btn" id="death-restart">RESTART QUEST ›</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+const W = 640, H = 480;
+const PLAYER_R = 5;             // sprite half-width (pixel art) — smaller for finer pixels
+const PLAYER_ACCEL = 0.42;
+const PLAYER_FRICTION = 0.86;
+const PLAYER_MAX_SPEED = 2.4;
+const RANGED_FIRE_CD = 30;      // ticks (0.5s @ 60fps)
+const BULLET_SPEED = 4.5;
+const MELEE_SPIN_SPEED = 0.08;  // radians/tick
+const BLEED_DURATION = 180;     // 3 sec
+const BLEED_TICK_INTERVAL = 12; // tick every 0.2s
+
+// ============================================================
+// WEAPONS
+// ============================================================
+const WEAPONS = {
+  // Ranged (common starters)
+  pistol:    { name: "PISTOL",     type: "ranged", rarity: "common", dmg: 14, color: "#888", cost: 50 },
+  bow:       { name: "BOW",        type: "ranged", rarity: "common", dmg: 12, color: "#a96", cost: 50 },
+  wand:      { name: "WAND",       type: "ranged", rarity: "common", dmg: 11, color: "#9c5", cost: 50 },
+  // Melee (common starters)
+  sword:     { name: "SWORD",      type: "melee",  rarity: "common", dmg: 18, radius: 42, bleed: 4, color: "#ddd", cost: 50 },
+  dagger:    { name: "DAGGER",     type: "melee",  rarity: "common", dmg: 12, radius: 36, bleed: 7, color: "#aaa", cost: 50 },
+  club:      { name: "CLUB",       type: "melee",  rarity: "common", dmg: 22, radius: 38, bleed: 2, color: "#a86", cost: 50 },
+  // Rare
+  rifle:     { name: "RIFLE",      type: "ranged", rarity: "rare",   dmg: 26, color: "#7bd", cost: 150 },
+  crossbow:  { name: "CROSSBOW",   type: "ranged", rarity: "rare",   dmg: 32, color: "#a73", cost: 150 },
+  longsword: { name: "LONGSWORD",  type: "melee",  rarity: "rare",   dmg: 30, radius: 48, bleed: 5, color: "#9bd", cost: 150 },
+  scimitar:  { name: "SCIMITAR",   type: "melee",  rarity: "rare",   dmg: 24, radius: 52, bleed: 7, color: "#bce", cost: 150 },
+  // Epic
+  cannon:    { name: "CANNON",     type: "ranged", rarity: "epic",   dmg: 55, color: "#b6f", cost: 350 },
+  greatsword:{ name: "GREATSWORD", type: "melee",  rarity: "epic",   dmg: 50, radius: 56, bleed: 8, color: "#c9f", cost: 350 },
+  halberd:   { name: "HALBERD",    type: "melee",  rarity: "epic",   dmg: 60, radius: 64, bleed: 6, color: "#a5f", cost: 350 },
+  // Legendary
+  railgun:   { name: "RAILGUN",    type: "ranged", rarity: "legendary", dmg: 120, color: "#fd5", cost: 900 },
+  excalibur: { name: "EXCALIBUR",  type: "melee",  rarity: "legendary", dmg: 110, radius: 70, bleed: 14, color: "#ffd", cost: 900 },
+};
+const RARITY_ORDER = ["common", "rare", "epic", "legendary"];
+const RARITY_COLOR = {
+  common: "#9ca3af", rare: "#60a5fa", epic: "#c084fc", legendary: "#fcd34d",
+};
+function randomCommonWeapon() {
+  const commons = Object.keys(WEAPONS).filter(k => WEAPONS[k].rarity === "common");
+  return commons[Math.floor(Math.random() * commons.length)];
+}
+
+// ============================================================
+// ABILITIES — passive perks rolled with rarity weights
+// Roll: 40% common, 20% rare, 10% epic, 5% legendary, 25% reroll
+// ============================================================
+const ABILITIES = {
+  lightning_orb: {
+    name: "LIGHTNING ORB",
+    desc: "Orbiting orb that SHOCKS enemies on contact",
+    effect: "shock",
+    tiers: {
+      common:    { dmg: 5,  orbs: 1, spd: 0.04 },
+      rare:      { dmg: 12, orbs: 1, spd: 0.06 },
+      epic:      { dmg: 22, orbs: 2, spd: 0.07 },
+      legendary: { dmg: 45, orbs: 3, spd: 0.09 },
+    },
+  },
+  fire_orb: {
+    name: "FIRE ORB",
+    desc: "Orbiting orb that BLAZES enemies on contact",
+    effect: "blaze",
+    tiers: {
+      common:    { dmg: 6,  orbs: 1, spd: 0.04 },
+      rare:      { dmg: 14, orbs: 1, spd: 0.06 },
+      epic:      { dmg: 25, orbs: 2, spd: 0.07 },
+      legendary: { dmg: 50, orbs: 3, spd: 0.09 },
+    },
+  },
+  poison_orb: {
+    name: "POISON ORB",
+    desc: "Orbiting orb that POISONS enemies on contact",
+    effect: "poison",
+    tiers: {
+      common:    { dmg: 4,  orbs: 1, spd: 0.04 },
+      rare:      { dmg: 10, orbs: 1, spd: 0.06 },
+      epic:      { dmg: 20, orbs: 2, spd: 0.07 },
+      legendary: { dmg: 40, orbs: 3, spd: 0.09 },
+    },
+  },
+  ice_orb: {
+    name: "ICE ORB",
+    desc: "Orbiting orb that CHILLS and SLOWS enemies",
+    effect: "chill",
+    tiers: {
+      common:    { dmg: 4,  orbs: 1, spd: 0.04 },
+      rare:      { dmg: 9,  orbs: 1, spd: 0.06 },
+      epic:      { dmg: 18, orbs: 2, spd: 0.07 },
+      legendary: { dmg: 36, orbs: 3, spd: 0.09 },
+    },
+  },
+  lightning_strike: {
+    name: "LIGHTNING STRIKE",
+    desc: "Random enemy struck every 5s",
+    tiers: {
+      common:    { dmg: 500,  interval: 300 },
+      rare:      { dmg: 1000, interval: 270 },
+      epic:      { dmg: 2000, interval: 240 },
+      legendary: { dmg: 5000, interval: 180 },
+    },
+  },
+  heal_aura: {
+    name: "HEAL AURA",
+    desc: "Slowly regenerate HP over time",
+    tiers: {
+      common:    { regen: 0.012 },
+      rare:      { regen: 0.030 },
+      epic:      { regen: 0.075 },
+      legendary: { regen: 0.180 },
+    },
+  },
+  bloodlust: {
+    name: "BLOODLUST",
+    desc: "Damage boost (multiplies your weapon damage)",
+    tiers: {
+      common:    { mult: 1.10 },
+      rare:      { mult: 1.25 },
+      epic:      { mult: 1.45 },
+      legendary: { mult: 1.80 },
+    },
+  },
+  swiftfoot: {
+    name: "SWIFTFOOT",
+    desc: "Move faster (multiplies your speed)",
+    tiers: {
+      common:    { mult: 1.10 },
+      rare:      { mult: 1.20 },
+      epic:      { mult: 1.35 },
+      legendary: { mult: 1.55 },
+    },
+  },
+  vampirism: {
+    name: "VAMPIRISM",
+    desc: "Heal a portion of damage you deal",
+    tiers: {
+      common:    { leech: 0.02 },
+      rare:      { leech: 0.05 },
+      epic:      { leech: 0.10 },
+      legendary: { leech: 0.20 },
+    },
+  },
+};
+
+function rollAbilityRarity() {
+  while (true) {
+    const r = Math.random();
+    if (r < 0.40) return "common";
+    if (r < 0.60) return "rare";
+    if (r < 0.70) return "epic";
+    if (r < 0.75) return "legendary";
+    // 25% re-roll: loop again
+  }
+}
+function rollAbilityChoices(count) {
+  const out = [];
+  const keys = Object.keys(ABILITIES);
+  while (out.length < count) {
+    const id = keys[Math.floor(Math.random() * keys.length)];
+    const rarity = rollAbilityRarity();
+    // allow duplicates but vary rarity — that's fine
+    out.push({ id, rarity });
+  }
+  return out;
+}
+
+// ============================================================
+// ENEMIES
+// ============================================================
+const ENEMIES = {
+  slime:  { hp: 45,   speed: 0.55, dmg: 7,  color: "#5c8",  size: 7,  coin: 2, name: "Slime" },
+  goblin: { hp: 85,   speed: 0.95, dmg: 12, color: "#7a3",  size: 8,  coin: 3, name: "Goblin" },
+  bat:    { hp: 40,   speed: 1.65, dmg: 9,  color: "#553",  size: 6,  coin: 4, name: "Bat" },
+  archer: { hp: 75,   speed: 0.75, dmg: 16, color: "#a86",  size: 8,  coin: 5, name: "Archer", ranged: true, fireCD: 80 },
+  brute:  { hp: 340,  speed: 0.55, dmg: 24, color: "#a55",  size: 13, coin: 12, name: "Brute" },
+  boss_orc:  { hp: 1600, speed: 0.50, dmg: 42, color: "#621",  size: 22, coin: 80,  name: "Orc Warlord", boss: true },
+  boss_lich: { hp: 2400, speed: 0.65, dmg: 48, color: "#69a",  size: 22, coin: 100, name: "Lich Sorcerer", boss: true, ranged: true, fireCD: 60 },
+};
+// Wave composition function — returns spawn descriptors
+function buildWave(n) {
+  // Boss every 10 waves (10, 20, 30...)
+  if (n % 10 === 0) {
+    const bossId = n % 20 === 0 ? "boss_lich" : "boss_orc";
+    return [{ type: bossId, count: 1 }, { type: "goblin", count: 3 + Math.floor(n / 5) }];
+  }
+  const spawns = [];
+  spawns.push({ type: "slime",  count: 3 + Math.floor(n * 0.6) });
+  if (n >= 2)  spawns.push({ type: "goblin", count: Math.floor(n * 0.5) });
+  if (n >= 3)  spawns.push({ type: "bat",    count: Math.floor(n * 0.3) });
+  if (n >= 5)  spawns.push({ type: "archer", count: 1 + Math.floor(n * 0.15) });
+  if (n >= 7)  spawns.push({ type: "brute",  count: Math.floor((n - 5) * 0.25) });
+  return spawns;
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = "high";
+
+// ============================================================
+// 3D-shaded drawing primitives + color helpers
+// ============================================================
+function _hex(c) {
+  if (c[0] !== "#") return [128, 128, 128];
+  const h = c.slice(1);
+  if (h.length === 3) return [parseInt(h[0]+h[0],16), parseInt(h[1]+h[1],16), parseInt(h[2]+h[2],16)];
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function lighten(c, amt) {
+  const [r,g,b] = _hex(c);
+  return `rgb(${Math.min(255,r+amt)|0},${Math.min(255,g+amt)|0},${Math.min(255,b+amt)|0})`;
+}
+function darken(c, amt) {
+  const [r,g,b] = _hex(c);
+  return `rgb(${Math.max(0,r-amt)|0},${Math.max(0,g-amt)|0},${Math.max(0,b-amt)|0})`;
+}
+function rgba(c, a) {
+  const [r,g,b] = _hex(c);
+  return `rgba(${r},${g},${b},${a})`;
+}
+// Smooth-shaded sphere
+function sphere(c, x, y, r, color, opts) {
+  opts = opts || {};
+  const g = c.createRadialGradient(x - r * 0.35, y - r * 0.45, r * 0.05, x, y, r);
+  g.addColorStop(0, lighten(color, 70));
+  g.addColorStop(0.45, color);
+  g.addColorStop(1, darken(color, 55));
+  c.fillStyle = g;
+  c.beginPath();
+  c.arc(x, y, r, 0, Math.PI * 2);
+  c.fill();
+  if (opts.shine !== false) {
+    const sg = c.createRadialGradient(x - r * 0.4, y - r * 0.55, 0, x - r * 0.4, y - r * 0.55, r * 0.55);
+    sg.addColorStop(0, "rgba(255,255,255,0.85)");
+    sg.addColorStop(0.6, "rgba(255,255,255,0.15)");
+    sg.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = sg;
+    c.beginPath();
+    c.ellipse(x - r * 0.35, y - r * 0.55, r * 0.55, r * 0.35, -0.4, 0, Math.PI * 2);
+    c.fill();
+  }
+  if (opts.rim) {
+    c.strokeStyle = darken(color, 60);
+    c.lineWidth = 0.6;
+    c.beginPath();
+    c.arc(x, y, r - 0.3, 0, Math.PI * 2);
+    c.stroke();
+  }
+}
+// 3D-shaded box (rounded, lit from above)
+function shadedBox(c, x, y, w, h, color, opts) {
+  opts = opts || {};
+  const radius = opts.radius ?? 1.5;
+  const g = c.createLinearGradient(x, y, x, y + h);
+  g.addColorStop(0,    lighten(color, 50));
+  g.addColorStop(0.35, color);
+  g.addColorStop(1,    darken(color, 45));
+  c.fillStyle = g;
+  roundedRect(c, x, y, w, h, radius);
+  c.fill();
+  // top sheen
+  c.fillStyle = "rgba(255,255,255,0.30)";
+  c.beginPath();
+  roundedRect(c, x + 0.5, y + 0.5, w - 1, Math.max(1, h * 0.30), radius);
+  c.fill();
+  // bottom shadow strip
+  c.fillStyle = "rgba(0,0,0,0.25)";
+  c.beginPath();
+  roundedRect(c, x + 0.5, y + h * 0.8, w - 1, h * 0.18, radius);
+  c.fill();
+}
+function roundedRect(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
+}
+function dropShadow(c, x, y, w, alpha) {
+  alpha = alpha ?? 0.45;
+  const g = c.createRadialGradient(x, y, 0, x, y, w);
+  g.addColorStop(0, `rgba(0,0,0,${alpha})`);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  c.fillStyle = g;
+  c.beginPath();
+  c.ellipse(x, y, w, w * 0.4, 0, 0, Math.PI * 2);
+  c.fill();
+}
+// Glass marble (used for ability orbs)
+function glassOrb(c, x, y, r, color) {
+  // outer glow
+  const og = c.createRadialGradient(x, y, r * 0.5, x, y, r * 2);
+  og.addColorStop(0, rgba(color, 0.55));
+  og.addColorStop(1, rgba(color, 0));
+  c.fillStyle = og;
+  c.beginPath();
+  c.arc(x, y, r * 2, 0, Math.PI * 2);
+  c.fill();
+  // body
+  const g = c.createRadialGradient(x + r * 0.2, y + r * 0.3, r * 0.1, x, y, r);
+  g.addColorStop(0, lighten(color, 80));
+  g.addColorStop(0.4, color);
+  g.addColorStop(1, darken(color, 40));
+  c.fillStyle = g;
+  c.beginPath();
+  c.arc(x, y, r, 0, Math.PI * 2);
+  c.fill();
+  // big shine
+  const sg = c.createRadialGradient(x - r * 0.35, y - r * 0.45, 0, x - r * 0.35, y - r * 0.45, r * 0.65);
+  sg.addColorStop(0, "rgba(255,255,255,0.95)");
+  sg.addColorStop(0.5, "rgba(255,255,255,0.25)");
+  sg.addColorStop(1, "rgba(255,255,255,0)");
+  c.fillStyle = sg;
+  c.beginPath();
+  c.ellipse(x - r * 0.3, y - r * 0.5, r * 0.6, r * 0.4, -0.4, 0, Math.PI * 2);
+  c.fill();
+  // small bottom highlight
+  c.fillStyle = "rgba(255,255,255,0.5)";
+  c.beginPath();
+  c.arc(x + r * 0.4, y + r * 0.45, r * 0.12, 0, Math.PI * 2);
+  c.fill();
+}
+
+let game;
+function newGame(startingWeaponId) {
+  game = {
+    player: {
+      x: W / 2, y: H / 2, vx: 0, vy: 0,
+      hp: 100, maxHp: 100,
+      hitFlash: 0,
+      weapon: startingWeaponId,
+      facingX: 1, facingY: 0,
+    },
+    enemies: [],
+    bullets: [],
+    enemyBullets: [],
+    orbs: [],
+    particles: [],
+    floatingText: [],
+    keys: {},
+    weaponCD: 0,
+    meleeAngle: 0,
+    coins: 0,
+    wave: 0,
+    kills: 0,
+    spawnQueue: [],
+    spawnTimer: 0,
+    waveState: "between", // 'spawning' | 'active' | 'between' | 'city'
+    abilities: [],       // [{id, rarity, ...stats}]
+    lightningStrikeTimer: 0,
+    tick: 0,
+    flashDamage: 0,
+    cityVisited: 0,
+    gameOver: false,
+  };
+  game.player.maxHp = 100;
+  game.player.hp = 100;
+  updateHud();
+}
+
+function startQuest(weaponId) {
+  newGame(weaponId);
+  document.getElementById("start-overlay").classList.remove("show");
+  document.getElementById("death-overlay").classList.remove("show");
+  startNextWave();
+}
+
+function startNextWave() {
+  game.wave++;
+  // Visit city every 10 waves AFTER the boss wave
+  if (game.wave > 1 && (game.wave - 1) % 10 === 0) {
+    openCity();
+    return;
+  }
+  game.waveState = "spawning";
+  game.spawnQueue = [];
+  const spawns = buildWave(game.wave);
+  for (const s of spawns) {
+    for (let i = 0; i < s.count; i++) game.spawnQueue.push(s.type);
+  }
+  game.spawnTimer = 0;
+  updateHud();
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+const keyMap = {
+  "w": "up", "W": "up", "ArrowUp": "up",
+  "s": "down", "S": "down", "ArrowDown": "down",
+  "a": "left", "A": "left", "ArrowLeft": "left",
+  "d": "right", "D": "right", "ArrowRight": "right",
+};
+function _isTypingInField() {
+  const ae = document.activeElement;
+  if (!ae) return false;
+  const tag = ae.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || ae.isContentEditable;
+}
+document.addEventListener("keydown", (e) => {
+  if (_isTypingInField()) return;
+  const k = keyMap[e.key];
+  if (k) { game.keys[k] = true; e.preventDefault(); }
+});
+document.addEventListener("keyup", (e) => {
+  if (_isTypingInField()) return;
+  const k = keyMap[e.key];
+  if (k) { game.keys[k] = false; e.preventDefault(); }
+});
+
+// Mobile D-pad
+let dpadTimer = null;
+function bindDpad(id, axis, dir) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  function start(e) { e.preventDefault(); game.keys[axis === "x" ? (dir < 0 ? "left" : "right") : (dir < 0 ? "up" : "down")] = true; }
+  function end(e) { if (e) e.preventDefault(); game.keys[axis === "x" ? (dir < 0 ? "left" : "right") : (dir < 0 ? "up" : "down")] = false; }
+  el.addEventListener("touchstart", start, { passive: false });
+  el.addEventListener("touchend", end, { passive: false });
+  el.addEventListener("touchcancel", end, { passive: false });
+  el.addEventListener("mousedown", start);
+  el.addEventListener("mouseup", end);
+  el.addEventListener("mouseleave", end);
+}
+bindDpad("m-up", "y", -1);
+bindDpad("m-down", "y", 1);
+bindDpad("m-left", "x", -1);
+bindDpad("m-right", "x", 1);
+
+// ============================================================
+// UPDATE
+// ============================================================
+function update() {
+  if (game.gameOver || game.waveState === "city") return;
+  game.tick++;
+  const p = game.player;
+  if (game.flashDamage > 0) game.flashDamage--;
+
+  // movement
+  const spdMult = abilityValue("swiftfoot", "mult", 1);
+  const accel = PLAYER_ACCEL * spdMult;
+  const maxSp = PLAYER_MAX_SPEED * spdMult;
+  if (game.keys.up)    p.vy -= accel;
+  if (game.keys.down)  p.vy += accel;
+  if (game.keys.left)  p.vx -= accel;
+  if (game.keys.right) p.vx += accel;
+  p.vx *= PLAYER_FRICTION;
+  p.vy *= PLAYER_FRICTION;
+  const sp = Math.hypot(p.vx, p.vy);
+  if (sp > maxSp) { p.vx = (p.vx / sp) * maxSp; p.vy = (p.vy / sp) * maxSp; }
+  if (sp > 0.05) { p.facingX = p.vx / sp; p.facingY = p.vy / sp; }
+  p.x += p.vx;
+  p.y += p.vy;
+  if (p.x < PLAYER_R) { p.x = PLAYER_R; p.vx = 0; }
+  if (p.x > W - PLAYER_R) { p.x = W - PLAYER_R; p.vx = 0; }
+  if (p.y < PLAYER_R) { p.y = PLAYER_R; p.vy = 0; }
+  if (p.y > H - PLAYER_R) { p.y = H - PLAYER_R; p.vy = 0; }
+  if (p.hitFlash > 0) p.hitFlash--;
+
+  // heal aura
+  const regen = abilityValue("heal_aura", "regen", 0);
+  if (regen > 0 && p.hp < p.maxHp) {
+    p.hp = Math.min(p.maxHp, p.hp + regen);
+  }
+
+  // weapon
+  const w = WEAPONS[p.weapon];
+  if (w) {
+    if (w.type === "ranged") {
+      game.weaponCD--;
+      if (game.weaponCD <= 0) {
+        const tgt = nearestEnemy(p.x, p.y);
+        if (tgt) {
+          const dx = tgt.x - p.x, dy = tgt.y - p.y;
+          const d = Math.hypot(dx, dy);
+          const ang = Math.atan2(dy, dx);
+          game.bullets.push({
+            x: p.x + Math.cos(ang) * 10,
+            y: p.y + Math.sin(ang) * 10,
+            vx: Math.cos(ang) * BULLET_SPEED,
+            vy: Math.sin(ang) * BULLET_SPEED,
+            dmg: w.dmg * abilityValue("bloodlust", "mult", 1),
+            color: w.color,
+            life: 90,
+            dead: false,
+          });
+          game.weaponCD = RANGED_FIRE_CD;
+        }
+      }
+    } else if (w.type === "melee") {
+      // spinning blade — orbits at `radius` and damages enemies it touches
+      game.meleeAngle += MELEE_SPIN_SPEED * 1.5;
+      const r = w.radius;
+      const bx = p.x + Math.cos(game.meleeAngle) * r;
+      const by = p.y + Math.sin(game.meleeAngle) * r;
+      // hit check
+      const dmg = w.dmg * abilityValue("bloodlust", "mult", 1);
+      for (const e of game.enemies) {
+        if (e.dead) continue;
+        if (Math.hypot(e.x - bx, e.y - by) < e.size + 8) {
+          if (!e.lastHitBy || game.tick - e.lastHitBy > 18) {
+            damageEnemy(e, dmg, "melee");
+            // apply bleed
+            e.bleedDps = Math.max(e.bleedDps || 0, w.bleed);
+            e.bleedLeft = BLEED_DURATION;
+            e.lastHitBy = game.tick;
+          }
+        }
+      }
+      // store blade position for rendering
+      game.meleeBlade = { x: bx, y: by, color: w.color };
+    }
+  }
+
+  // orbs (lightning/fire/poison/ice)
+  updateOrbs();
+
+  // lightning strike
+  const lsDmg = abilityValue("lightning_strike", "dmg", 0);
+  const lsInt = abilityValue("lightning_strike", "interval", 300);
+  if (lsDmg > 0) {
+    game.lightningStrikeTimer++;
+    if (game.lightningStrikeTimer >= lsInt) {
+      game.lightningStrikeTimer = 0;
+      const alive = game.enemies.filter(e => !e.dead);
+      if (alive.length > 0) {
+        const tgt = alive[Math.floor(Math.random() * alive.length)];
+        damageEnemy(tgt, lsDmg, "lightning");
+        // dramatic visual
+        game.particles.push({ type: "lightning", x1: tgt.x, y1: 0, x2: tgt.x, y2: tgt.y, life: 18, max: 18 });
+        for (let i = 0; i < 14; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const s = 1 + Math.random() * 3;
+          game.particles.push({ type: "spark", x: tgt.x, y: tgt.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 20, max: 20, color: "250,220,80" });
+        }
+      }
+    }
+  }
+
+  // spawn enemies
+  if (game.waveState === "spawning") {
+    game.spawnTimer++;
+    if (game.spawnTimer >= 18 && game.spawnQueue.length > 0) {
+      game.spawnTimer = 0;
+      spawnEnemy(game.spawnQueue.shift());
+    }
+    if (game.spawnQueue.length === 0) game.waveState = "active";
+  }
+
+  // update enemies
+  for (const e of game.enemies) {
+    if (e.dead) continue;
+    updateEnemy(e);
+  }
+  game.enemies = game.enemies.filter(e => !e.dead);
+
+  // wave clear check
+  if (game.waveState === "active" && game.enemies.length === 0) {
+    game.waveState = "between";
+    // small wave bonus
+    game.coins += 5 + game.wave * 2;
+    openAbilityPicker();
+  }
+
+  // bullets
+  for (const b of game.bullets) {
+    if (b.dead) continue;
+    b.x += b.vx; b.y += b.vy;
+    b.life--;
+    if (b.life <= 0 || b.x < -10 || b.x > W + 10 || b.y < -10 || b.y > H + 10) { b.dead = true; continue; }
+    for (const e of game.enemies) {
+      if (e.dead) continue;
+      if (Math.hypot(b.x - e.x, b.y - e.y) < e.size + 3) {
+        damageEnemy(e, b.dmg, "ranged");
+        b.dead = true;
+        break;
+      }
+    }
+  }
+  game.bullets = game.bullets.filter(b => !b.dead);
+
+  // enemy bullets
+  for (const b of game.enemyBullets) {
+    if (b.dead) continue;
+    b.x += b.vx; b.y += b.vy;
+    b.life--;
+    if (b.life <= 0 || b.x < -10 || b.x > W + 10 || b.y < -10 || b.y > H + 10) { b.dead = true; continue; }
+    if (Math.hypot(b.x - p.x, b.y - p.y) < PLAYER_R + 3) {
+      damagePlayer(b.dmg);
+      b.dead = true;
+    }
+  }
+  game.enemyBullets = game.enemyBullets.filter(b => !b.dead);
+
+  // particles & floating text
+  for (const pp of game.particles) {
+    pp.life--;
+    if (pp.type === "spark") { pp.x += pp.vx; pp.y += pp.vy; pp.vx *= 0.92; pp.vy *= 0.92; }
+  }
+  game.particles = game.particles.filter(pp => pp.life > 0);
+  for (const t of game.floatingText) { t.y -= 0.6; t.life--; }
+  game.floatingText = game.floatingText.filter(t => t.life > 0);
+
+  // death
+  if (p.hp <= 0 && !game.gameOver) {
+    p.hp = 0;
+    game.gameOver = true;
+    showDeath();
+  }
+
+  updateHud();
+}
+
+// ============================================================
+// ENEMY UPDATE
+// ============================================================
+function updateEnemy(e) {
+  const t = ENEMIES[e.type];
+  const p = game.player;
+  // chill slows
+  const slowMult = (e.chillLeft && e.chillLeft > 0) ? 0.45 : 1;
+  if (e.chillLeft > 0) e.chillLeft--;
+  if (t.ranged) {
+    const dx = p.x - e.x, dy = p.y - e.y;
+    const d = Math.hypot(dx, dy);
+    const ideal = 180;
+    if (d > ideal + 30) { e.x += (dx / d) * t.speed * slowMult; e.y += (dy / d) * t.speed * slowMult; }
+    else if (d < ideal - 30) { e.x -= (dx / d) * t.speed * slowMult; e.y -= (dy / d) * t.speed * slowMult; }
+    e.cd--;
+    if (e.cd <= 0 && d > 1) {
+      e.cd = t.fireCD || 90;
+      const ang = Math.atan2(dy, dx);
+      game.enemyBullets.push({
+        x: e.x, y: e.y,
+        vx: Math.cos(ang) * 2.5,
+        vy: Math.sin(ang) * 2.5,
+        dmg: t.dmg,
+        life: 200, dead: false,
+      });
+    }
+  } else {
+    const dx = p.x - e.x, dy = p.y - e.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 0.001) { e.x += (dx / d) * t.speed * slowMult; e.y += (dy / d) * t.speed * slowMult; }
+    if (d < e.size + PLAYER_R) {
+      // contact damage (per tick chip)
+      damagePlayer(t.dmg / 30); // small per-frame chip — about 1 hit per half second
+    }
+  }
+  if (e.hitFlash > 0) e.hitFlash--;
+  // status effects
+  if (e.bleedLeft > 0) {
+    e.bleedLeft--;
+    if (e.bleedLeft % BLEED_TICK_INTERVAL === 0) {
+      damageEnemy(e, e.bleedDps, "bleed");
+    }
+  }
+  if (e.blazeLeft > 0) {
+    e.blazeLeft--;
+    if (e.blazeLeft % 18 === 0) damageEnemy(e, e.blazeDps, "blaze");
+  }
+  if (e.poisonLeft > 0) {
+    e.poisonLeft--;
+    if (e.poisonLeft % 24 === 0) damageEnemy(e, e.poisonDps, "poison");
+  }
+  if (e.shockLeft > 0) e.shockLeft--;
+}
+
+function damageEnemy(e, dmg, source) {
+  if (e.dead) return;
+  e.hp -= dmg;
+  e.hitFlash = 6;
+  // vampirism
+  const leech = abilityValue("vampirism", "leech", 0);
+  if (leech > 0) {
+    game.player.hp = Math.min(game.player.maxHp, game.player.hp + dmg * leech);
+  }
+  // floating damage text (for big hits / status)
+  if (dmg >= 1) {
+    const colors = {
+      melee: "255,255,255", ranged: "180,220,255", bleed: "248,113,113",
+      shock: "250,220,80", blaze: "251,146,60", poison: "163,230,53", chill: "147,197,253",
+      lightning: "250,220,80",
+    };
+    game.floatingText.push({
+      x: e.x + (Math.random() - 0.5) * 8,
+      y: e.y - e.size - 4,
+      text: Math.round(dmg),
+      color: colors[source] || "255,255,255",
+      life: 36,
+    });
+  }
+  if (e.hp <= 0) {
+    e.dead = true;
+    game.kills++;
+    const t = ENEMIES[e.type];
+    game.coins += t.coin;
+    // explosion particles
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 1 + Math.random() * 2;
+      game.particles.push({ type: "spark", x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 20, max: 20, color: hexToRgb(t.color) });
+    }
+    if (t.boss) {
+      // dramatic explosion
+      for (let i = 0; i < 30; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 1.5 + Math.random() * 3;
+        game.particles.push({ type: "spark", x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 30, max: 30, color: "250,220,80" });
+      }
+    }
+  }
+}
+
+function damagePlayer(dmg) {
+  if (dmg <= 0) return;
+  game.player.hp -= dmg;
+  if (dmg >= 1) game.player.hitFlash = 6;
+  game.flashDamage = 8;
+}
+
+function nearestEnemy(x, y) {
+  let best = null, bestD = Infinity;
+  for (const e of game.enemies) {
+    if (e.dead) continue;
+    const d = Math.hypot(e.x - x, e.y - y);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best;
+}
+
+function spawnEnemy(type) {
+  const t = ENEMIES[type];
+  // spawn at edge
+  const edge = Math.floor(Math.random() * 4);
+  let x, y;
+  if      (edge === 0) { x = Math.random() * W; y = -12; }
+  else if (edge === 1) { x = W + 12; y = Math.random() * H; }
+  else if (edge === 2) { x = Math.random() * W; y = H + 12; }
+  else                 { x = -12; y = Math.random() * H; }
+  game.enemies.push({
+    type, x, y,
+    hp: t.hp, maxHp: t.hp,
+    size: t.size,
+    cd: 40 + Math.floor(Math.random() * 30),
+    hitFlash: 0,
+    dead: false,
+    bleedLeft: 0, bleedDps: 0,
+    blazeLeft: 0, blazeDps: 0,
+    poisonLeft: 0, poisonDps: 0,
+    chillLeft: 0, shockLeft: 0,
+  });
+}
+
+// ============================================================
+// ORBS (abilities)
+// ============================================================
+function updateOrbs() {
+  // recompute orbs each tick to match current abilities
+  // We maintain game.orbs as a live list with their target effect.
+  // Build the expected list based on equipped abilities.
+  const desired = [];
+  const orbEffects = ["lightning_orb", "fire_orb", "poison_orb", "ice_orb"];
+  for (const ab of game.abilities) {
+    if (orbEffects.includes(ab.id)) {
+      const t = ABILITIES[ab.id].tiers[ab.rarity];
+      for (let i = 0; i < t.orbs; i++) {
+        desired.push({ id: ab.id, dmg: t.dmg, spd: t.spd, effect: ABILITIES[ab.id].effect });
+      }
+    }
+  }
+  // resize orbs list
+  while (game.orbs.length > desired.length) game.orbs.pop();
+  while (game.orbs.length < desired.length) {
+    game.orbs.push({ angle: Math.random() * Math.PI * 2, radius: 38, hits: {} });
+  }
+  // sync stats
+  for (let i = 0; i < desired.length; i++) {
+    game.orbs[i].id = desired[i].id;
+    game.orbs[i].dmg = desired[i].dmg;
+    game.orbs[i].spd = desired[i].spd;
+    game.orbs[i].effect = desired[i].effect;
+  }
+  // distribute angles evenly when count changes
+  const N = game.orbs.length;
+  for (let i = 0; i < N; i++) {
+    const baseOffset = (Math.PI * 2 / N) * i;
+    game.orbs[i].angle += game.orbs[i].spd;
+    game.orbs[i].x = game.player.x + Math.cos(game.orbs[i].angle + baseOffset) * game.orbs[i].radius;
+    game.orbs[i].y = game.player.y + Math.sin(game.orbs[i].angle + baseOffset) * game.orbs[i].radius;
+  }
+  // collision against enemies (each orb damages each enemy once per ~30 ticks)
+  for (const orb of game.orbs) {
+    for (const e of game.enemies) {
+      if (e.dead) continue;
+      const d = Math.hypot(orb.x - e.x, orb.y - e.y);
+      if (d < e.size + 5) {
+        const key = orb.id + ":" + e.id;
+        if (!e.lastOrbHit) e.lastOrbHit = {};
+        if (!e.lastOrbHit[orb.id] || game.tick - e.lastOrbHit[orb.id] > 24) {
+          e.lastOrbHit[orb.id] = game.tick;
+          damageEnemy(e, orb.dmg, orb.effect);
+          // apply status
+          if (orb.effect === "blaze") { e.blazeLeft = 120; e.blazeDps = Math.max(e.blazeDps || 0, orb.dmg * 0.4); }
+          else if (orb.effect === "poison") { e.poisonLeft = 180; e.poisonDps = Math.max(e.poisonDps || 0, orb.dmg * 0.3); }
+          else if (orb.effect === "chill") { e.chillLeft = Math.max(e.chillLeft || 0, 60); }
+          else if (orb.effect === "shock") { e.shockLeft = 18; }
+        }
+      }
+    }
+  }
+}
+
+// Helper: get the highest-tier value of an ability the player has equipped
+function abilityValue(abilityId, key, def) {
+  let best = def;
+  for (const ab of game.abilities) {
+    if (ab.id === abilityId) {
+      const t = ABILITIES[ab.id].tiers[ab.rarity];
+      if (t && typeof t[key] === "number") {
+        if (key === "interval") {
+          if (best === def || t[key] < best) best = t[key];
+        } else {
+          if (best === def || t[key] > best) best = t[key];
+        }
+      }
+    }
+  }
+  return best;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function hexToRgb(hex) {
+  const h = String(hex).replace("#", "");
+  if (h.length === 3) {
+    return parseInt(h[0]+h[0], 16) + "," + parseInt(h[1]+h[1], 16) + "," + parseInt(h[2]+h[2], 16);
+  }
+  return parseInt(h.substr(0,2),16) + "," + parseInt(h.substr(2,2),16) + "," + parseInt(h.substr(4,2),16);
+}
+
+// ============================================================
+// BACKGROUND — pixel-art route with houses, fences, trees, path
+// Drawn ONCE into an offscreen canvas and blitted each frame.
+// ============================================================
+const bgCanvas = document.createElement("canvas");
+bgCanvas.width = W; bgCanvas.height = H;
+const bgCtx = bgCanvas.getContext("2d");
+bgCtx.imageSmoothingEnabled = true;
+bgCtx.imageSmoothingQuality = "high";
+
+function drawHouse(c, x, y) {
+  // ground shadow ellipse
+  dropShadow(c, x + 32, y + 64, 40, 0.35);
+  // walls
+  const wallG = c.createLinearGradient(x, y + 22, x, y + 60);
+  wallG.addColorStop(0, "#e8c89c");
+  wallG.addColorStop(1, "#a07845");
+  c.fillStyle = wallG;
+  c.fillRect(x + 2, y + 22, 58, 38);
+  // wall trim shadow at bottom
+  c.fillStyle = "rgba(0,0,0,0.25)";
+  c.fillRect(x + 2, y + 56, 58, 4);
+  // gabled roof — two-side gradient triangle for depth
+  c.beginPath();
+  c.moveTo(x - 4, y + 26);
+  c.lineTo(x + 31, y);
+  c.lineTo(x + 66, y + 26);
+  c.closePath();
+  const roofG = c.createLinearGradient(x, y, x + 60, y + 26);
+  roofG.addColorStop(0, "#e25040");
+  roofG.addColorStop(0.5, "#b03020");
+  roofG.addColorStop(1, "#6a1818");
+  c.fillStyle = roofG;
+  c.fill();
+  // roof highlight
+  c.fillStyle = "rgba(255,255,255,0.25)";
+  c.beginPath();
+  c.moveTo(x + 5, y + 22);
+  c.lineTo(x + 31, y + 3);
+  c.lineTo(x + 35, y + 6);
+  c.lineTo(x + 14, y + 22);
+  c.closePath();
+  c.fill();
+  // roof shadow side
+  c.fillStyle = "rgba(0,0,0,0.30)";
+  c.beginPath();
+  c.moveTo(x + 31, y);
+  c.lineTo(x + 66, y + 26);
+  c.lineTo(x + 53, y + 26);
+  c.lineTo(x + 31, y + 8);
+  c.closePath();
+  c.fill();
+  // chimney
+  shadedBox(c, x + 44, y + 4, 7, 14, "#5a3a28");
+  // smoke puff
+  c.fillStyle = "rgba(255,255,255,0.6)";
+  c.beginPath(); c.arc(x + 48, y - 2, 3, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.4)";
+  c.beginPath(); c.arc(x + 52, y - 7, 4, 0, Math.PI * 2); c.fill();
+  // door (with metal handle shine)
+  shadedBox(c, x + 26, y + 38, 11, 22, "#5a3520", { radius: 2 });
+  c.fillStyle = "#fcd34d";
+  c.beginPath(); c.arc(x + 34, y + 50, 1.2, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.9)";
+  c.beginPath(); c.arc(x + 33.7, y + 49.7, 0.5, 0, Math.PI * 2); c.fill();
+  // glossy windows
+  const winG = c.createLinearGradient(x, y + 30, x, y + 42);
+  winG.addColorStop(0, "#a8e0ff");
+  winG.addColorStop(1, "#3a78a8");
+  c.fillStyle = winG;
+  roundedRect(c, x + 8, y + 30, 11, 10, 1.5); c.fill();
+  roundedRect(c, x + 44, y + 30, 11, 10, 1.5); c.fill();
+  // window frames
+  c.strokeStyle = "#3a2418"; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(x + 13.5, y + 30); c.lineTo(x + 13.5, y + 40); c.moveTo(x + 8, y + 35); c.lineTo(x + 19, y + 35); c.stroke();
+  c.beginPath(); c.moveTo(x + 49.5, y + 30); c.lineTo(x + 49.5, y + 40); c.moveTo(x + 44, y + 35); c.lineTo(x + 55, y + 35); c.stroke();
+  // window shine
+  c.fillStyle = "rgba(255,255,255,0.6)";
+  c.beginPath(); c.moveTo(x + 9, y + 31); c.lineTo(x + 13, y + 31); c.lineTo(x + 9, y + 35); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(x + 45, y + 31); c.lineTo(x + 49, y + 31); c.lineTo(x + 45, y + 35); c.closePath(); c.fill();
+}
+
+function drawTree(c, x, y) {
+  dropShadow(c, x, y + 6, 9, 0.4);
+  // trunk (3D-shaded cylinder)
+  const tg = c.createLinearGradient(x - 2, 0, x + 2, 0);
+  tg.addColorStop(0, "#3a2014");
+  tg.addColorStop(0.5, "#7a4525");
+  tg.addColorStop(1, "#3a2014");
+  c.fillStyle = tg;
+  c.fillRect(x - 2, y - 6, 4, 12);
+  // foliage cluster (3 overlapping spheres)
+  sphere(c, x - 4, y - 12, 7, "#2e6028");
+  sphere(c, x + 4, y - 11, 6, "#266026");
+  sphere(c, x,     y - 17, 8, "#34782e");
+}
+
+function drawPine(c, x, y) {
+  dropShadow(c, x, y + 6, 8, 0.4);
+  // trunk
+  const tg = c.createLinearGradient(x - 2, 0, x + 2, 0);
+  tg.addColorStop(0, "#2a1810");
+  tg.addColorStop(0.5, "#5a3018");
+  tg.addColorStop(1, "#2a1810");
+  c.fillStyle = tg;
+  c.fillRect(x - 2, y - 4, 4, 10);
+  // three tapered layers (triangles with gradient)
+  for (let i = 0; i < 3; i++) {
+    const ty = y - 4 - i * 7;
+    const tw = 10 - i * 2.5;
+    c.beginPath();
+    c.moveTo(x - tw, ty);
+    c.lineTo(x, ty - 9);
+    c.lineTo(x + tw, ty);
+    c.closePath();
+    const lg = c.createLinearGradient(x - tw, ty - 9, x + tw, ty);
+    lg.addColorStop(0, "#56a13e");
+    lg.addColorStop(0.5, "#286627");
+    lg.addColorStop(1, "#163a18");
+    c.fillStyle = lg;
+    c.fill();
+    // bright tip highlight
+    c.fillStyle = "rgba(255,255,255,0.25)";
+    c.beginPath();
+    c.moveTo(x - 1, ty - 8);
+    c.lineTo(x, ty - 9);
+    c.lineTo(x + 2, ty - 6);
+    c.closePath();
+    c.fill();
+  }
+}
+
+function drawFencePost(c, x, y) {
+  // 3D-shaded vertical post
+  const g = c.createLinearGradient(x, 0, x + 3, 0);
+  g.addColorStop(0, "#5a3520");
+  g.addColorStop(0.5, "#b88555");
+  g.addColorStop(1, "#5a3520");
+  c.fillStyle = g;
+  c.fillRect(x - 1, y, 3, 8);
+  // pointed cap shine
+  c.fillStyle = "#d9b88a";
+  c.fillRect(x - 1, y, 3, 1);
+  c.fillStyle = "rgba(255,255,255,0.5)";
+  c.fillRect(x, y, 1, 1);
+}
+function drawFenceRow(c, x1, y, x2) {
+  // horizontal rail (3D-shaded)
+  const rg = c.createLinearGradient(0, y + 2, 0, y + 5);
+  rg.addColorStop(0, "#c8956a");
+  rg.addColorStop(1, "#6a4528");
+  c.fillStyle = rg;
+  c.fillRect(x1, y + 3, x2 - x1, 2);
+  for (let x = x1; x <= x2; x += 14) drawFencePost(c, x, y);
+}
+function drawFenceCol(c, x, y1, y2) {
+  const rg = c.createLinearGradient(x, 0, x + 3, 0);
+  rg.addColorStop(0, "#6a4528");
+  rg.addColorStop(1, "#c8956a");
+  c.fillStyle = rg;
+  c.fillRect(x + 0.5, y1, 2, y2 - y1);
+  for (let y = y1; y <= y2; y += 14) {
+    const g = c.createLinearGradient(x, 0, x + 3, 0);
+    g.addColorStop(0, "#5a3520");
+    g.addColorStop(0.5, "#b88555");
+    g.addColorStop(1, "#5a3520");
+    c.fillStyle = g;
+    c.fillRect(x - 1, y, 3, 6);
+    c.fillStyle = "rgba(255,255,255,0.45)";
+    c.fillRect(x, y, 1, 1);
+  }
+}
+
+function drawFlower(c, x, y, color) {
+  // 4 petals (shaded circles)
+  sphere(c, x - 2, y, 1.5, color, { shine: false });
+  sphere(c, x + 2, y, 1.5, color, { shine: false });
+  sphere(c, x, y - 2, 1.5, color, { shine: false });
+  sphere(c, x, y + 2, 1.5, color, { shine: false });
+  sphere(c, x, y, 1.2, "#fcd34d");
+  // tiny leaf
+  c.fillStyle = "#2e6028";
+  c.fillRect(x, y + 3, 1, 2);
+}
+function drawBush(c, x, y) {
+  sphere(c, x - 2, y, 4, "#266026");
+  sphere(c, x + 3, y, 3, "#2e6028");
+  sphere(c, x, y - 2, 3.5, "#34782e");
+}
+function drawPondTile(c, x, y) {
+  // outer dark rim (mud bank)
+  c.fillStyle = "#5a3520";
+  c.beginPath();
+  c.ellipse(x + 16, y + 10, 22, 13, 0, 0, Math.PI * 2);
+  c.fill();
+  // water gradient (depth)
+  const wg = c.createRadialGradient(x + 12, y + 6, 2, x + 16, y + 10, 20);
+  wg.addColorStop(0, "#7fc2e0");
+  wg.addColorStop(0.5, "#3a7ea5");
+  wg.addColorStop(1, "#1a4565");
+  c.fillStyle = wg;
+  c.beginPath();
+  c.ellipse(x + 16, y + 10, 19, 11, 0, 0, Math.PI * 2);
+  c.fill();
+  // glossy reflection on top
+  c.fillStyle = "rgba(255,255,255,0.55)";
+  c.beginPath();
+  c.ellipse(x + 12, y + 7, 7, 2, -0.2, 0, Math.PI * 2);
+  c.fill();
+  c.fillStyle = "rgba(255,255,255,0.3)";
+  c.beginPath();
+  c.ellipse(x + 22, y + 12, 4, 1, 0.1, 0, Math.PI * 2);
+  c.fill();
+}
+
+function buildBackground() {
+  const c = bgCtx;
+  // 1. base grass with vertical gradient for sun direction
+  const gG = c.createLinearGradient(0, 0, 0, H);
+  gG.addColorStop(0, "#4d7838");
+  gG.addColorStop(0.5, "#3a5a28");
+  gG.addColorStop(1, "#2a431d");
+  c.fillStyle = gG;
+  c.fillRect(0, 0, W, H);
+  // soft checker
+  c.fillStyle = "rgba(0,0,0,0.06)";
+  for (let y = 0; y < H; y += 24) {
+    for (let x = (y % 48 === 0 ? 0 : 24); x < W; x += 48) {
+      c.fillRect(x, y, 24, 24);
+    }
+  }
+  // 2. dirt path with shaded edges (lit from above)
+  // base
+  const pathPoints = [];
+  for (let t = 0; t <= 1; t += 0.005) {
+    const cx = 80 + t * (W - 160) + Math.sin(t * Math.PI * 2.4) * 70;
+    const cy = 40 + t * (H - 80);
+    pathPoints.push([cx, cy]);
+  }
+  // path outer dark border
+  c.fillStyle = "#6a4525";
+  for (const [cx, cy] of pathPoints) {
+    c.beginPath();
+    c.ellipse(cx, cy, 17, 9, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  // main dirt (gradient bands for depth)
+  for (const [cx, cy] of pathPoints) {
+    const pg = c.createRadialGradient(cx - 4, cy - 3, 1, cx, cy, 15);
+    pg.addColorStop(0, "#d9a878");
+    pg.addColorStop(0.6, "#a87a45");
+    pg.addColorStop(1, "#7a5430");
+    c.fillStyle = pg;
+    c.beginPath();
+    c.ellipse(cx, cy, 14, 7, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+  // glossy pebbles on path
+  for (let i = 0; i < pathPoints.length; i += 6) {
+    const [cx, cy] = pathPoints[i];
+    const px = cx + Math.sin(i * 0.7) * 6;
+    const py = cy + Math.cos(i * 0.7) * 3;
+    sphere(c, px, py, 1.6, "#c9a578");
+  }
+  // 3. grass tufts (small lit blades)
+  for (let i = 0; i < 280; i++) {
+    const x = (i * 73 + 11) % W;
+    const y = (i * 137 + 23) % H;
+    const g = c.createLinearGradient(x, y, x, y + 3);
+    g.addColorStop(0, "#7ab058");
+    g.addColorStop(1, "#3a5a28");
+    c.fillStyle = g;
+    c.fillRect(x, y, 1, 3);
+    c.fillRect(x + 1, y + 1, 1, 2);
+  }
+  // 4. flowers scattered
+  const flowerColors = ["#f87171", "#fbbf24", "#f9a8d4", "#a78bfa", "#fde68a", "#fb7185"];
+  for (let i = 0; i < 32; i++) {
+    const x = 20 + ((i * 53) % (W - 40));
+    const y = 30 + ((i * 137) % (H - 60));
+    drawFlower(c, x, y, flowerColors[i % flowerColors.length]);
+  }
+  // 5. bushes around edges
+  for (let i = 0; i < 16; i++) {
+    const x = 30 + (i * 47) % (W - 60);
+    const y = (i % 2 === 0) ? 16 : H - 20;
+    drawBush(c, x, y);
+  }
+  // 6. houses
+  drawHouse(c, 8, 12);
+  drawHouse(c, W - 76, H - 76);
+  // 7. fences
+  drawFenceRow(c, 6, 80, 130);
+  drawFenceRow(c, W - 200, H - 14, W - 20);
+  drawFenceCol(c, 6, 100, 200);
+  drawFenceCol(c, W - 8, H - 200, H - 80);
+  // 8. trees
+  const trees = [
+    [60, 220], [90, 330], [40, 420],
+    [W - 50, 60], [W - 90, 180], [W - 30, 300], [W - 70, 430],
+    [180, 50], [300, 30], [460, 60],
+    [200, H - 30], [340, H - 40], [500, H - 25],
+  ];
+  for (const [x, y] of trees) {
+    if ((x + y) % 3 === 0) drawPine(c, x, y); else drawTree(c, x, y);
+  }
+  // 9. pond
+  drawPondTile(c, W - 90, 70);
+  // 10. faint vignette so center pops
+  const vg = c.createRadialGradient(W / 2, H / 2, 100, W / 2, H / 2, Math.max(W, H) * 0.7);
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(1, "rgba(0,0,0,0.35)");
+  c.fillStyle = vg;
+  c.fillRect(0, 0, W, H);
+}
+buildBackground();
+
+function drawGrass() {
+  // blit the cached background
+  ctx.drawImage(bgCanvas, 0, 0);
+}
+
+function pixelRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), w, h);
+}
+
+function drawPlayer() {
+  const p = game.player;
+  // 3D drop shadow
+  dropShadow(ctx, p.x, p.y + 8, 7, 0.5);
+  // legs (3D-shaded boxes)
+  shadedBox(ctx, p.x - 3, p.y + 2, 2.4, 5, "#2a3870", { radius: 1 });
+  shadedBox(ctx, p.x + 0.6, p.y + 2, 2.4, 5, "#2a3870", { radius: 1 });
+  // boots — glossy black
+  shadedBox(ctx, p.x - 3.2, p.y + 6, 2.8, 2, "#1a1010", { radius: 1 });
+  shadedBox(ctx, p.x + 0.4, p.y + 6, 2.8, 2, "#1a1010", { radius: 1 });
+  // body (green tunic) — rounded torso with sheen
+  shadedBox(ctx, p.x - 3.5, p.y - 2.5, 7, 6, "#3a8a3a", { radius: 2 });
+  // belt with metal buckle shine
+  shadedBox(ctx, p.x - 3.5, p.y + 2, 7, 1.6, "#5a3520", { radius: 0.5 });
+  ctx.fillStyle = "#fcd34d";
+  ctx.fillRect(p.x - 0.6, p.y + 2.1, 1.4, 1.4);
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillRect(p.x - 0.4, p.y + 2.2, 0.4, 0.4);
+  // arms (cylindrical, lit from above)
+  shadedBox(ctx, p.x - 4.5, p.y - 1.5, 1.6, 4.5, "#3a8a3a", { radius: 0.8 });
+  shadedBox(ctx, p.x + 2.9, p.y - 1.5, 1.6, 4.5, "#3a8a3a", { radius: 0.8 });
+  // hands (small spheres)
+  sphere(ctx, p.x - 3.7, p.y + 2.8, 1.1, "#f4c89c");
+  sphere(ctx, p.x + 3.7, p.y + 2.8, 1.1, "#f4c89c");
+  // head (sphere with shine)
+  sphere(ctx, p.x + 0.4, p.y - 4.5, 3.2, "#f4c89c");
+  // hair / cap (rounded brown crown)
+  ctx.fillStyle = "#5a2f12";
+  ctx.beginPath();
+  ctx.ellipse(p.x + 0.4, p.y - 6, 3.3, 1.8, 0, Math.PI, 0);
+  ctx.fill();
+  // hat with shine + red feather
+  const hatG = ctx.createLinearGradient(0, p.y - 8, 0, p.y - 5);
+  hatG.addColorStop(0, "#a04515");
+  hatG.addColorStop(1, "#5a2f12");
+  ctx.fillStyle = hatG;
+  roundedRect(ctx, p.x - 2.5, p.y - 7.5, 6, 1.4, 0.7);
+  ctx.fill();
+  // feather
+  ctx.fillStyle = "#dc2626";
+  ctx.beginPath();
+  ctx.ellipse(p.x + 3.2, p.y - 8.8, 1.4, 0.6, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.beginPath();
+  ctx.ellipse(p.x + 3, p.y - 9, 0.7, 0.3, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  // eyes (dark sparkly dots)
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.arc(p.x - 0.8, p.y - 4.2, 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x + 1.5, p.y - 4.2, 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.arc(p.x - 0.95, p.y - 4.35, 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x + 1.35, p.y - 4.35, 0.18, 0, Math.PI * 2); ctx.fill();
+  // damage flash overlay
+  if (p.hitFlash > 0) {
+    ctx.fillStyle = `rgba(255, 80, 80, ${p.hitFlash / 6 * 0.55})`;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 6, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawMeleeBlade() {
+  if (!game.meleeBlade) return;
+  const b = game.meleeBlade;
+  ctx.save();
+  ctx.translate(b.x, b.y);
+  ctx.rotate(game.meleeAngle + Math.PI / 2);
+
+  // motion trail
+  ctx.fillStyle = "rgba(255,255,255,0.15)";
+  ctx.beginPath();
+  ctx.moveTo(-2, -10);
+  ctx.quadraticCurveTo(0, -16, 2, -10);
+  ctx.lineTo(2, 4);
+  ctx.lineTo(-2, 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // blade body (3D metallic gradient)
+  const bg = ctx.createLinearGradient(-2, 0, 2, 0);
+  bg.addColorStop(0, "#5a6a78");
+  bg.addColorStop(0.4, "#e8eef5");
+  bg.addColorStop(0.55, "#ffffff");
+  bg.addColorStop(0.7, "#c8d2dc");
+  bg.addColorStop(1, "#3a4856");
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.moveTo(-1.5, -7);
+  ctx.lineTo(0, -9);
+  ctx.lineTo(1.5, -7);
+  ctx.lineTo(1.5, 5);
+  ctx.lineTo(-1.5, 5);
+  ctx.closePath();
+  ctx.fill();
+  // bright edge highlight (vertical streak)
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillRect(-0.3, -7, 0.6, 12);
+
+  // crossguard (golden, glossy)
+  const cg = ctx.createLinearGradient(-3, 5, 3, 5);
+  cg.addColorStop(0, "#7a4818");
+  cg.addColorStop(0.5, "#fcd34d");
+  cg.addColorStop(1, "#7a4818");
+  ctx.fillStyle = cg;
+  roundedRect(ctx, -3, 5, 6, 1.6, 0.4);
+  ctx.fill();
+  // crossguard shine
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.fillRect(-2, 5.1, 4, 0.4);
+
+  // grip (dark leather)
+  shadedBox(ctx, -1, 6.6, 2, 2.8, "#3a2418", { radius: 0.6 });
+
+  // pommel (gold sphere)
+  sphere(ctx, 0, 10, 1.1, "#fcd34d");
+
+  ctx.restore();
+}
+
+function drawEnemy(e) {
+  const t = ENEMIES[e.type];
+  // 3D drop shadow
+  dropShadow(ctx, e.x, e.y + e.size, e.size * 1.1, 0.5);
+  const col = e.hitFlash > 0 ? "#ffffff" : t.color;
+
+  if (e.type === "slime") {
+    // glossy dome blob
+    const r = e.size;
+    const g = ctx.createRadialGradient(e.x - r * 0.35, e.y - r * 0.4, 1, e.x, e.y, r * 1.2);
+    g.addColorStop(0, lighten(col, 80));
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, darken(col, 50));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y, r * 1.05, r * 0.95, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // big shine
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.beginPath();
+    ctx.ellipse(e.x - r * 0.35, e.y - r * 0.45, r * 0.5, r * 0.25, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // bottom reflection
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(e.x, e.y + r * 0.55, r * 0.55, r * 0.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // eyes (sparkly)
+    sphere(ctx, e.x - 1.8, e.y - 0.5, 0.9, "#ffffff", { shine: false });
+    sphere(ctx, e.x + 1.8, e.y - 0.5, 0.9, "#ffffff", { shine: false });
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(e.x - 1.6, e.y - 0.4, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 2.0, e.y - 0.4, 0.4, 0, Math.PI * 2); ctx.fill();
+
+  } else if (e.type === "bat") {
+    // wings — shaded with leading-edge highlight
+    const flap = Math.sin(game.tick * 0.4) * 0.4;
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    // left wing
+    ctx.save();
+    ctx.rotate(-flap);
+    const wg = ctx.createLinearGradient(-8, 0, 0, 0);
+    wg.addColorStop(0, "#3a2818");
+    wg.addColorStop(0.7, col);
+    wg.addColorStop(1, lighten(col, 30));
+    ctx.fillStyle = wg;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-5, -3, -8, 0);
+    ctx.quadraticCurveTo(-5, 2, 0, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    // right wing
+    ctx.save();
+    ctx.rotate(flap);
+    const wg2 = ctx.createLinearGradient(0, 0, 8, 0);
+    wg2.addColorStop(0, lighten(col, 30));
+    wg2.addColorStop(0.3, col);
+    wg2.addColorStop(1, "#3a2818");
+    ctx.fillStyle = wg2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(5, -3, 8, 0);
+    ctx.quadraticCurveTo(5, 2, 0, 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.restore();
+    // body (3D sphere)
+    sphere(ctx, e.x, e.y, 3, "#2a1e10");
+    // glowing red eyes
+    ctx.fillStyle = "#ff2020";
+    ctx.shadowColor = "#f00"; ctx.shadowBlur = 5;
+    ctx.beginPath(); ctx.arc(e.x - 1, e.y - 0.5, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 1, e.y - 0.5, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // fangs
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.moveTo(e.x - 0.6, e.y + 1); ctx.lineTo(e.x - 0.2, e.y + 2); ctx.lineTo(e.x, e.y + 1); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(e.x + 0.6, e.y + 1); ctx.lineTo(e.x + 0.2, e.y + 2); ctx.lineTo(e.x, e.y + 1); ctx.closePath(); ctx.fill();
+
+  } else if (e.type === "goblin") {
+    // body (shaded)
+    shadedBox(ctx, e.x - 3, e.y - 1, 6, 5, col, { radius: 2 });
+    // legs
+    shadedBox(ctx, e.x - 3, e.y + 3, 2.2, 3, darken(col, 30), { radius: 1 });
+    shadedBox(ctx, e.x + 0.8, e.y + 3, 2.2, 3, darken(col, 30), { radius: 1 });
+    // head (sphere)
+    sphere(ctx, e.x, e.y - 3.5, 2.8, col);
+    // pointy ears
+    ctx.fillStyle = darken(col, 20);
+    ctx.beginPath(); ctx.moveTo(e.x - 3, e.y - 4); ctx.lineTo(e.x - 4.5, e.y - 5.5); ctx.lineTo(e.x - 2.5, e.y - 3); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(e.x + 3, e.y - 4); ctx.lineTo(e.x + 4.5, e.y - 5.5); ctx.lineTo(e.x + 2.5, e.y - 3); ctx.closePath(); ctx.fill();
+    // glowing red eyes
+    ctx.fillStyle = "#ff3030";
+    ctx.shadowColor = "#f00"; ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.arc(e.x - 1, e.y - 3.5, 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 1, e.y - 3.5, 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // tooth
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.moveTo(e.x, e.y - 2); ctx.lineTo(e.x - 0.3, e.y - 1); ctx.lineTo(e.x + 0.3, e.y - 1); ctx.closePath(); ctx.fill();
+
+  } else if (e.type === "archer") {
+    // robe body
+    shadedBox(ctx, e.x - 2.5, e.y - 1, 5, 5.5, col, { radius: 2 });
+    shadedBox(ctx, e.x - 2.5, e.y + 3.5, 2, 2.8, "#5a3520", { radius: 1 });
+    shadedBox(ctx, e.x + 0.5, e.y + 3.5, 2, 2.8, "#5a3520", { radius: 1 });
+    // hooded head
+    ctx.fillStyle = "#2a1810";
+    ctx.beginPath();
+    ctx.arc(e.x, e.y - 4, 3, 0, Math.PI * 2);
+    ctx.fill();
+    // face peeking out (sphere)
+    sphere(ctx, e.x, e.y - 3, 1.8, "#d8a878");
+    // eyes
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(e.x - 0.6, e.y - 3, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 0.6, e.y - 3, 0.3, 0, Math.PI * 2); ctx.fill();
+    // 3D bow
+    ctx.strokeStyle = "#7a4520";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(e.x + 4, e.y + 1, 4, -Math.PI / 2.5, Math.PI / 2.5);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 0.4;
+    ctx.stroke();
+
+  } else if (e.type === "brute") {
+    // shoulders + body
+    shadedBox(ctx, e.x - 6, e.y - 4, 12, 9, col, { radius: 3 });
+    // armor chest plate accents
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    ctx.beginPath();
+    ctx.moveTo(e.x - 5, e.y - 3.5);
+    ctx.lineTo(e.x + 5, e.y - 3.5);
+    ctx.lineTo(e.x + 3, e.y);
+    ctx.lineTo(e.x - 3, e.y);
+    ctx.closePath();
+    ctx.fill();
+    // head (sphere + horns)
+    sphere(ctx, e.x, e.y - 7, 4.2, col);
+    // horns
+    ctx.fillStyle = "#f0e6d8";
+    ctx.beginPath();
+    ctx.moveTo(e.x - 3.8, e.y - 8); ctx.lineTo(e.x - 5.5, e.y - 11); ctx.lineTo(e.x - 3, e.y - 9.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(e.x + 3.8, e.y - 8); ctx.lineTo(e.x + 5.5, e.y - 11); ctx.lineTo(e.x + 3, e.y - 9.5); ctx.closePath(); ctx.fill();
+    // glowing yellow eyes
+    ctx.shadowColor = "#fcd34d"; ctx.shadowBlur = 6;
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath(); ctx.arc(e.x - 1.6, e.y - 7, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 1.6, e.y - 7, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // mouth with fangs
+    ctx.fillStyle = "#000";
+    roundedRect(ctx, e.x - 2.5, e.y - 5, 5, 1.4, 0.6); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.moveTo(e.x - 1.5, e.y - 5); ctx.lineTo(e.x - 1, e.y - 3.8); ctx.lineTo(e.x - 0.5, e.y - 5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(e.x + 1.5, e.y - 5); ctx.lineTo(e.x + 1, e.y - 3.8); ctx.lineTo(e.x + 0.5, e.y - 5); ctx.closePath(); ctx.fill();
+    // belt with shiny buckle
+    shadedBox(ctx, e.x - 6, e.y + 1.5, 12, 1.8, "#3a2418", { radius: 0.5 });
+    sphere(ctx, e.x, e.y + 2.4, 1.2, "#fcd34d");
+    // legs
+    shadedBox(ctx, e.x - 5, e.y + 5, 3, 3, darken(col, 30), { radius: 1 });
+    shadedBox(ctx, e.x + 2, e.y + 5, 3, 3, darken(col, 30), { radius: 1 });
+
+  } else if (e.boss) {
+    const r = e.size;
+    // big armored body
+    shadedBox(ctx, e.x - r, e.y - r + 4, r * 2, r * 2 - 4, col, { radius: 4 });
+    // armor plate gleam
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    ctx.beginPath();
+    ctx.moveTo(e.x - r + 2, e.y - r + 5);
+    ctx.lineTo(e.x + r - 2, e.y - r + 5);
+    ctx.lineTo(e.x + r * 0.5, e.y);
+    ctx.lineTo(e.x - r * 0.5, e.y);
+    ctx.closePath();
+    ctx.fill();
+    // head (sphere)
+    sphere(ctx, e.x, e.y - r + 2, r * 0.55, col);
+    // crown of spikes
+    ctx.fillStyle = darken(col, 30);
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(e.x + i * 3, e.y - r);
+      ctx.lineTo(e.x + i * 3 - 1, e.y - r - 5);
+      ctx.lineTo(e.x + i * 3 + 1, e.y - r - 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // glowing red eyes
+    ctx.shadowColor = "#f00"; ctx.shadowBlur = 10;
+    ctx.fillStyle = "#ff2020";
+    ctx.beginPath(); ctx.arc(e.x - 4, e.y - r + 2, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x + 4, e.y - r + 2, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    // mouth with sharp teeth
+    ctx.fillStyle = "#000";
+    roundedRect(ctx, e.x - 5, e.y - r + 5, 10, 2.4, 1); ctx.fill();
+    ctx.fillStyle = "#fff";
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(e.x + i * 2, e.y - r + 5);
+      ctx.lineTo(e.x + i * 2 + 0.5, e.y - r + 7);
+      ctx.lineTo(e.x + i * 2 + 1, e.y - r + 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // belt with shiny gold buckle
+    shadedBox(ctx, e.x - r, e.y + 2, r * 2, 3, "#3a2418", { radius: 0.5 });
+    sphere(ctx, e.x, e.y + 3.5, 2.4, "#fcd34d");
+    if (e.type === "boss_lich") {
+      // 3D staff with glowing orb
+      shadedBox(ctx, e.x + r + 1, e.y - r - 4, 2, r * 2 + 10, "#5a3520", { radius: 1 });
+      ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = 14;
+      glassOrb(ctx, e.x + r + 2, e.y - r - 4, 3.5, "#a78bfa");
+      ctx.shadowBlur = 0;
+    }
+  } else {
+    sphere(ctx, e.x, e.y - e.size / 2, e.size * 0.7, col);
+    shadedBox(ctx, e.x - e.size, e.y, e.size * 2, e.size, col, { radius: 2 });
+  }
+  // hp bar (only when damaged)
+  if (e.hp < e.maxHp) {
+    const w = Math.max(e.size * 2, 16);
+    const r = Math.max(0, e.hp / e.maxHp);
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(Math.round(e.x - w / 2), Math.round(e.y - e.size - 5), w, 3);
+    ctx.fillStyle = r > 0.5 ? "#5c5" : r > 0.25 ? "#fa3" : "#f55";
+    ctx.fillRect(Math.round(e.x - w / 2), Math.round(e.y - e.size - 5), Math.round(w * r), 3);
+  }
+  // status effect dots (small glowing spheres above)
+  let dotX = -6;
+  function statusDot(color) {
+    sphere(ctx, e.x + dotX, e.y - e.size - 9, 1.4, color);
+    dotX += 4;
+  }
+  if (e.bleedLeft > 0)  statusDot("#f55");
+  if (e.blazeLeft > 0)  statusDot("#fb923c");
+  if (e.poisonLeft > 0) statusDot("#a3e635");
+  if (e.chillLeft > 0)  statusDot("#7dd3fc");
+}
+
+function drawOrb(orb) {
+  const colors = {
+    shock:  "#fde047",
+    blaze:  "#fb923c",
+    poison: "#a3e635",
+    chill:  "#93c5fd",
+  };
+  const c = colors[orb.effect] || "#ffffff";
+  // proper glass marble with halo glow + specular shine
+  ctx.shadowColor = c;
+  ctx.shadowBlur = 8;
+  glassOrb(ctx, orb.x, orb.y, 3.5, c);
+  ctx.shadowBlur = 0;
+}
+
+function drawParticles() {
+  for (const p of game.particles) {
+    const a = p.life / p.max;
+    if (p.type === "spark") {
+      // glowing sphere spark
+      ctx.shadowColor = `rgba(${p.color},${a})`;
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = `rgba(${p.color},${a})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.4 + a * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      // white core
+      ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (p.type === "lightning") {
+      // outer glow stroke
+      ctx.strokeStyle = `rgba(250,220,80,${a * 0.5})`;
+      ctx.lineWidth = 6;
+      ctx.shadowColor = "#fcd34d"; ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(p.x1, p.y1);
+      const pts = [];
+      const steps = 5;
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const xx = p.x1 + (p.x2 - p.x1) * t + (Math.random() - 0.5) * 20;
+        const yy = p.y1 + (p.y2 - p.y1) * t;
+        pts.push([xx, yy]);
+        ctx.lineTo(xx, yy);
+      }
+      ctx.stroke();
+      // bright white core
+      ctx.strokeStyle = `rgba(255,255,255,${a})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x1, p.y1);
+      for (const [x, y] of pts) ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+function drawFloatingText() {
+  for (const t of game.floatingText) {
+    const a = t.life / 36;
+    ctx.fillStyle = `rgba(${t.color},${a})`;
+    ctx.font = "bold 10px 'Press Start 2P', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(t.text, Math.round(t.x), Math.round(t.y));
+  }
+}
+
+function render() {
+  drawGrass();
+  // particles below entities
+  drawParticles();
+  // enemy bullets (glowing red spheres)
+  for (const b of game.enemyBullets) {
+    ctx.shadowColor = "#f55"; ctx.shadowBlur = 6;
+    sphere(ctx, b.x, b.y, 2.4, "#dc2626");
+    ctx.shadowBlur = 0;
+  }
+  // enemies
+  for (const e of game.enemies) drawEnemy(e);
+  // player bullets (glowing spheres with motion blur)
+  for (const b of game.bullets) {
+    // tracer trail
+    ctx.strokeStyle = b.color + "88";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x - b.vx * 1.6, b.y - b.vy * 1.6);
+    ctx.stroke();
+    ctx.shadowColor = b.color; ctx.shadowBlur = 5;
+    sphere(ctx, b.x, b.y, 2.2, b.color);
+    ctx.shadowBlur = 0;
+  }
+  // melee blade
+  drawMeleeBlade();
+  // orbs
+  for (const orb of game.orbs) drawOrb(orb);
+  // player
+  drawPlayer();
+  // floating text on top
+  drawFloatingText();
+
+  // damage flash
+  if (game.flashDamage > 0) {
+    ctx.fillStyle = `rgba(244,63,94,${game.flashDamage / 8 * 0.3})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // subtle full-screen gloss vignette (cheap "shine" sheen across world)
+  const gl = ctx.createLinearGradient(0, 0, 0, H);
+  gl.addColorStop(0, "rgba(255,255,255,0.05)");
+  gl.addColorStop(0.4, "rgba(255,255,255,0)");
+  gl.addColorStop(1, "rgba(0,0,0,0.18)");
+  ctx.fillStyle = gl;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// ============================================================
+// HUD
+// ============================================================
+function updateHud() {
+  if (!game) return;
+  document.getElementById("hud-hp").textContent = Math.round(game.player.hp);
+  document.getElementById("hud-maxhp").textContent = game.player.maxHp;
+  document.getElementById("hud-coins").textContent = game.coins;
+  document.getElementById("hud-wave").textContent = game.wave;
+  document.getElementById("hud-kills").textContent = game.kills;
+  const w = WEAPONS[game.player.weapon];
+  document.getElementById("hud-weapon").textContent = w ? w.name : "—";
+}
+
+// ============================================================
+// OVERLAYS
+// ============================================================
+function openAbilityPicker() {
+  const ov = document.getElementById("ability-overlay");
+  const choices = rollAbilityChoices(3);
+  const grid = document.getElementById("ability-choices");
+  grid.innerHTML = choices.map((c, i) => renderAbilityCard(c, i)).join("");
+  ov.classList.add("show");
+  grid.querySelectorAll(".choice-card").forEach((card, i) => {
+    card.addEventListener("click", () => {
+      const c = choices[i];
+      pickAbility(c);
+      ov.classList.remove("show");
+      startNextWave();
+    });
+  });
+  document.getElementById("ability-sub").textContent = `Wave ${game.wave} cleared! +${5 + game.wave * 2} coins. Pick a power-up:`;
+}
+function renderAbilityCard(c) {
+  const a = ABILITIES[c.id];
+  const t = a.tiers[c.rarity];
+  let statLine = "";
+  if (a.effect && ["shock", "blaze", "poison", "chill"].includes(a.effect)) {
+    statLine = `${t.dmg} dmg · ${t.orbs} orb${t.orbs > 1 ? "s" : ""}`;
+  } else if (c.id === "lightning_strike") {
+    statLine = `${t.dmg} dmg every ${(t.interval / 60).toFixed(1)}s`;
+  } else if (c.id === "heal_aura") {
+    statLine = `+${(t.regen * 60).toFixed(1)} HP/sec`;
+  } else if (c.id === "bloodlust") {
+    statLine = `+${Math.round((t.mult - 1) * 100)}% damage`;
+  } else if (c.id === "swiftfoot") {
+    statLine = `+${Math.round((t.mult - 1) * 100)}% speed`;
+  } else if (c.id === "vampirism") {
+    statLine = `Heal ${Math.round(t.leech * 100)}% of damage dealt`;
+  }
+  return `<div class="choice-card rarity-${c.rarity}">
+    <div class="c-rarity">${c.rarity.toUpperCase()}</div>
+    <div class="c-name">${a.name}</div>
+    <div class="c-desc">${a.desc}<br><strong style="color:#fcd34d;">${statLine}</strong></div>
+  </div>`;
+}
+function pickAbility(c) {
+  // stack abilities — duplicates with higher rarity replace lower
+  const existing = game.abilities.find(a => a.id === c.id);
+  if (existing) {
+    const cur = RARITY_ORDER.indexOf(existing.rarity);
+    const inc = RARITY_ORDER.indexOf(c.rarity);
+    if (inc > cur) existing.rarity = c.rarity;
+  } else {
+    game.abilities.push({ id: c.id, rarity: c.rarity });
+  }
+}
+document.getElementById("ability-skip").addEventListener("click", () => {
+  document.getElementById("ability-overlay").classList.remove("show");
+  startNextWave();
+});
+
+// === City ===
+let cityWeapons = [];
+const EXPLORE_LINES = [
+  "An old woman tells you of a sword in a distant cave.",
+  "A blacksmith hammers on a glowing blade.",
+  "Children chase a stray dog through the square.",
+  "You see a faded poster about a missing wizard.",
+  "A bard plays a tune of fallen heroes.",
+  "Coins clatter inside a fountain — you don't touch them.",
+  "An apothecary offers herbs, but you have nowhere to keep them.",
+  "A drunk knight challenges you, then falls over laughing.",
+  "Someone whispers about a treasure beyond wave 50...",
+  "A black cat watches you from a windowsill.",
+];
+function openCity() {
+  game.waveState = "city";
+  game.cityVisited++;
+  // roll 3 weapons (mostly common/rare with chance of epic/legendary)
+  cityWeapons = [rollCityWeapon(), rollCityWeapon(), rollCityWeapon()];
+  renderCity();
+  document.getElementById("city-overlay").classList.add("show");
+}
+function rollCityWeapon() {
+  // weighted: 50% common, 30% rare, 15% epic, 5% legendary
+  const r = Math.random();
+  let rarity;
+  if (r < 0.50) rarity = "common";
+  else if (r < 0.80) rarity = "rare";
+  else if (r < 0.95) rarity = "epic";
+  else rarity = "legendary";
+  const opts = Object.keys(WEAPONS).filter(k => WEAPONS[k].rarity === rarity);
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+function renderCity() {
+  const w = WEAPONS;
+  document.getElementById("city-stats").textContent =
+    `Coins: ${game.coins} · HP: ${Math.round(game.player.hp)}/${game.player.maxHp} · Wave ${game.wave}`;
+  const shop = document.getElementById("city-shop");
+  shop.innerHTML = `<div class="choice-grid">` +
+    cityWeapons.map((wid, i) => {
+      const wp = w[wid];
+      const canAfford = game.coins >= wp.cost;
+      return `<div class="choice-card rarity-${wp.rarity}" data-buy="${i}" style="opacity:${canAfford ? 1 : 0.5}; cursor:${canAfford ? 'pointer' : 'not-allowed'};">
+        <div class="c-rarity">${wp.rarity.toUpperCase()}</div>
+        <div class="c-name">${wp.name}</div>
+        <div class="c-desc">${wp.type.toUpperCase()} · DMG ${wp.dmg}${wp.bleed ? " · BLEED " + wp.bleed : ""}${wp.radius ? " · R " + wp.radius : ""}</div>
+        <div class="c-cost">${wp.cost}c</div>
+      </div>`;
+    }).join("") +
+    `</div>
+    <div style="margin-top:10px;">
+      <button class="pixel-btn secondary" id="city-reroll">RE-ROLL SHOP (20c)</button>
+    </div>`;
+  shop.querySelectorAll("[data-buy]").forEach(card => {
+    card.addEventListener("click", () => {
+      const i = parseInt(card.dataset.buy);
+      const wid = cityWeapons[i];
+      const wp = WEAPONS[wid];
+      if (game.coins < wp.cost) return;
+      game.coins -= wp.cost;
+      game.player.weapon = wid;
+      renderCity();
+      updateHud();
+    });
+  });
+  document.getElementById("city-reroll").addEventListener("click", () => {
+    if (game.coins < 20) return;
+    game.coins -= 20;
+    cityWeapons = [rollCityWeapon(), rollCityWeapon(), rollCityWeapon()];
+    renderCity();
+  });
+}
+document.getElementById("city-heal").addEventListener("click", () => {
+  if (game.coins < 50) return;
+  if (game.player.hp >= game.player.maxHp) return;
+  game.coins -= 50;
+  game.player.hp = game.player.maxHp;
+  renderCity();
+  updateHud();
+});
+document.getElementById("city-explore").addEventListener("click", () => {
+  const line = EXPLORE_LINES[Math.floor(Math.random() * EXPLORE_LINES.length)];
+  document.getElementById("city-explore-text").textContent = line;
+});
+document.getElementById("city-continue").addEventListener("click", () => {
+  document.getElementById("city-overlay").classList.remove("show");
+  document.getElementById("city-explore-text").textContent = "";
+  game.waveState = "between";
+  startNextWave();
+});
+
+// === Death ===
+function showDeath() {
+  document.getElementById("death-stats").textContent =
+    `You fell on wave ${game.wave} · ${game.kills} kills · ${game.coins}c earned`;
+  document.getElementById("death-overlay").classList.add("show");
+}
+document.getElementById("death-restart").addEventListener("click", () => {
+  document.getElementById("death-overlay").classList.remove("show");
+  document.getElementById("start-overlay").classList.add("show");
+  pickStartWeapon();
+});
+
+// === Starter weapon ===
+let startWeapon;
+function pickStartWeapon() {
+  startWeapon = randomCommonWeapon();
+  renderStartCard();
+}
+function renderStartCard() {
+  const w = WEAPONS[startWeapon];
+  document.getElementById("start-card").innerHTML = `<div class="choice-card rarity-${w.rarity}">
+    <div class="c-rarity">${w.rarity.toUpperCase()}</div>
+    <div class="c-name">${w.name}</div>
+    <div class="c-desc">${w.type.toUpperCase()} · DMG ${w.dmg}${w.bleed ? " · BLEED " + w.bleed : ""}${w.radius ? " · R " + w.radius : ""}</div>
+  </div>`;
+}
+document.getElementById("start-reroll").addEventListener("click", () => {
+  startWeapon = randomCommonWeapon();
+  renderStartCard();
+});
+document.getElementById("start-go").addEventListener("click", () => {
+  startQuest(startWeapon);
+});
+
+// ============================================================
+// LOOP
+// ============================================================
+function loop() {
+  try { update(); render(); }
+  catch (err) { console.error(err); }
+  requestAnimationFrame(loop);
+}
+
+// initial setup: pick starter weapon
+newGame("pistol"); // dummy game state so update() doesn't crash before start
+pickStartWeapon();
+loop();
+</script>
+</body>
+</html>
