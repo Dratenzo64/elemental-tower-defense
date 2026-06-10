@@ -6,7 +6,7 @@
 <title>Dratenzo Games</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Press+Start+2P&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -307,6 +307,79 @@
     45%      { left: 92%; opacity: 1;   transform: translate(-100%, -50%) scale(1.15); }
     55%      { left: 92%; opacity: 1;   transform: translate(-100%, -50%) scale(1.15); }
   }
+  /* PixelQuest — chunky pixel letters with a retro RPG vibe */
+  .icon-pxq {
+    letter-spacing: 4px;
+    padding: 16px 4px;
+    border-color: rgba(252, 211, 77, 0.35);
+    font-family: 'Press Start 2P', 'Orbitron', monospace !important;
+    position: relative;
+    background: linear-gradient(180deg, rgba(252, 211, 77, 0.08) 0%, rgba(67, 36, 24, 0.2) 100%);
+  }
+  .icon-pxq span {
+    display: inline-block;
+    font-family: 'Press Start 2P', 'Orbitron', monospace !important;
+    font-size: 26px;
+    color: #fcd34d;
+    text-shadow:
+      3px 3px 0 #432418,
+      0 0 10px rgba(252, 211, 77, 0.55);
+    image-rendering: pixelated;
+    animation: pxq-bob 1.4s infinite ease-in-out;
+  }
+  .icon-pxq .q2 { animation-delay: 0.15s; color: #4ade80; text-shadow: 3px 3px 0 #1a3d22, 0 0 10px rgba(74, 222, 128, 0.5); }
+  .icon-pxq .q3 { animation-delay: 0.3s;  color: #60a5fa; text-shadow: 3px 3px 0 #1a2c45, 0 0 10px rgba(96, 165, 250, 0.5); }
+  /* tiny pixel sword bobbing in the background */
+  .icon-pxq::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    width: 4px;
+    height: 18px;
+    background:
+      linear-gradient(180deg,
+        #cdd9e6 0%, #cdd9e6 70%,
+        #8a6038 70%, #8a6038 100%);
+    box-shadow:
+      -3px 4px 0 #cdd9e6,
+       3px 4px 0 #cdd9e6,
+      -3px 14px 0 #8a6038,
+       3px 14px 0 #8a6038;
+    transform: rotate(35deg);
+    animation: pxq-sword 2.4s infinite ease-in-out;
+    pointer-events: none;
+  }
+  /* tiny pixel coin sparkle */
+  .icon-pxq::after {
+    content: "";
+    position: absolute;
+    bottom: 8px;
+    left: 14px;
+    width: 6px;
+    height: 6px;
+    background: #fcd34d;
+    box-shadow:
+      0 -6px 0 0 transparent,
+      0 0 6px 1px #fcd34d,
+      6px 0 0 -2px #fcd34d,
+      -6px 0 0 -2px #fcd34d;
+    border-radius: 50%;
+    animation: pxq-coin 1.6s infinite ease-in-out;
+    pointer-events: none;
+  }
+  @keyframes pxq-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+  }
+  @keyframes pxq-sword {
+    0%, 100% { transform: rotate(35deg) translateY(0); }
+    50%      { transform: rotate(40deg) translateY(-2px); }
+  }
+  @keyframes pxq-coin {
+    0%, 100% { transform: scale(1)   rotate(0deg);   opacity: 0.9; }
+    50%      { transform: scale(0.4) rotate(180deg); opacity: 0.5; }
+  }
   .game-genre {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.55);
@@ -403,6 +476,7 @@
   <button class="tab" data-category="tower-defense">Tower Defense</button>
   <button class="tab" data-category="puzzle">Puzzle</button>
   <button class="tab" data-category="action">Action</button>
+  <button class="tab" data-category="adventure">Adventure</button>
 </div>
 
 <div class="games-grid" id="games-grid"></div>
@@ -446,6 +520,17 @@ const games = [
     description: "Top-down sliding action. You're a green circle on an icy floor — momentum carries you. Dodge bullets from hexagonal towers and the melee enemies that chase you down. Hold the mouse to aim while time slows around you, then release to fire a 3-bullet burst. One shot kills a tower or enemy. Survive as long as you can.",
     tags: ["Bullet Time", "Ice Physics", "Burst Fire", "Endless"],
     url: "slipshot.html",
+    available: true,
+  },
+  {
+    title: "PixelQuest",
+    icon: "PXQ",
+    iconHtml: '<div class="game-icon icon-pxq"><span class="q1">P</span><span class="q2">X</span><span class="q3">Q</span></div>',
+    genre: "Adventure",
+    category: "adventure",
+    description: "A pixelated wave-survival adventure inspired by classic Pokemon. Start with a random common weapon — ranged weapons auto-fire every 0.5s, melee weapons spin around you and bleed enemies. After each wave you earn coins and roll a power-up with rarity weights (40% common, 20% rare, 10% epic, 5% legendary, rest re-roll). Stack lightning/fire/poison/ice orbs, lightning strikes, healing auras and more. Every 10 waves you reach the City of Emberfall to roll new weapons and explore.",
+    tags: ["Pixel Art", "Wave Survival", "Loot Rarity", "City Visits"],
+    url: "pixelquest.html",
     available: true,
   },
 ];
