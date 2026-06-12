@@ -213,6 +213,60 @@
   }
   .home-link:hover { background: rgba(0, 0, 0, 0.8); }
 
+  #save-indicator {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    background: rgba(52, 211, 153, 0.18);
+    border: 2px solid #34d399;
+    padding: 6px 12px;
+    color: #6ee7b7;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  }
+  #save-indicator.show { opacity: 1; transform: translateY(0); }
+
+  /* Countdown overlay */
+  #countdown-overlay {
+    background: rgba(0, 0, 0, 0.55);
+  }
+  #countdown-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 140px;
+    color: #fcd34d;
+    text-shadow:
+      8px 8px 0 #432418,
+      0 0 40px rgba(252, 211, 77, 0.6);
+    animation: countdown-pop 0.7s ease-out forwards;
+  }
+  #countdown-num.go {
+    font-size: 84px;
+    color: #34d399;
+    text-shadow:
+      6px 6px 0 #0f3320,
+      0 0 40px rgba(52, 211, 153, 0.8);
+    animation: countdown-go 0.6s ease-out forwards;
+  }
+  @keyframes countdown-pop {
+    0%   { transform: scale(0.2); opacity: 0; }
+    25%  { transform: scale(1.2); opacity: 1; }
+    70%  { transform: scale(1.0); opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+  @keyframes countdown-go {
+    0%   { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+    25%  { transform: scale(1.5) rotate(0deg);  opacity: 1; }
+    75%  { transform: scale(1.2) rotate(0deg);  opacity: 1; }
+    100% { transform: scale(2.0) rotate(8deg);  opacity: 0; }
+  }
+
   /* Mobile D-pad */
   #mobile-dpad { display: none; }
   @media (pointer: coarse), (max-width: 800px) {
@@ -260,6 +314,7 @@
 <body>
 
 <a href="index.html" class="home-link">‹ BACK</a>
+<div id="save-indicator">SAVED ✓</div>
 <h1>PIXELQUEST</h1>
 <p class="subtitle">// PIXELATED WAVE-SURVIVAL ADVENTURE //</p>
 
@@ -284,6 +339,24 @@
   <button id="m-left">◀</button>
   <button id="m-right">▶</button>
   <button id="m-down">▼</button>
+</div>
+
+<!-- Continue prompt (shown if a save exists) -->
+<div id="continue-overlay" class="overlay">
+  <div class="panel">
+    <div class="panel-title" style="color:#34d399;">CONTINUE QUEST?</div>
+    <div class="panel-sub" id="continue-sub">Resume from wave 0</div>
+    <div id="continue-loadout" class="choice-grid" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:14px;"></div>
+    <div>
+      <button class="pixel-btn" id="continue-yes">CONTINUE ›</button>
+      <button class="pixel-btn danger" id="continue-no">NEW GAME</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3-2-1-GO countdown -->
+<div id="countdown-overlay" class="overlay">
+  <div id="countdown-num">3</div>
 </div>
 
 <!-- Starter weapon picker (also used on death restart) -->
@@ -690,6 +763,7 @@ function startNextWave() {
   // Visit city every 10 waves AFTER the boss wave
   if (game.wave > 1 && (game.wave - 1) % 10 === 0) {
     openCity();
+    savePixelQuest();
     return;
   }
   game.waveState = "spawning";
@@ -700,6 +774,8 @@ function startNextWave() {
   }
   game.spawnTimer = 0;
   updateHud();
+  // Save at every clean wave-transition checkpoint
+  savePixelQuest();
 }
 
 // ============================================================
@@ -1980,6 +2056,7 @@ function renderCity() {
       cityWeapons.push(rollCityWeapon());
       renderCity();
       updateHud();
+      savePixelQuest();
     });
   });
   // drop
@@ -1990,6 +2067,7 @@ function renderCity() {
       dropWeapon(idx);
       renderCity();
       updateHud();
+      savePixelQuest();
     });
   });
   document.getElementById("city-reroll").addEventListener("click", () => {
@@ -2006,6 +2084,7 @@ document.getElementById("city-heal").addEventListener("click", () => {
   game.player.hp = game.player.maxHp;
   renderCity();
   updateHud();
+  savePixelQuest();
 });
 document.getElementById("city-explore").addEventListener("click", () => {
   const line = EXPLORE_LINES[Math.floor(Math.random() * EXPLORE_LINES.length)];
@@ -2023,12 +2102,167 @@ function showDeath() {
   document.getElementById("death-stats").textContent =
     `You fell on wave ${game.wave} · ${game.kills} kills · ${game.coins}c earned`;
   document.getElementById("death-overlay").classList.add("show");
+  clearSave(); // dead = the saved run is over
 }
 document.getElementById("death-restart").addEventListener("click", () => {
   document.getElementById("death-overlay").classList.remove("show");
   document.getElementById("start-overlay").classList.add("show");
   pickStartWeapon();
 });
+
+// ============================================================
+// SAVE / LOAD — localStorage + URL hash (so a Live Server reload doesn't wipe progress)
+// ============================================================
+const SAVE_KEY = "pixelquest-save-v1";
+const HASH_PREFIX = "#pq=";
+
+function _b64Encode(s) {
+  try {
+    return btoa(unescape(encodeURIComponent(s)))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  } catch (e) { return ""; }
+}
+function _b64Decode(s) {
+  try {
+    let b = s.replace(/-/g, "+").replace(/_/g, "/");
+    while (b.length % 4) b += "=";
+    return decodeURIComponent(escape(atob(b)));
+  } catch (e) { return null; }
+}
+
+function savePixelQuest() {
+  if (!game || game.gameOver) return;
+  const data = {
+    wave: game.wave,
+    hp: Math.round(game.player.hp),
+    maxHp: game.player.maxHp,
+    coins: game.coins,
+    kills: game.kills,
+    weapons: game.player.weapons.map(w => w.id),
+    abilities: game.abilities.map(a => ({ id: a.id, rarity: a.rarity })),
+    cityVisited: game.cityVisited,
+    v: 1,
+  };
+  const enc = _b64Encode(JSON.stringify(data));
+  if (!enc) return;
+  let ok = false;
+  try { localStorage.setItem(SAVE_KEY, enc); ok = true; } catch (e) {}
+  try { history.replaceState(null, "", HASH_PREFIX + enc); ok = true; } catch (e) {}
+  if (ok) flashSaveIndicator();
+}
+
+function loadPixelQuest() {
+  let raw = null;
+  if (location.hash && location.hash.startsWith(HASH_PREFIX)) {
+    raw = location.hash.slice(HASH_PREFIX.length);
+  }
+  if (!raw) {
+    try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {}
+  }
+  if (!raw) return null;
+  const json = _b64Decode(raw);
+  if (!json) return null;
+  try { return JSON.parse(json); } catch (e) { return null; }
+}
+
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+}
+
+let saveIndTimer = null;
+function flashSaveIndicator() {
+  const el = document.getElementById("save-indicator");
+  if (!el) return;
+  el.classList.add("show");
+  clearTimeout(saveIndTimer);
+  saveIndTimer = setTimeout(() => el.classList.remove("show"), 1000);
+}
+
+// ============================================================
+// CONTINUE PROMPT
+// ============================================================
+function showContinuePrompt(data) {
+  document.getElementById("start-overlay").classList.remove("show");
+  const cont = document.getElementById("continue-overlay");
+  const sub = document.getElementById("continue-sub");
+  const loadout = document.getElementById("continue-loadout");
+  const abilityCount = (data.abilities || []).length;
+  sub.textContent = `Resume from wave ${data.wave} · ${data.coins} coins · ${data.hp}/${data.maxHp} HP · ${abilityCount} abilit${abilityCount === 1 ? "y" : "ies"}`;
+  // show weapon loadout
+  loadout.innerHTML = (data.weapons || []).map(id => {
+    const w = WEAPONS[id];
+    if (!w) return "";
+    return `<div class="choice-card rarity-${w.rarity}" style="padding:8px 10px;">
+      <div class="c-rarity">${w.rarity.toUpperCase()}</div>
+      <div class="c-name" style="font-size:10px;">${w.name}</div>
+      <div class="c-desc" style="font-size:11px; min-height:0;">${w.type === "ranged" ? "RANGED" : "MELEE"} · DMG ${w.dmg}</div>
+    </div>`;
+  }).join("");
+  cont.classList.add("show");
+}
+
+// ============================================================
+// COUNTDOWN — 3 ... 2 ... 1 ... GO!
+// ============================================================
+function startCountdown(onDone) {
+  const overlay = document.getElementById("countdown-overlay");
+  const numEl = document.getElementById("countdown-num");
+  overlay.classList.add("show");
+  numEl.classList.remove("go");
+  const steps = ["3", "2", "1", "GO!"];
+  let i = 0;
+  function tick() {
+    const txt = steps[i];
+    numEl.textContent = txt;
+    numEl.classList.toggle("go", txt === "GO!");
+    // restart animation
+    numEl.style.animation = "none";
+    void numEl.offsetWidth;
+    numEl.style.animation = "";
+    i++;
+    if (i < steps.length) {
+      setTimeout(tick, 700);
+    } else {
+      setTimeout(() => {
+        overlay.classList.remove("show");
+        if (onDone) onDone();
+      }, 700);
+    }
+  }
+  tick();
+}
+
+// ============================================================
+// RESUME from saved data
+// ============================================================
+function resumeFromSave(data) {
+  // Build game state. weapons[0] is just a seed for newGame.
+  const seedWeapon = (data.weapons && data.weapons[0]) || "pistol";
+  newGame(seedWeapon);
+  // Overwrite with saved state
+  game.wave = Math.max(0, (data.wave || 1) - 1);   // startNextWave will bump us back to data.wave
+  game.player.maxHp = data.maxHp || 100;
+  game.player.hp = Math.min(game.player.maxHp, data.hp || game.player.maxHp);
+  game.coins = data.coins || 0;
+  game.kills = data.kills || 0;
+  game.cityVisited = data.cityVisited || 0;
+  game.player.weapons = (data.weapons || ["pistol"])
+    .filter(id => WEAPONS[id])
+    .map(id => ({ id, cd: 0 }));
+  if (game.player.weapons.length === 0) game.player.weapons.push({ id: "pistol", cd: 0 });
+  game.abilities = (data.abilities || []).filter(a => ABILITIES[a.id]);
+
+  document.getElementById("continue-overlay").classList.remove("show");
+  document.getElementById("start-overlay").classList.remove("show");
+  document.getElementById("death-overlay").classList.remove("show");
+  updateHud();
+
+  // 3-2-1-GO then start the wave
+  startCountdown(() => startNextWave());
+}
 
 // === Starter weapon ===
 let startWeapon;
@@ -2049,7 +2283,25 @@ document.getElementById("start-reroll").addEventListener("click", () => {
   renderStartCard();
 });
 document.getElementById("start-go").addEventListener("click", () => {
+  clearSave();              // brand new run wipes any previous save
   startQuest(startWeapon);
+});
+
+// === Continue prompt buttons ===
+document.getElementById("continue-yes").addEventListener("click", () => {
+  const data = loadPixelQuest();
+  if (!data) {
+    document.getElementById("continue-overlay").classList.remove("show");
+    document.getElementById("start-overlay").classList.add("show");
+    return;
+  }
+  resumeFromSave(data);
+});
+document.getElementById("continue-no").addEventListener("click", () => {
+  clearSave();
+  document.getElementById("continue-overlay").classList.remove("show");
+  document.getElementById("start-overlay").classList.add("show");
+  pickStartWeapon();
 });
 
 // ============================================================
@@ -2061,10 +2313,14 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// initial setup: pick starter weapon
+// initial setup
 newGame("pistol"); // dummy game state so update() doesn't crash before start
 pickStartWeapon();
 loop();
+
+// If a saved run exists, show the continue prompt over the starter picker
+const _savedRun = loadPixelQuest();
+if (_savedRun) showContinuePrompt(_savedRun);
 </script>
 </body>
 </html>
