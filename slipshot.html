@@ -178,138 +178,6 @@
   }
   #save-indicator.show { opacity: 1; }
 
-  /* Account badge (top-left, beside BACK) */
-  #account-badge {
-    position: fixed;
-    top: 14px;
-    left: 90px;
-    background: rgba(74, 222, 128, 0.15);
-    border: 1px solid rgba(74, 222, 128, 0.5);
-    color: #86efac;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-family: 'Orbitron', monospace;
-    font-size: 11px;
-    letter-spacing: 1.5px;
-    z-index: 100;
-    pointer-events: none;
-  }
-
-  /* Accounts section in the shop */
-  .accounts-section {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1.5px solid rgba(255, 255, 255, 0.13);
-    border-radius: 12px;
-    padding: 18px 16px;
-    margin: 24px 0 16px;
-  }
-  .accounts-section h3 {
-    font-family: 'Orbitron', monospace;
-    font-size: 16px;
-    letter-spacing: 4px;
-    color: #4ade80;
-    text-shadow: 0 0 12px rgba(74, 222, 128, 0.45);
-    margin-bottom: 12px;
-    text-align: center;
-  }
-  .accounts-current {
-    text-align: center;
-    margin-bottom: 14px;
-    font-family: 'Orbitron', monospace;
-    font-size: 12px;
-    letter-spacing: 1px;
-    color: rgba(255, 255, 255, 0.7);
-  }
-  .accounts-current strong { color: #4ade80; margin-left: 6px; font-size: 14px; }
-  .account-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 14px;
-  }
-  .account-item {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1.5px solid rgba(255, 255, 255, 0.15);
-    border-radius: 8px;
-    padding: 10px 14px;
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 10px;
-    align-items: center;
-  }
-  .account-item.active {
-    border-color: #4ade80;
-    background: rgba(74, 222, 128, 0.1);
-  }
-  .account-item .ai-name {
-    font-family: 'Orbitron', monospace;
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    color: #fff;
-  }
-  .account-item .ai-stats {
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.65);
-    margin-top: 2px;
-  }
-  .account-item .ai-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    color: #fff;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: 'Orbitron', monospace;
-    font-size: 11px;
-    letter-spacing: 1px;
-  }
-  .account-item .ai-btn.switch { background: rgba(74, 222, 128, 0.2); border-color: rgba(74, 222, 128, 0.5); color: #86efac; }
-  .account-item .ai-btn.switch:hover { background: rgba(74, 222, 128, 0.35); }
-  .account-item .ai-btn.delete { background: rgba(244, 63, 94, 0.2); border-color: rgba(244, 63, 94, 0.5); color: #fda4af; }
-  .account-item .ai-btn.delete:hover { background: rgba(244, 63, 94, 0.35); }
-  .account-item.active .ai-btn.switch { opacity: 0.4; cursor: default; }
-  .account-create {
-    display: flex;
-    gap: 8px;
-    margin-top: 6px;
-  }
-  .account-create input {
-    flex: 1;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1.5px solid rgba(255, 255, 255, 0.22);
-    color: #fff;
-    padding: 10px 14px;
-    border-radius: 6px;
-    font-family: 'Orbitron', monospace;
-    font-size: 13px;
-    letter-spacing: 1.5px;
-    outline: none;
-  }
-  .account-create input:focus { border-color: #4ade80; }
-  .account-create button {
-    background: #4ade80;
-    color: #050810;
-    border: none;
-    padding: 0 18px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: 'Orbitron', monospace;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-  }
-  .account-create button:hover { background: #22c55e; }
-  .account-error {
-    color: #fda4af;
-    font-size: 12px;
-    text-align: center;
-    margin-top: 6px;
-    font-family: 'Rajdhani', sans-serif;
-    min-height: 16px;
-  }
-
   /* Loadout strip under HUD */
   #loadout {
     display: flex;
@@ -1011,123 +879,6 @@
     50%      { transform: scale(1.2); opacity: 1; }
   }
 
-  /* === AUTH SCREEN === */
-  #auth-overlay {
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(circle at 20% 10%, #1a3050 0%, transparent 60%),
-      radial-gradient(circle at 80% 90%, #1a0a30 0%, transparent 60%),
-      linear-gradient(135deg, #050810 0%, #0a1428 100%);
-    z-index: 5000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-  #auth-overlay.show { display: flex; }
-  .auth-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 2px solid rgba(74, 222, 128, 0.35);
-    border-radius: 16px;
-    padding: 40px 48px;
-    text-align: center;
-    max-width: 440px;
-    width: 100%;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 50px rgba(74, 222, 128, 0.15);
-    backdrop-filter: blur(8px);
-  }
-  .auth-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 38px;
-    letter-spacing: 10px;
-    color: #4ade80;
-    text-shadow: 0 0 26px rgba(74, 222, 128, 0.55), 0 4px 10px rgba(0, 0, 0, 0.5);
-    margin-bottom: 6px;
-  }
-  .auth-sub {
-    color: rgba(255, 255, 255, 0.55);
-    font-size: 12px;
-    letter-spacing: 2px;
-    margin-bottom: 30px;
-  }
-  #auth-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .auth-btn {
-    border: none;
-    padding: 14px 28px;
-    border-radius: 10px;
-    font-family: 'Orbitron', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 2.5px;
-    cursor: pointer;
-    transition: transform 0.1s, filter 0.15s, background 0.15s;
-  }
-  .auth-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
-  .auth-btn.primary {
-    background: #4ade80;
-    color: #050810;
-    box-shadow: 0 6px 18px rgba(74, 222, 128, 0.4);
-  }
-  .auth-btn.primary:hover { background: #22c55e; }
-  .auth-btn.secondary {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1.5px solid rgba(255, 255, 255, 0.28);
-    color: #fff;
-  }
-  .auth-btn.secondary:hover { background: rgba(255, 255, 255, 0.16); }
-  .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 4px;
-  }
-  .auth-form input {
-    background: rgba(0, 0, 0, 0.4);
-    border: 1.5px solid rgba(255, 255, 255, 0.22);
-    color: #fff;
-    padding: 14px 16px;
-    border-radius: 8px;
-    font-family: 'Orbitron', monospace;
-    font-size: 13px;
-    letter-spacing: 1.5px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .auth-form input:focus { border-color: #4ade80; }
-  .auth-back {
-    background: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.55);
-    font-family: 'Orbitron', monospace;
-    font-size: 11px;
-    letter-spacing: 1.5px;
-    cursor: pointer;
-    padding: 8px;
-    margin-top: 4px;
-  }
-  .auth-back:hover { color: #fff; }
-  .auth-error {
-    color: #f87171;
-    font-size: 13px;
-    margin-top: 14px;
-    font-family: 'Rajdhani', sans-serif;
-    min-height: 18px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
-  .auth-note {
-    margin-top: 16px;
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 11px;
-    line-height: 1.5;
-    letter-spacing: 0.3px;
-  }
-
   /* --- MOBILE CONTROLS (Brawl Stars style dual joysticks) --- */
   #mobile-controls { display: none; }
   @media (pointer: coarse), (max-width: 900px) {
@@ -1239,7 +990,6 @@
   <button class="reveal-close" id="reveal-close">CONTINUE</button>
 </div></div>
 
-<!-- (account/auth system removed — Slipshot now saves locally) -->
 
 <div id="mode-overlay">
   <div class="mode-card">
@@ -1291,7 +1041,6 @@
   </div>
 </div>
 
-<!-- (account/auth overlay removed) -->
 
 <!-- Mobile controls (hidden on desktop via CSS) -->
 <div id="mobile-controls">
@@ -1652,13 +1401,7 @@ function defaultProfile() {
 }
 const persistent = defaultProfile();
 
-// ============================================================
-// ACCOUNTS — removed. Slipshot now saves locally only.
-// Lightweight no-op stubs are kept so any leftover callers don't crash.
-// ============================================================
-function saveAccountsList() {}
-function scheduleCloudSave() {}
-function updateAccountBadge() {}
+// (account system removed — Slipshot saves locally only)
 
 // ============================================================
 // ARMOR + CRATES
@@ -2294,7 +2037,6 @@ const keyMap = {
   "d": "right", "D": "right", "ArrowRight": "right",
 };
 // helper: skip keyboard handling while a text input is focused
-// (otherwise WASD / arrows / 1-4 can't be typed into the auth form etc.)
 function _isTypingInField() {
   const ae = document.activeElement;
   if (!ae) return false;
@@ -3524,24 +3266,11 @@ function loop() {
 }
 
 // ============================================================
-// MULTIPLAYER CONFIG
-// Leave `enabled: false` for AI-only PvP (no internet required).
-// To enable REAL online play across devices, you'd need to:
-//   1. Create a free project at console.firebase.google.com
-//   2. Enable Firestore + Authentication
-//   3. Paste your firebaseConfig object below and set enabled: true
-//   4. Wire up real matchmaking calls inside searchForRealPlayers()
-// Until then, every match falls through to AI bots clearly tagged [AI].
+// MULTIPLAYER CONFIG — AI-only. Every PvP match uses bots tagged [AI].
 // ============================================================
-const MULTIPLAYER_CONFIG = {
-  enabled: false,
-  // firebaseConfig: { apiKey: "...", projectId: "...", ... },
-};
+const MULTIPLAYER_CONFIG = { enabled: false };
 async function searchForRealPlayers(mode, slotsNeeded) {
-  // Returns a list of real player profiles found within the timeout.
-  // Currently returns empty since no backend is configured.
-  if (!MULTIPLAYER_CONFIG.enabled) return [];
-  // TODO: real Firebase / Supabase lobby query here.
+  // No backend configured — all PvP falls through to AI bots.
   return [];
 }
 
