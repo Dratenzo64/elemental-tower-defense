@@ -564,6 +564,11 @@ function rgba(c, a) {
   const [r,g,b] = _hex(c);
   return `rgba(${r},${g},${b},${a})`;
 }
+// Pixel rectangle — rounds to integer pixels, no anti-aliasing
+function px(c, x, y, w, h, color) {
+  c.fillStyle = color;
+  c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+}
 // Pixel sphere — discrete tone bands, no anti-aliasing
 function sphere(c, x, y, r, color, opts) {
   opts = opts || {};
