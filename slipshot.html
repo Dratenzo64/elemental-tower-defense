@@ -1207,7 +1207,6 @@
 <body>
 
 <a href="index.html" class="home-link">‹ BACK</a>
-<div id="account-badge"></div>
 <div id="save-indicator">SAVED ✓</div>
 
 <h1>SLIPSHOT</h1>
@@ -1240,43 +1239,7 @@
   <button class="reveal-close" id="reveal-close">CONTINUE</button>
 </div></div>
 
-<!-- ===== Firebase init (runs before the main game script) ===== -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as fbSignOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyC6oPhy7SPfuvpxKIF8kn1ie0EyPyQvSNA",
-  authDomain: "dratenzogames.firebaseapp.com",
-  projectId: "dratenzogames",
-  storageBucket: "dratenzogames.firebasestorage.app",
-  messagingSenderId: "915269447532",
-  appId: "1:915269447532:web:adbd47fcb21976f5838d49",
-  measurementId: "G-S1DMSGZRTM"
-};
-try {
-  const app  = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db   = getFirestore(app);
-  window.fb = {
-    available: true,
-    onAuthChange: (cb) => onAuthStateChanged(auth, cb),
-    signIn: (e, p) => signInWithEmailAndPassword(auth, e, p),
-    create: (e, p) => createUserWithEmailAndPassword(auth, e, p),
-    signOut: () => fbSignOut(auth),
-    saveDoc: (col, id, data) => setDoc(doc(db, col, id), data, { merge: true }),
-    loadDoc: async (col, id) => {
-      const s = await getDoc(doc(db, col, id));
-      return s.exists() ? s.data() : null;
-    },
-  };
-} catch (e) {
-  console.error("Firebase init failed:", e);
-  window.fb = { available: false, error: e.message };
-}
-window.dispatchEvent(new CustomEvent("fb-ready"));
-</script>
+<!-- (account/auth system removed — Slipshot now saves locally) -->
 
 <div id="mode-overlay">
   <div class="mode-card">
@@ -1328,30 +1291,7 @@ window.dispatchEvent(new CustomEvent("fb-ready"));
   </div>
 </div>
 
-<div id="auth-overlay">
-  <div class="auth-card">
-    <div class="auth-title">SLIPSHOT</div>
-    <div class="auth-sub">// SIGN IN TO PLAY //</div>
-    <div id="auth-buttons">
-      <button id="show-signin" class="auth-btn primary">SIGN IN</button>
-      <button id="show-create" class="auth-btn secondary">CREATE ACCOUNT</button>
-    </div>
-    <div id="auth-form-signin" class="auth-form" style="display:none;">
-      <input type="text" id="signin-user" placeholder="USERNAME" maxlength="20" autocomplete="username" />
-      <input type="password" id="signin-pass" placeholder="PASSWORD" autocomplete="current-password" />
-      <button id="do-signin" class="auth-btn primary">SIGN IN</button>
-      <button class="auth-back" data-auth-back>‹ BACK</button>
-    </div>
-    <div id="auth-form-create" class="auth-form" style="display:none;">
-      <input type="text" id="create-user" placeholder="USERNAME (2-20 chars)" maxlength="20" autocomplete="username" />
-      <input type="password" id="create-pass" placeholder="PASSWORD (min 6 chars)" autocomplete="new-password" />
-      <button id="do-create" class="auth-btn primary">CREATE ACCOUNT</button>
-      <button class="auth-back" data-auth-back>‹ BACK</button>
-    </div>
-    <div id="auth-error" class="auth-error"></div>
-    <div class="auth-note">Cross-device sync is on. Coins, weapons, and armor follow you wherever you sign in.</div>
-  </div>
-</div>
+<!-- (account/auth overlay removed) -->
 
 <!-- Mobile controls (hidden on desktop via CSS) -->
 <div id="mobile-controls">
@@ -1713,231 +1653,12 @@ function defaultProfile() {
 const persistent = defaultProfile();
 
 // ============================================================
-// ACCOUNTS — multi-profile support
+// ACCOUNTS — removed. Slipshot now saves locally only.
+// Lightweight no-op stubs are kept so any leftover callers don't crash.
 // ============================================================
-const ACCOUNTS_KEY = "slipshot-accounts-v1";
-const accountsState = { current: "PLAYER 1", accounts: {} };
-
-function loadAccountsList() {
-  try {
-    const raw = localStorage.getItem(ACCOUNTS_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (data.accounts && typeof data.accounts === "object") {
-      accountsState.accounts = data.accounts;
-    }
-    if (data.current && accountsState.accounts[data.current]) {
-      accountsState.current = data.current;
-    } else if (Object.keys(accountsState.accounts).length > 0) {
-      accountsState.current = Object.keys(accountsState.accounts)[0];
-    }
-    return Object.keys(accountsState.accounts).length > 0;
-  } catch (e) { return false; }
-}
-function saveAccountsList() {
-  // sync current persistent state into the active account before saving
-  accountsState.accounts[accountsState.current] = {
-    coins: persistent.coins,
-    ownedWeapons: persistent.ownedWeapons,
-    equippedSlots: persistent.equippedSlots,
-    highScore: persistent.highScore,
-    armorInventory: persistent.armorInventory,
-    equippedArmor: persistent.equippedArmor,
-  };
-  try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsState)); } catch (e) {}
-}
-function copyProfileInto(target, src) {
-  if (!src) return;
-  if (typeof src.coins === "number") target.coins = src.coins;
-  if (typeof src.highScore === "number") target.highScore = src.highScore;
-  if (Array.isArray(src.ownedWeapons)) target.ownedWeapons = src.ownedWeapons.slice();
-  if (Array.isArray(src.equippedSlots) && src.equippedSlots.length === 4) target.equippedSlots = src.equippedSlots.slice();
-  if (src.armorInventory) {
-    for (const piece of ARMOR_PIECES) {
-      if (src.armorInventory[piece]) {
-        target.armorInventory[piece] = Object.assign({ common: 0, rare: 0, epic: 0, legendary: 0 }, src.armorInventory[piece]);
-      }
-    }
-  }
-  if (src.equippedArmor) {
-    for (const piece of ARMOR_PIECES) {
-      if (src.equippedArmor[piece] && ARMOR_TIERS[src.equippedArmor[piece]]) {
-        target.equippedArmor[piece] = src.equippedArmor[piece];
-      }
-    }
-  }
-}
-// ---- AUTH: Firebase-backed (cross-device cloud sync) ----
-function usernameToEmail(username) {
-  return String(username).toLowerCase().replace(/[^a-z0-9]/g, "") + "@slipshot.app";
-}
-function firebaseErrorMessage(e) {
-  const c = (e && e.code) || "";
-  if (c.includes("user-not-found") || c.includes("invalid-credential") || c.includes("wrong-password")) return "Wrong username or password";
-  if (c.includes("email-already-in-use")) return "Username already taken";
-  if (c.includes("weak-password")) return "Password must be at least 6 characters";
-  if (c.includes("too-many-requests")) return "Too many attempts — try again in a minute";
-  if (c.includes("network-request-failed")) return "Network error — check your internet";
-  return (e && e.message) || "Sign in failed";
-}
-
-async function loadProfileFromCloud(uid) {
-  if (!window.fb || !window.fb.available) return null;
-  try {
-    const data = await window.fb.loadDoc("users", uid);
-    Object.assign(persistent, defaultProfile());
-    if (data && data.profile) copyProfileInto(persistent, data.profile);
-    if (data && data.username) accountsState.current = data.username;
-    return data;
-  } catch (e) {
-    console.warn("Cloud load failed:", e);
-    return null;
-  }
-}
-async function saveProfileToCloud() {
-  if (!window.fb || !window.fb.available || !accountsState.uid) return;
-  try {
-    await window.fb.saveDoc("users", accountsState.uid, {
-      username: accountsState.current,
-      profile: {
-        coins: persistent.coins,
-        ownedWeapons: persistent.ownedWeapons,
-        equippedSlots: persistent.equippedSlots,
-        highScore: persistent.highScore,
-        armorInventory: persistent.armorInventory,
-        equippedArmor: persistent.equippedArmor,
-      },
-      lastSaved: Date.now(),
-    });
-  } catch (e) { console.warn("Cloud save failed:", e); }
-}
-let _cloudSaveTimer = null;
-function scheduleCloudSave() {
-  if (!accountsState.uid || !window.fb || !window.fb.available) return;
-  if (_cloudSaveTimer) clearTimeout(_cloudSaveTimer);
-  _cloudSaveTimer = setTimeout(() => { saveProfileToCloud(); }, 1500);
-}
-
-async function doSignIn(username, password) {
-  username = String(username || "").trim();
-  if (!username) return { ok: false, error: "Enter a username" };
-  if (!password) return { ok: false, error: "Enter a password" };
-  if (!window.fb || !window.fb.available) return { ok: false, error: "Cloud sign-in not available right now" };
-  try {
-    const cred = await window.fb.signIn(usernameToEmail(username), password);
-    accountsState.uid = cred.user.uid;
-    accountsState.current = username;
-    await loadProfileFromCloud(cred.user.uid);
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: firebaseErrorMessage(e) };
-  }
-}
-async function doCreate(username, password) {
-  username = String(username || "").trim().slice(0, 20);
-  if (!username) return { ok: false, error: "Username required" };
-  if (username.length < 2) return { ok: false, error: "Username must be at least 2 characters" };
-  if (!password || password.length < 6) return { ok: false, error: "Password must be at least 6 characters" };
-  if (!window.fb || !window.fb.available) return { ok: false, error: "Cloud sign-up not available right now" };
-  try {
-    const cred = await window.fb.create(usernameToEmail(username), password);
-    accountsState.uid = cred.user.uid;
-    accountsState.current = username;
-    Object.assign(persistent, defaultProfile());
-    await saveProfileToCloud();
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: firebaseErrorMessage(e) };
-  }
-}
-function doSignOut() {
-  // Push final state up to cloud before signing out
-  saveProfileToCloud().finally(() => {
-    if (window.fb && window.fb.available) {
-      window.fb.signOut().catch(() => {});
-    }
-    accountsState.current = null;
-    accountsState.uid = null;
-    Object.assign(persistent, defaultProfile());
-    showAuthOverlay();
-  });
-}
-
-// ---- Auth UI controllers ----
-function showAuthOverlay() {
-  const el = document.getElementById("auth-overlay");
-  if (el) el.classList.add("show");
-  showAuthMain();
-}
-function hideAuthOverlay() {
-  const el = document.getElementById("auth-overlay");
-  if (el) el.classList.remove("show");
-  if (typeof updateAccountBadge === "function") updateAccountBadge();
-  if (typeof updateLoadoutDisplay === "function") updateLoadoutDisplay();
-  if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
-}
-function showAuthMain() {
-  const buttons = document.getElementById("auth-buttons");
-  const signin = document.getElementById("auth-form-signin");
-  const create = document.getElementById("auth-form-create");
-  const err = document.getElementById("auth-error");
-  if (buttons) buttons.style.display = "flex";
-  if (signin) signin.style.display = "none";
-  if (create) create.style.display = "none";
-  if (err) err.textContent = "";
-}
-function showAuthSignIn() {
-  document.getElementById("auth-buttons").style.display = "none";
-  document.getElementById("auth-form-signin").style.display = "flex";
-  document.getElementById("auth-form-create").style.display = "none";
-  document.getElementById("auth-error").textContent = "";
-  setTimeout(() => { const i = document.getElementById("signin-user"); if (i) i.focus(); }, 50);
-}
-function showAuthCreate() {
-  document.getElementById("auth-buttons").style.display = "none";
-  document.getElementById("auth-form-signin").style.display = "none";
-  document.getElementById("auth-form-create").style.display = "flex";
-  document.getElementById("auth-error").textContent = "";
-  setTimeout(() => { const i = document.getElementById("create-user"); if (i) i.focus(); }, 50);
-}
-
-// Wire auth buttons
-document.getElementById("show-signin").addEventListener("click", showAuthSignIn);
-document.getElementById("show-create").addEventListener("click", showAuthCreate);
-document.querySelectorAll("[data-auth-back]").forEach(b => b.addEventListener("click", showAuthMain));
-document.getElementById("do-signin").addEventListener("click", async () => {
-  const u = document.getElementById("signin-user").value;
-  const p = document.getElementById("signin-pass").value;
-  const res = await doSignIn(u, p);
-  if (res.ok) {
-    hideAuthOverlay();
-    if (typeof updateAccountBadge === "function") updateAccountBadge();
-    // After sign-in, go to mode picker instead of straight into a game
-    showModePicker();
-  } else {
-    document.getElementById("auth-error").textContent = res.error;
-  }
-});
-document.getElementById("do-create").addEventListener("click", async () => {
-  const u = document.getElementById("create-user").value;
-  const p = document.getElementById("create-pass").value;
-  const res = await doCreate(u, p);
-  if (res.ok) {
-    hideAuthOverlay();
-    if (typeof updateAccountBadge === "function") updateAccountBadge();
-    // After sign-in, go to mode picker instead of straight into a game
-    showModePicker();
-  } else {
-    document.getElementById("auth-error").textContent = res.error;
-  }
-});
-// Enter key submits
-document.getElementById("signin-pass").addEventListener("keypress", e => {
-  if (e.key === "Enter") document.getElementById("do-signin").click();
-});
-document.getElementById("create-pass").addEventListener("keypress", e => {
-  if (e.key === "Enter") document.getElementById("do-create").click();
-});
+function saveAccountsList() {}
+function scheduleCloudSave() {}
+function updateAccountBadge() {}
 
 // ============================================================
 // ARMOR + CRATES
@@ -2157,15 +1878,12 @@ function decodeSaveData(str) {
   }
 }
 function savePersistent() {
-  try { saveAccountsList(); } catch (e) {}
   const enc = encodeSaveData();
   if (!enc) return;
   let ok = false;
   try { localStorage.setItem(SAVE_KEY, enc); ok = true; } catch (e) {}
   try { history.replaceState(null, "", HASH_PREFIX + enc); ok = true; } catch (e) {}
   if (ok) flashSaveIndicator();
-  // Also push to Firebase cloud (debounced)
-  try { scheduleCloudSave(); } catch (e) {}
 }
 let saveIndTimer = null;
 function flashSaveIndicator() {
@@ -2244,43 +1962,8 @@ function loadPersistent() {
   }
 }
 
-// ---- AUTH BOOT SEQUENCE ----
-// Load whatever accounts exist locally.
-const hadAccounts = loadAccountsList();
-
-// If no accounts yet, AND we have a legacy save (URL hash or old key), migrate it
-// into an un-claimed "PLAYER 1" account that the user can sign into.
-if (!hadAccounts) {
-  loadPersistent();
-  if (persistent.coins > 0 || persistent.highScore > 0 ||
-      persistent.ownedWeapons.length > 1 ||
-      Object.values(persistent.armorInventory).some(s => Object.values(s).some(c => c > 0))) {
-    accountsState.accounts["PLAYER 1"] = Object.assign(
-      { passwordHash: null }, // un-claimed; first sign-in sets a password
-      {
-        coins: persistent.coins,
-        ownedWeapons: persistent.ownedWeapons.slice(),
-        equippedSlots: persistent.equippedSlots.slice(),
-        highScore: persistent.highScore,
-        armorInventory: JSON.parse(JSON.stringify(persistent.armorInventory)),
-        equippedArmor: Object.assign({}, persistent.equippedArmor),
-      }
-    );
-    try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accountsState)); } catch (e) {}
-  }
-  // Don't auto-sign-in — require the user to sign in or create.
-  accountsState.current = null;
-}
-
-// If there's an active user, load their data; otherwise we'll show the auth screen.
-let isSignedIn = false;
-if (accountsState.current && accountsState.accounts[accountsState.current]) {
-  copyProfileInto(persistent, accountsState.accounts[accountsState.current]);
-  isSignedIn = true;
-} else {
-  // Reset persistent to defaults until they sign in
-  Object.assign(persistent, defaultProfile());
-}
+// ---- BOOT: just load whatever's saved locally ----
+loadPersistent();
 
 // always have burst owned and in slot 0
 if (!persistent.ownedWeapons.includes("burst")) persistent.ownedWeapons.unshift("burst");
@@ -3590,20 +3273,12 @@ function renderShop() {
       ${Object.keys(WEAPONS).map(id => renderWeaponCard(id)).join("")}
     </div>
     ${renderCratesSection()}
-    <div style="margin-top:18px;text-align:center;">
-      <button id="sign-out-shop-btn" style="background:rgba(244,63,94,0.2);border:1px solid rgba(244,63,94,0.5);color:#fda4af;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;padding:8px 18px;border-radius:6px;cursor:pointer;">SIGN OUT</button>
-    </div>
     <button id="run-again-btn">DEPLOY ›</button>
   `;
   bindShopEvents();
 }
 function escapeHtml(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-}
-
-function updateAccountBadge() {
-  const el = document.getElementById("account-badge");
-  if (el) el.textContent = accountsState.current;
 }
 
 function renderCratesSection() {
@@ -3823,16 +3498,6 @@ function bindShopEvents() {
       renderShop();
     });
   });
-  // Sign out from inside the shop
-  const signOutBtn = document.getElementById("sign-out-shop-btn");
-  if (signOutBtn) {
-    signOutBtn.addEventListener("click", () => {
-      if (confirm("Sign out? Your progress is saved.")) {
-        document.getElementById("shop-overlay").classList.remove("show");
-        doSignOut();
-      }
-    });
-  }
   document.getElementById("run-again-btn").addEventListener("click", () => {
     if (!persistent.equippedSlots[game.activeSlot || 0]) {
       const firstEquipped = persistent.equippedSlots.findIndex(s => s);
@@ -4108,40 +3773,9 @@ updateHud = function () { _origUpdateHud(); refreshWeaponButtons(); };
 newGame("solo");
 updateLoadoutDisplay();
 refreshWeaponButtons();
-updateAccountBadge();
 
-// Boot sequence with Firebase: wait for auth state, then route.
-// (If Firebase isn't ready yet, show the auth overlay; the auth callback below will hide it once we know the state.)
-showAuthOverlay();
-
-function attachFirebaseAuth() {
-  if (!window.fb || !window.fb.available) {
-    // Firebase failed to load — stay on auth screen with a notice
-    const errEl = document.getElementById("auth-error");
-    if (errEl && window.fb && window.fb.error) errEl.textContent = "Cloud unavailable: " + window.fb.error;
-    return;
-  }
-  window.fb.onAuthChange(async (user) => {
-    if (user) {
-      // already signed in from a previous session — load cloud profile
-      accountsState.uid = user.uid;
-      await loadProfileFromCloud(user.uid);
-      // Make sure burst is always owned & in slot 0
-      if (!persistent.ownedWeapons.includes("burst")) persistent.ownedWeapons.unshift("burst");
-      if (!persistent.equippedSlots[0]) persistent.equippedSlots[0] = "burst";
-      hideAuthOverlay();
-      updateAccountBadge();
-      updateLoadoutDisplay();
-      if (typeof refreshWeaponButtons === "function") refreshWeaponButtons();
-      showModePicker();
-    } else {
-      // not signed in — keep auth overlay open
-      showAuthOverlay();
-    }
-  });
-}
-if (window.fb) attachFirebaseAuth();
-else window.addEventListener("fb-ready", attachFirebaseAuth, { once: true });
+// Go straight to the mode picker — no sign-in needed.
+showModePicker();
 
 loop();
 </script>
