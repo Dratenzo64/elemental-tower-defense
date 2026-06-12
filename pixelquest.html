@@ -1733,38 +1733,127 @@ function drawEnemy(e) {
     px(ctx, e.x + 2, e.y + 5, 3, 3, darken(col, 30));
 
   } else if (e.boss) {
-    const r = e.size;
-    // body
-    px(ctx, e.x - r, e.y - r + 4, r * 2, r * 2 - 4, col);
-    px(ctx, e.x - r, e.y - r + 4, r * 2, 1,         lighten(col, 40));
-    px(ctx, e.x - r, e.y + r - 1, r * 2, 1,         darken(col, 40));
-    // chest accent
-    px(ctx, e.x - r + 2, e.y - r + 6, r * 2 - 4, 1, lighten(col, 25));
-    // head
-    px(ctx, e.x - r + 4, e.y - r,     r * 2 - 8, 4, col);
-    px(ctx, e.x - r + 4, e.y - r,     r * 2 - 8, 1, lighten(col, 40));
-    // crown of spikes
-    for (let i = -2; i <= 2; i++) {
-      px(ctx, e.x + i * 3 - 1, e.y - r - 3, 2, 3, darken(col, 30));
-    }
-    // glowing red eyes
-    px(ctx, e.x - 5, e.y - r + 1, 3, 2, "#ff2020");
-    px(ctx, e.x + 3, e.y - r + 1, 3, 2, "#ff2020");
-    // mouth with teeth
-    px(ctx, e.x - 5, e.y - r + 4, 10, 2, "#000");
-    px(ctx, e.x - 4, e.y - r + 5, 1, 1, "#fff");
-    px(ctx, e.x - 1, e.y - r + 5, 1, 1, "#fff");
-    px(ctx, e.x + 2, e.y - r + 5, 1, 1, "#fff");
-    // belt with shiny gold buckle
-    px(ctx, e.x - r, e.y + 2, r * 2, 3, "#3a2418");
-    px(ctx, e.x - 2, e.y + 3, 4, 2, "#fcd34d");
+    // ===== LEGS =====
+    px(ctx, e.x - 7, e.y + 12, 5, 10, darken(col, 40));
+    px(ctx, e.x + 2, e.y + 12, 5, 10, darken(col, 40));
+    px(ctx, e.x - 7, e.y + 12, 5, 1,  darken(col, 25));
+    px(ctx, e.x + 2, e.y + 12, 5, 1,  darken(col, 25));
+    // boots
+    px(ctx, e.x - 8, e.y + 20, 7, 3, "#1a0808");
+    px(ctx, e.x + 1, e.y + 20, 7, 3, "#1a0808");
+    px(ctx, e.x - 8, e.y + 20, 7, 1, "#3a2418");
+    px(ctx, e.x + 1, e.y + 20, 7, 1, "#3a2418");
+
+    // ===== BODY / TORSO =====
+    // shoulders (wider at top)
+    px(ctx, e.x - 14, e.y - 6, 28, 5, col);
+    px(ctx, e.x - 14, e.y - 6, 28, 1, lighten(col, 40));
+    // chest plate
+    px(ctx, e.x - 11, e.y - 1, 22, 12, col);
+    // chest highlight V
+    px(ctx, e.x - 8, e.y + 1, 16, 1, lighten(col, 25));
+    px(ctx, e.x - 6, e.y + 3, 12, 1, lighten(col, 20));
+    px(ctx, e.x - 3, e.y + 5, 6,  1, lighten(col, 15));
+    // chest emblem (red gem)
+    px(ctx, e.x - 2, e.y + 7, 4, 3, "#a01010");
+    px(ctx, e.x - 2, e.y + 7, 4, 1, "#ff4040");
+    px(ctx, e.x - 1, e.y + 7, 1, 1, "#ffffff");
+    // body bottom shadow
+    px(ctx, e.x - 11, e.y + 10, 22, 1, darken(col, 35));
+
+    // ===== BELT =====
+    px(ctx, e.x - 12, e.y + 11, 24, 4, "#3a2418");
+    px(ctx, e.x - 12, e.y + 11, 24, 1, "#7a4520");
+    // gold buckle
+    px(ctx, e.x - 4, e.y + 11, 8, 4, "#fcd34d");
+    px(ctx, e.x - 4, e.y + 11, 8, 1, "#fef3c7");
+    px(ctx, e.x - 3, e.y + 12, 1, 1, "#ffffff");
+
+    // ===== ARMS + GAUNTLETS =====
+    // left arm
+    px(ctx, e.x - 17, e.y - 5, 4, 13, col);
+    px(ctx, e.x - 17, e.y - 5, 4, 1, lighten(col, 40));
+    px(ctx, e.x - 17, e.y + 7, 4, 1, darken(col, 30));
+    // left gauntlet
+    px(ctx, e.x - 18, e.y + 8, 6, 5, "#3a2418");
+    px(ctx, e.x - 18, e.y + 8, 6, 1, "#7a4520");
+    // left claws
+    px(ctx, e.x - 18, e.y + 13, 1, 2, "#d0c6b8");
+    px(ctx, e.x - 16, e.y + 13, 1, 2, "#d0c6b8");
+    px(ctx, e.x - 14, e.y + 13, 1, 2, "#d0c6b8");
+    // right arm
+    px(ctx, e.x + 13, e.y - 5, 4, 13, col);
+    px(ctx, e.x + 13, e.y - 5, 4, 1, lighten(col, 40));
+    px(ctx, e.x + 13, e.y + 7, 4, 1, darken(col, 30));
+    // right gauntlet
+    px(ctx, e.x + 12, e.y + 8, 6, 5, "#3a2418");
+    px(ctx, e.x + 12, e.y + 8, 6, 1, "#7a4520");
+    // right claws
+    px(ctx, e.x + 12, e.y + 13, 1, 2, "#d0c6b8");
+    px(ctx, e.x + 14, e.y + 13, 1, 2, "#d0c6b8");
+    px(ctx, e.x + 16, e.y + 13, 1, 2, "#d0c6b8");
+    // shoulder pad spikes
+    px(ctx, e.x - 18, e.y - 7, 4, 2, darken(col, 50));
+    px(ctx, e.x + 14, e.y - 7, 4, 2, darken(col, 50));
+    px(ctx, e.x - 17, e.y - 9, 2, 2, darken(col, 60));
+    px(ctx, e.x + 15, e.y - 9, 2, 2, darken(col, 60));
+
+    // ===== NECK =====
+    px(ctx, e.x - 4, e.y - 9, 8, 3, darken(col, 25));
+
+    // ===== HEAD =====
+    px(ctx, e.x - 9, e.y - 20, 18, 11, col);
+    px(ctx, e.x - 9, e.y - 20, 18, 1, lighten(col, 50));
+    px(ctx, e.x - 8, e.y - 21, 16, 1, lighten(col, 50));
+    // brow shadow
+    px(ctx, e.x - 8, e.y - 14, 16, 1, darken(col, 20));
+    // chin shadow
+    px(ctx, e.x - 7, e.y - 11, 14, 2, darken(col, 25));
+    // glowing eye sockets
+    px(ctx, e.x - 7, e.y - 17, 5, 4, "#1a0000");
+    px(ctx, e.x + 2, e.y - 17, 5, 4, "#1a0000");
+    // glowing red pupils
+    px(ctx, e.x - 6, e.y - 16, 3, 2, "#ff2020");
+    px(ctx, e.x + 3, e.y - 16, 3, 2, "#ff2020");
+    // eye shine
+    px(ctx, e.x - 6, e.y - 16, 1, 1, "#ffd0d0");
+    px(ctx, e.x + 3, e.y - 16, 1, 1, "#ffd0d0");
+    // mouth with fangs
+    px(ctx, e.x - 6, e.y - 12, 12, 2, "#000");
+    px(ctx, e.x - 5, e.y - 10, 1, 2, "#ffffff");
+    px(ctx, e.x - 2, e.y - 10, 1, 2, "#ffffff");
+    px(ctx, e.x + 1, e.y - 10, 1, 2, "#ffffff");
+    px(ctx, e.x + 4, e.y - 10, 1, 2, "#ffffff");
+
     if (e.type === "boss_lich") {
-      // staff with glowing orb
-      px(ctx, e.x + r + 1, e.y - r - 4, 2, r * 2 + 10, "#5a3520");
-      // orb
-      px(ctx, e.x + r - 1, e.y - r - 6, 6, 5, "#a78bfa");
-      px(ctx, e.x + r - 1, e.y - r - 6, 6, 1, "#c4b5fd");
-      px(ctx, e.x + r,     e.y - r - 5, 1, 1, "#ffffff");
+      // ===== HOOD over head =====
+      px(ctx, e.x - 12, e.y - 22, 24, 4, "#1a1a2a");
+      px(ctx, e.x - 12, e.y - 22, 24, 1, "#3a3a4a");
+      px(ctx, e.x - 11, e.y - 18, 2, 8, "#1a1a2a");
+      px(ctx, e.x + 9,  e.y - 18, 2, 8, "#1a1a2a");
+      // ===== STAFF =====
+      px(ctx, e.x + 19, e.y - 24, 3, 38, "#5a3520");
+      px(ctx, e.x + 19, e.y - 24, 1, 38, "#3a2418");
+      // glowing purple orb
+      px(ctx, e.x + 16, e.y - 29, 9, 7, "#7c3aed");
+      px(ctx, e.x + 16, e.y - 29, 9, 2, "#a78bfa");
+      px(ctx, e.x + 16, e.y - 29, 2, 1, "#c4b5fd");
+      px(ctx, e.x + 17, e.y - 27, 1, 1, "#ffffff");
+      // glow halo
+      px(ctx, e.x + 14, e.y - 26, 1, 1, "#a78bfa");
+      px(ctx, e.x + 25, e.y - 26, 1, 1, "#a78bfa");
+      px(ctx, e.x + 20, e.y - 32, 1, 1, "#a78bfa");
+    } else {
+      // ===== HORNS (orc) =====
+      px(ctx, e.x - 11, e.y - 24, 3, 5, "#f0e6d8");
+      px(ctx, e.x - 12, e.y - 26, 2, 3, "#d0c6b8");
+      px(ctx, e.x - 11, e.y - 24, 1, 5, "#a0968a");
+      px(ctx, e.x + 8,  e.y - 24, 3, 5, "#f0e6d8");
+      px(ctx, e.x + 10, e.y - 26, 2, 3, "#d0c6b8");
+      px(ctx, e.x + 10, e.y - 24, 1, 5, "#a0968a");
+      // central spike crown
+      px(ctx, e.x - 2, e.y - 26, 4, 4, darken(col, 50));
+      px(ctx, e.x - 1, e.y - 28, 2, 2, darken(col, 60));
     }
   } else {
     px(ctx, e.x - e.size, e.y - e.size, e.size * 2, e.size, col);
