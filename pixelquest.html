@@ -238,6 +238,27 @@
   }
   .home-link:hover { background: rgba(0, 0, 0, 0.8); }
 
+  #pause-btn {
+    position: fixed;
+    top: 14px;
+    right: 120px;
+    line-height: 1;
+    background: rgba(34, 211, 238, 0.18);
+    border: 2px solid #22d3ee;
+    color: #67e8f9;
+    padding: 4px 10px 6px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+    transition: transform 0.1s, background 0.1s;
+  }
+  #pause-btn:hover { background: rgba(34, 211, 238, 0.35); }
+  #pause-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.45); }
+  #pause-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 rgba(0,0,0,0.45); }
+
   #save-indicator {
     position: fixed;
     top: 14px;
@@ -339,6 +360,7 @@
 <body>
 
 <a href="index.html" class="home-link">‹ BACK</a>
+<button id="pause-btn" title="Pause (P)">⏸</button>
 <div id="save-indicator">SAVED ✓</div>
 <h1>PIXELQUEST</h1>
 <p class="subtitle">// PIXELATED WAVE-SURVIVAL ADVENTURE //</p>
@@ -376,6 +398,16 @@
       <button class="pixel-btn" id="continue-yes">CONTINUE ›</button>
       <button class="pixel-btn danger" id="continue-no">NEW GAME</button>
     </div>
+  </div>
+</div>
+
+<!-- Pause overlay -->
+<div id="pause-overlay" class="overlay">
+  <div class="panel" style="text-align:center;">
+    <div class="panel-title" style="color:#22d3ee;">PAUSED</div>
+    <div class="panel-sub">Press <kbd style="background:rgba(255,255,255,0.12); border:1px solid #5a4030; padding:1px 6px; font-size:9px;">P</kbd> or click ▶ to resume</div>
+    <button class="pixel-btn" id="pause-resume" style="margin-top:14px;">▶ RESUME</button>
+    <div id="pause-cd-msg" style="margin-top:10px; font-size:11px; color:#fda4af; min-height:14px;"></div>
   </div>
 </div>
 
@@ -770,6 +802,8 @@ function newGame(startingWeaponId) {
     flashDamage: 0,
     cityVisited: 0,
     gameOver: false,
+    paused: false,
+    lastPauseToggle: 0,  // Date.now() of the last successful toggle
   };
   game.player.maxHp = 100;
   game.player.hp = 100;
@@ -861,10 +895,56 @@ bindDpad("m-left", "x", -1);
 bindDpad("m-right", "x", 1);
 
 // ============================================================
+// PAUSE — with 2.5s cooldown between toggles (prevents pause-buffering)
+// ============================================================
+const PAUSE_COOLDOWN_MS = 2500;
+function isOverlayBlockingPause() {
+  // don't allow pausing when any other overlay is showing or the run is over
+  if (!game || game.gameOver) return true;
+  if (game.waveState === "city") return true;
+  for (const id of ["start-overlay", "ability-overlay", "city-overlay", "death-overlay", "continue-overlay", "countdown-overlay"]) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains("show")) return true;
+  }
+  return false;
+}
+function togglePause() {
+  if (!game) return;
+  if (isOverlayBlockingPause() && !game.paused) return;
+  const now = Date.now();
+  const since = now - (game.lastPauseToggle || 0);
+  if (since < PAUSE_COOLDOWN_MS) {
+    // show cooldown feedback in the pause overlay if visible
+    const cdMsg = document.getElementById("pause-cd-msg");
+    if (cdMsg) {
+      const remain = ((PAUSE_COOLDOWN_MS - since) / 1000).toFixed(1);
+      cdMsg.textContent = `Cooldown · ${remain}s left`;
+      clearTimeout(togglePause._cdTimer);
+      togglePause._cdTimer = setTimeout(() => { if (cdMsg) cdMsg.textContent = ""; }, 800);
+    }
+    return;
+  }
+  game.paused = !game.paused;
+  game.lastPauseToggle = now;
+  document.getElementById("pause-overlay").classList.toggle("show", game.paused);
+  const btn = document.getElementById("pause-btn");
+  if (btn) btn.textContent = game.paused ? "▶" : "⏸";
+}
+document.addEventListener("keydown", (e) => {
+  if (_isTypingInField()) return;
+  if (e.key === "p" || e.key === "P") {
+    togglePause();
+    e.preventDefault();
+  }
+});
+document.getElementById("pause-btn").addEventListener("click", togglePause);
+document.getElementById("pause-resume").addEventListener("click", togglePause);
+
+// ============================================================
 // UPDATE
 // ============================================================
 function update() {
-  if (game.gameOver || game.waveState === "city") return;
+  if (game.gameOver || game.waveState === "city" || game.paused) return;
   game.tick++;
   const p = game.player;
   if (game.flashDamage > 0) game.flashDamage--;
@@ -1665,101 +1745,247 @@ function drawOneBlade(b) {
   ctx.rotate(b.angle + Math.PI / 2);
 
   if (b.rarity === "mythic") {
-    // ===== ZYPHERION — curved void/arcane mythic blade =====
-    // Each row is [y, leftEdge, rightEdge] — describes the cross-section
-    // of the blade at that height. Curve sweeps left toward the cutting edge.
-    const bladeRows = [
-      // tip (super narrow, sharp)
-      [-38, 0, 1],
-      [-36, 0, 1],
-      [-34, -1, 1],
-      [-32, -1, 1],
-      [-30, -1, 2],
-      // upper body (widens, curves)
-      [-28, -2, 2],
-      [-26, -2, 2],
-      [-24, -3, 2],
-      [-22, -3, 2],
-      [-20, -3, 2],
-      // peak of curve (widest point of belly)
-      [-18, -4, 2],
-      [-16, -4, 2],
-      [-14, -4, 2],
-      [-12, -4, 2],
-      // sweeping back inward
-      [-10, -4, 2],
-      [-8,  -3, 2],
-      [-6,  -3, 2],
-      [-4,  -2, 2],
-      [-2,  -2, 2],
-      [0,   -1, 2],
+    // ===== ZYPHERION — smooth (non-pixel) curved void/arcane blade =====
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // ----- BLADE BODY (curved scimitar with bezier paths) -----
+    // Glow halo behind the entire blade
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = "#0a0a16";
+    ctx.beginPath();
+    ctx.moveTo(1, -42);
+    ctx.quadraticCurveTo(7, -22, 3, 4);     // outer spine (right side)
+    ctx.lineTo(-3, 4);
+    ctx.quadraticCurveTo(-7, -22, 1, -42);  // cutting edge (left side)
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Dark metal blade fill — metallic gradient across the width
+    const bladeG = ctx.createLinearGradient(-7, 0, 7, 0);
+    bladeG.addColorStop(0.00, "#0a1020");
+    bladeG.addColorStop(0.35, "#1c2440");
+    bladeG.addColorStop(0.55, "#0a0a16");
+    bladeG.addColorStop(1.00, "#252535");
+    ctx.fillStyle = bladeG;
+    ctx.beginPath();
+    ctx.moveTo(1, -42);
+    ctx.quadraticCurveTo(7, -22, 3, 4);
+    ctx.lineTo(-3, 4);
+    ctx.quadraticCurveTo(-7, -22, 1, -42);
+    ctx.closePath();
+    ctx.fill();
+
+    // Dark spine stroke (right edge)
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(1, -42);
+    ctx.quadraticCurveTo(7, -22, 3, 4);
+    ctx.stroke();
+
+    // Inner ridge highlight (subtle steel grey down the center of the blade)
+    ctx.strokeStyle = "rgba(120,135,170,0.45)";
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(0.5, -38);
+    ctx.quadraticCurveTo(-1.5, -22, -0.5, 0);
+    ctx.stroke();
+
+    // Cutting edge glow — outer bright halo
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 14;
+    ctx.strokeStyle = "#67e8f9";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(1, -42);
+    ctx.quadraticCurveTo(-7, -22, -3, 4);
+    ctx.stroke();
+
+    // Cutting edge — white-hot inner core
+    ctx.shadowBlur = 6;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(1, -42);
+    ctx.quadraticCurveTo(-6.5, -22, -3, 4);
+    ctx.stroke();
+    ctx.restore();
+
+    // ----- GLOWING RUNES along the blade -----
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 6;
+    // points trace the centerline of the curved blade (closer to cutting edge)
+    const runePoints = [
+      [-1.0, -34],
+      [-2.0, -26],
+      [-2.5, -18],
+      [-2.0, -10],
+      [-1.0, -2 ],
     ];
-    // 1. Outer cyan glow halo (1 px beyond the cutting edge)
-    for (const [y, l, _r] of bladeRows) {
-      px(ctx, l - 2, y, 1, 2, "#0c4a6e");
+    for (const [rx, ry] of runePoints) {
+      // outer cyan rune ring
+      ctx.fillStyle = "#22d3ee";
+      ctx.beginPath();
+      ctx.arc(rx, ry, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+      // bright white-cyan center
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(rx, ry, 0.35, 0, Math.PI * 2);
+      ctx.fill();
     }
-    // 2. Bright cyan glow (the "energy" along the cutting edge)
-    for (const [y, l, _r] of bladeRows) {
-      px(ctx, l - 1, y, 1, 2, "#22d3ee");
-      px(ctx, l - 1, y, 1, 1, "#67e8f9");
-    }
-    // 3. White-hot cutting edge (1 px)
-    for (const [y, l, _r] of bladeRows) {
-      px(ctx, l, y, 1, 2, "#a5f3fc");
-    }
-    // 4. Dark metal blade body
-    for (const [y, l, r] of bladeRows) {
-      px(ctx, l + 1, y, r - l, 2, "#0a0a16");
-    }
-    // 5. Spine highlight (right edge)
-    for (const [y, _l, r] of bladeRows) {
-      px(ctx, r, y, 1, 2, "#1a1a2a");
-    }
-    // 6. Etched runes (small glowing cyan marks down the spine)
-    const runes = [-32, -24, -16, -8, -2];
-    for (const ry of runes) {
-      px(ctx, -1, ry, 2, 1, "#22d3ee");
-      px(ctx, -1, ry, 1, 1, "#a5f3fc");
-    }
+    ctx.restore();
 
-    // ===== CROSSGUARD — jagged black with central rune =====
-    // Main crossbar
-    px(ctx, -8, 1, 16, 4, "#0a0a16");
-    px(ctx, -8, 1, 16, 1, "#1a1a2a");      // top highlight
-    // Outer spike tips
-    px(ctx, -10, 2, 2, 2, "#0a0a16");
-    px(ctx,  8,  2, 2, 2, "#0a0a16");
-    px(ctx, -11, 2, 1, 1, "#1a1a2a");
-    px(ctx,  10, 2, 1, 1, "#1a1a2a");
-    // Downward spikes under crossguard
-    px(ctx, -5, 5, 1, 2, "#0a0a16");
-    px(ctx,  4, 5, 1, 2, "#0a0a16");
-    // Central glowing eye-rune (diamond)
-    px(ctx, -2, 2, 4, 2, "#1a1a2a");
-    px(ctx, -1, 2, 2, 1, "#22d3ee");
-    px(ctx,  0, 3, 1, 1, "#a5f3fc");
+    // ----- CROSSGUARD (jagged black metal with central rune) -----
+    // Outer spike points (left)
+    ctx.fillStyle = "#0a0a16";
+    ctx.beginPath();
+    ctx.moveTo(-13, 6);
+    ctx.lineTo(-9, 3.5);
+    ctx.lineTo(-9, 8.5);
+    ctx.closePath();
+    ctx.fill();
+    // Outer spike points (right)
+    ctx.beginPath();
+    ctx.moveTo(13, 6);
+    ctx.lineTo(9, 3.5);
+    ctx.lineTo(9, 8.5);
+    ctx.closePath();
+    ctx.fill();
 
-    // ===== GRIP — black wrapped with glowing rune rings =====
-    px(ctx, -2, 5, 4, 11, "#000000");
-    px(ctx, -2, 5, 4, 1, "#1a1a2a");       // top binding edge
-    px(ctx, -2, 7, 4, 1, "#22d3ee");       // rune wrap 1
-    px(ctx, -2, 10, 4, 1, "#22d3ee");      // rune wrap 2
-    px(ctx, -2, 13, 4, 1, "#22d3ee");      // rune wrap 3
-    px(ctx,  0, 7, 1, 1, "#a5f3fc");       // accent dots
-    px(ctx, -1, 10, 1, 1, "#a5f3fc");
-    px(ctx,  0, 13, 1, 1, "#a5f3fc");
-    px(ctx, -2, 16, 4, 1, "#1a1a2a");      // bottom binding edge
+    // Main crossguard bar (rounded jagged shape)
+    const cgG = ctx.createLinearGradient(0, 3, 0, 9);
+    cgG.addColorStop(0, "#252540");
+    cgG.addColorStop(0.5, "#0a0a16");
+    cgG.addColorStop(1, "#0a0a16");
+    ctx.fillStyle = cgG;
+    ctx.beginPath();
+    ctx.moveTo(-9, 3);
+    ctx.lineTo(9, 3);
+    ctx.lineTo(10, 5);
+    ctx.lineTo(9, 9);
+    ctx.lineTo(-9, 9);
+    ctx.lineTo(-10, 5);
+    ctx.closePath();
+    ctx.fill();
+    // top edge highlight
+    ctx.strokeStyle = "rgba(120,135,170,0.4)";
+    ctx.lineWidth = 0.3;
+    ctx.beginPath();
+    ctx.moveTo(-9, 3);
+    ctx.lineTo(9, 3);
+    ctx.stroke();
 
-    // ===== POMMEL — spiky diamond with glowing rune =====
-    // Main diamond
-    px(ctx, -2, 17, 4, 2, "#0a0a16");
-    px(ctx, -3, 18, 1, 1, "#0a0a16");
-    px(ctx,  2, 18, 1, 1, "#0a0a16");
-    px(ctx, -1, 19, 2, 2, "#0a0a16");
-    px(ctx,  0, 21, 1, 1, "#1a1a2a");
-    // Central rune in pommel
-    px(ctx, -1, 18, 2, 1, "#22d3ee");
-    px(ctx,  0, 18, 1, 1, "#67e8f9");
+    // Downward spike beneath crossguard
+    ctx.fillStyle = "#0a0a16";
+    ctx.beginPath();
+    ctx.moveTo(-1, 9);
+    ctx.lineTo(1, 9);
+    ctx.lineTo(0, 11.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Central glowing diamond rune
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "#67e8f9";
+    ctx.beginPath();
+    ctx.moveTo(0, 4);
+    ctx.lineTo(2.3, 6);
+    ctx.lineTo(0, 8);
+    ctx.lineTo(-2.3, 6);
+    ctx.closePath();
+    ctx.fill();
+    // bright inner core
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    ctx.lineTo(1, 6);
+    ctx.lineTo(0, 7);
+    ctx.lineTo(-1, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // ----- GRIP (black wrapped with glowing rune rings) -----
+    const gripG = ctx.createLinearGradient(-3, 0, 3, 0);
+    gripG.addColorStop(0, "#000000");
+    gripG.addColorStop(0.5, "#1a1a2a");
+    gripG.addColorStop(1, "#000000");
+    ctx.fillStyle = gripG;
+    ctx.beginPath();
+    ctx.moveTo(-2.5, 11);
+    ctx.lineTo(2.5, 11);
+    ctx.lineTo(2.5, 19);
+    ctx.lineTo(-2.5, 19);
+    ctx.closePath();
+    ctx.fill();
+    // glowing wrap rings
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 5;
+    ctx.strokeStyle = "#67e8f9";
+    ctx.lineWidth = 0.6;
+    for (const ry of [12.5, 15, 17.5]) {
+      ctx.beginPath();
+      ctx.moveTo(-2.5, ry);
+      ctx.lineTo(2.5, ry);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ----- POMMEL (spiky diamond with glowing rune) -----
+    ctx.fillStyle = "#0a0a16";
+    ctx.beginPath();
+    ctx.moveTo(0, 19);
+    ctx.lineTo(4, 22);
+    ctx.lineTo(0, 25);
+    ctx.lineTo(-4, 22);
+    ctx.closePath();
+    ctx.fill();
+    // top edge sheen
+    ctx.strokeStyle = "rgba(120,135,170,0.45)";
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(0, 19);
+    ctx.lineTo(4, 22);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 19);
+    ctx.lineTo(-4, 22);
+    ctx.stroke();
+    // small jutting tail spike
+    ctx.fillStyle = "#0a0a16";
+    ctx.beginPath();
+    ctx.moveTo(-0.6, 25);
+    ctx.lineTo(0.6, 25);
+    ctx.lineTo(0, 27.5);
+    ctx.closePath();
+    ctx.fill();
+    // Central glowing rune in pommel
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = "#67e8f9";
+    ctx.beginPath();
+    ctx.arc(0, 22, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(0, 22, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
   } else {
     // ===== STANDARD PIXEL SWORD =====
     px(ctx, -2, -8, 4, 1, "#c8d2dc"); // tip light
