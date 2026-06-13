@@ -977,7 +977,7 @@ function update() {
   }
 
   // weapons — every equipped weapon fires/spins simultaneously
-  game.meleeAngle += MELEE_SPIN_SPEED * 1.5;
+  game.meleeAngle += MELEE_SPIN_SPEED * 0.75;
   game.meleeBlades = [];
   const dmgMult = abilityValue("bloodlust", "mult", 1);
   // count melee weapons so we can space their orbit angles evenly
@@ -1745,197 +1745,324 @@ function drawOneBlade(b) {
   ctx.rotate(b.angle + Math.PI / 2);
 
   if (b.rarity === "mythic") {
-    // ===== ZYPHERION — smooth (non-pixel) curved void/arcane blade =====
+    // ===== ZYPHERION — smooth, hand-painted void/arcane scimitar =====
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // ----- BLADE BODY (curved scimitar with bezier paths) -----
-    // Glow halo behind the entire blade
+    // ===== 1. AMBIENT GLOW (large soft cyan halo behind everything) =====
+    ctx.save();
+    const aura = ctx.createRadialGradient(0, -18, 4, 0, -18, 32);
+    aura.addColorStop(0,    "rgba(34,211,238,0.35)");
+    aura.addColorStop(0.45, "rgba(34,211,238,0.18)");
+    aura.addColorStop(1,    "rgba(34,211,238,0)");
+    ctx.fillStyle = aura;
+    ctx.fillRect(-26, -52, 52, 90);
+    ctx.restore();
+
+    // ===== 2. BLADE BODY — strong scimitar curve via cubic beziers =====
+    // Path: tip (4,-46) → spine bows right → base (3,5) → bottom (-3,5)
+    //       → cutting edge bows left, concave inward → back to tip.
+    function bladePath(p) {
+      p.beginPath();
+      p.moveTo(4, -46);
+      p.bezierCurveTo(9, -34, 7, -12, 3, 5);     // spine (right, convex outward)
+      p.lineTo(-3, 5);
+      p.bezierCurveTo(-1, -12, 1, -34, 4, -46);  // cutting edge (left, concave)
+      p.closePath();
+    }
+
+    // 2a. Outer cyan glow on the blade silhouette
     ctx.save();
     ctx.shadowColor = "#22d3ee";
-    ctx.shadowBlur = 18;
-    ctx.fillStyle = "#0a0a16";
-    ctx.beginPath();
-    ctx.moveTo(1, -42);
-    ctx.quadraticCurveTo(7, -22, 3, 4);     // outer spine (right side)
-    ctx.lineTo(-3, 4);
-    ctx.quadraticCurveTo(-7, -22, 1, -42);  // cutting edge (left side)
-    ctx.closePath();
+    ctx.shadowBlur = 22;
+    ctx.fillStyle = "#0c4a6e";
+    bladePath(ctx);
     ctx.fill();
     ctx.restore();
 
-    // Dark metal blade fill — metallic gradient across the width
-    const bladeG = ctx.createLinearGradient(-7, 0, 7, 0);
-    bladeG.addColorStop(0.00, "#0a1020");
-    bladeG.addColorStop(0.35, "#1c2440");
-    bladeG.addColorStop(0.55, "#0a0a16");
-    bladeG.addColorStop(1.00, "#252535");
-    ctx.fillStyle = bladeG;
-    ctx.beginPath();
-    ctx.moveTo(1, -42);
-    ctx.quadraticCurveTo(7, -22, 3, 4);
-    ctx.lineTo(-3, 4);
-    ctx.quadraticCurveTo(-7, -22, 1, -42);
-    ctx.closePath();
+    // 2b. Dark metallic body — multi-stop horizontal gradient
+    const bg = ctx.createLinearGradient(-7, 0, 7, 0);
+    bg.addColorStop(0.00, "#070b16");
+    bg.addColorStop(0.25, "#1a233a");
+    bg.addColorStop(0.50, "#0a1020");
+    bg.addColorStop(0.78, "#040614");
+    bg.addColorStop(1.00, "#2a2a3a");
+    ctx.fillStyle = bg;
+    bladePath(ctx);
     ctx.fill();
 
-    // Dark spine stroke (right edge)
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(1, -42);
-    ctx.quadraticCurveTo(7, -22, 3, 4);
-    ctx.stroke();
-
-    // Inner ridge highlight (subtle steel grey down the center of the blade)
-    ctx.strokeStyle = "rgba(120,135,170,0.45)";
-    ctx.lineWidth = 0.4;
-    ctx.beginPath();
-    ctx.moveTo(0.5, -38);
-    ctx.quadraticCurveTo(-1.5, -22, -0.5, 0);
-    ctx.stroke();
-
-    // Cutting edge glow — outer bright halo
+    // 2c. Subtle blade-banding (faint horizontal hammer marks across the blade)
     ctx.save();
-    ctx.shadowColor = "#22d3ee";
-    ctx.shadowBlur = 14;
-    ctx.strokeStyle = "#67e8f9";
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(1, -42);
-    ctx.quadraticCurveTo(-7, -22, -3, 4);
-    ctx.stroke();
-
-    // Cutting edge — white-hot inner core
-    ctx.shadowBlur = 6;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(1, -42);
-    ctx.quadraticCurveTo(-6.5, -22, -3, 4);
-    ctx.stroke();
-    ctx.restore();
-
-    // ----- GLOWING RUNES along the blade -----
-    ctx.save();
-    ctx.shadowColor = "#22d3ee";
-    ctx.shadowBlur = 6;
-    // points trace the centerline of the curved blade (closer to cutting edge)
-    const runePoints = [
-      [-1.0, -34],
-      [-2.0, -26],
-      [-2.5, -18],
-      [-2.0, -10],
-      [-1.0, -2 ],
-    ];
-    for (const [rx, ry] of runePoints) {
-      // outer cyan rune ring
-      ctx.fillStyle = "#22d3ee";
+    bladePath(ctx);
+    ctx.clip(); // confine marks to the blade silhouette
+    ctx.strokeStyle = "rgba(0,0,0,0.32)";
+    ctx.lineWidth = 0.35;
+    for (let i = 0; i < 7; i++) {
+      const yy = -40 + i * 7;
       ctx.beginPath();
-      ctx.arc(rx, ry, 1.0, 0, Math.PI * 2);
-      ctx.fill();
-      // bright white-cyan center
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(rx, ry, 0.35, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(-10, yy);
+      ctx.lineTo(10, yy + 0.3);
+      ctx.stroke();
     }
     ctx.restore();
 
-    // ----- CROSSGUARD (jagged black metal with central rune) -----
-    // Outer spike points (left)
-    ctx.fillStyle = "#0a0a16";
+    // 2d. Spine highlight (right edge, dark ink)
+    ctx.strokeStyle = "rgba(0,0,0,0.85)";
+    ctx.lineWidth = 0.55;
     ctx.beginPath();
-    ctx.moveTo(-13, 6);
-    ctx.lineTo(-9, 3.5);
-    ctx.lineTo(-9, 8.5);
-    ctx.closePath();
-    ctx.fill();
-    // Outer spike points (right)
-    ctx.beginPath();
-    ctx.moveTo(13, 6);
-    ctx.lineTo(9, 3.5);
-    ctx.lineTo(9, 8.5);
-    ctx.closePath();
-    ctx.fill();
-
-    // Main crossguard bar (rounded jagged shape)
-    const cgG = ctx.createLinearGradient(0, 3, 0, 9);
-    cgG.addColorStop(0, "#252540");
-    cgG.addColorStop(0.5, "#0a0a16");
-    cgG.addColorStop(1, "#0a0a16");
-    ctx.fillStyle = cgG;
-    ctx.beginPath();
-    ctx.moveTo(-9, 3);
-    ctx.lineTo(9, 3);
-    ctx.lineTo(10, 5);
-    ctx.lineTo(9, 9);
-    ctx.lineTo(-9, 9);
-    ctx.lineTo(-10, 5);
-    ctx.closePath();
-    ctx.fill();
-    // top edge highlight
-    ctx.strokeStyle = "rgba(120,135,170,0.4)";
-    ctx.lineWidth = 0.3;
-    ctx.beginPath();
-    ctx.moveTo(-9, 3);
-    ctx.lineTo(9, 3);
+    ctx.moveTo(4, -46);
+    ctx.bezierCurveTo(9, -34, 7, -12, 3, 5);
     ctx.stroke();
 
-    // Downward spike beneath crossguard
-    ctx.fillStyle = "#0a0a16";
+    // 2e. Central fuller (subtle steel ridge running down the blade)
+    ctx.save();
+    ctx.strokeStyle = "rgba(150,170,200,0.45)";
+    ctx.lineWidth = 0.35;
     ctx.beginPath();
-    ctx.moveTo(-1, 9);
-    ctx.lineTo(1, 9);
-    ctx.lineTo(0, 11.5);
+    ctx.moveTo(2.5, -42);
+    ctx.bezierCurveTo(3.5, -32, 1.5, -14, 0, 2);
+    ctx.stroke();
+    // companion dark ridge to suggest a fuller groove
+    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+    ctx.lineWidth = 0.25;
+    ctx.beginPath();
+    ctx.moveTo(2.0, -42);
+    ctx.bezierCurveTo(3.0, -32, 1.0, -14, -0.5, 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // 2f. Cutting edge glow — wide blurred cyan halo
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 18;
+    ctx.strokeStyle = "#67e8f9";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(4, -46);
+    ctx.bezierCurveTo(1, -34, -1, -12, -3, 5);
+    ctx.stroke();
+    // tighter inner glow
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = "#a5f3fc";
+    ctx.beginPath();
+    ctx.moveTo(4, -46);
+    ctx.bezierCurveTo(1, -34, -1, -12, -3, 5);
+    ctx.stroke();
+    // white-hot razor edge
+    ctx.shadowBlur = 4;
+    ctx.lineWidth = 0.4;
+    ctx.strokeStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(4, -46);
+    ctx.bezierCurveTo(1, -34, -1, -12, -3, 5);
+    ctx.stroke();
+    ctx.restore();
+
+    // ===== 3. GLOWING RUNES — five distinct rune glyphs down the blade =====
+    function drawRune(rx, ry, type) {
+      ctx.save();
+      ctx.shadowColor = "#22d3ee";
+      ctx.shadowBlur = 7;
+      ctx.strokeStyle = "#67e8f9";
+      ctx.fillStyle = "#67e8f9";
+      ctx.lineWidth = 0.5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      if (type === "triUp") {
+        ctx.moveTo(rx, ry - 1.6);
+        ctx.lineTo(rx + 1.4, ry + 1.2);
+        ctx.lineTo(rx - 1.4, ry + 1.2);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (type === "fork") {
+        ctx.moveTo(rx, ry - 1.7); ctx.lineTo(rx, ry + 1.7);
+        ctx.moveTo(rx, ry - 0.3); ctx.lineTo(rx + 1.4, ry - 1.4);
+        ctx.moveTo(rx, ry + 0.3); ctx.lineTo(rx + 1.4, ry + 1.4);
+        ctx.stroke();
+      } else if (type === "diamond") {
+        ctx.moveTo(rx, ry - 1.7);
+        ctx.lineTo(rx + 1.4, ry);
+        ctx.lineTo(rx, ry + 1.7);
+        ctx.lineTo(rx - 1.4, ry);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (type === "xCross") {
+        ctx.moveTo(rx - 1.3, ry - 1.3); ctx.lineTo(rx + 1.3, ry + 1.3);
+        ctx.moveTo(rx + 1.3, ry - 1.3); ctx.lineTo(rx - 1.3, ry + 1.3);
+        ctx.stroke();
+      } else if (type === "triDown") {
+        ctx.moveTo(rx, ry + 1.6);
+        ctx.lineTo(rx + 1.4, ry - 1.2);
+        ctx.lineTo(rx - 1.4, ry - 1.2);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      // bright inner stroke
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 0.18;
+      ctx.stroke();
+      ctx.restore();
+    }
+    // Trace the centerline of the curved blade — slightly offset toward the spine
+    drawRune(1.5,  -38, "triUp");
+    drawRune(1.5,  -28, "fork");
+    drawRune(1.0,  -18, "diamond");
+    drawRune(0.5,  -8,  "xCross");
+    drawRune(0.5,   1,  "triDown");
+
+    // ===== 4. CROSSGUARD — winged with multiple spikes + central eye =====
+    // 4a. Upper "wing" pair (sweeping up and out)
+    function drawWing(side) {
+      ctx.fillStyle = "#0a0a16";
+      ctx.beginPath();
+      ctx.moveTo(side * 8, 3);
+      ctx.bezierCurveTo(side * 14, -2, side * 13, 4, side * 11, 6);
+      ctx.lineTo(side * 8, 6);
+      ctx.closePath();
+      ctx.fill();
+      // small inner spike above wing
+      ctx.beginPath();
+      ctx.moveTo(side * 7, 2);
+      ctx.lineTo(side * 8, -2);
+      ctx.lineTo(side * 6, 2);
+      ctx.closePath();
+      ctx.fill();
+      // wing edge highlight
+      ctx.strokeStyle = "rgba(140,160,200,0.35)";
+      ctx.lineWidth = 0.3;
+      ctx.beginPath();
+      ctx.moveTo(side * 8, 3);
+      ctx.bezierCurveTo(side * 14, -2, side * 13, 4, side * 11, 6);
+      ctx.stroke();
+    }
+    drawWing(-1);
+    drawWing(1);
+
+    // 4b. Main crossguard bar — dark with vertical gradient
+    const cgG = ctx.createLinearGradient(0, 3, 0, 10);
+    cgG.addColorStop(0,    "#2a2a45");
+    cgG.addColorStop(0.45, "#0a0a16");
+    cgG.addColorStop(1,    "#000000");
+    ctx.fillStyle = cgG;
+    ctx.beginPath();
+    ctx.moveTo(-8, 3);
+    ctx.lineTo(8, 3);
+    ctx.lineTo(9, 5.5);
+    ctx.lineTo(8, 9);
+    ctx.lineTo(-8, 9);
+    ctx.lineTo(-9, 5.5);
     ctx.closePath();
     ctx.fill();
 
-    // Central glowing diamond rune
-    ctx.save();
-    ctx.shadowColor = "#22d3ee";
-    ctx.shadowBlur = 10;
-    ctx.fillStyle = "#67e8f9";
+    // 4c. Crossguard top edge highlight
+    ctx.strokeStyle = "rgba(150,170,200,0.5)";
+    ctx.lineWidth = 0.35;
     ctx.beginPath();
-    ctx.moveTo(0, 4);
-    ctx.lineTo(2.3, 6);
-    ctx.lineTo(0, 8);
-    ctx.lineTo(-2.3, 6);
+    ctx.moveTo(-8, 3);
+    ctx.lineTo(8, 3);
+    ctx.stroke();
+
+    // 4d. Downward spikes beneath crossguard
+    ctx.fillStyle = "#0a0a16";
+    // center spike
+    ctx.beginPath();
+    ctx.moveTo(-0.8, 9);
+    ctx.lineTo(0.8, 9);
+    ctx.lineTo(0, 12);
     ctx.closePath();
     ctx.fill();
-    // bright inner core
+    // side spikes
+    ctx.beginPath();
+    ctx.moveTo(-5, 9); ctx.lineTo(-3.8, 9); ctx.lineTo(-4.4, 10.8); ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(5, 9); ctx.lineTo(3.8, 9); ctx.lineTo(4.4, 10.8); ctx.closePath();
+    ctx.fill();
+
+    // 4e. Central glowing "eye" rune in the crossguard
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 12;
+    // outer dark setting
+    ctx.fillStyle = "#040614";
+    ctx.beginPath();
+    ctx.moveTo(0, 3.2);
+    ctx.lineTo(3.2, 6);
+    ctx.lineTo(0, 8.8);
+    ctx.lineTo(-3.2, 6);
+    ctx.closePath();
+    ctx.fill();
+    // glowing cyan
+    ctx.fillStyle = "#22d3ee";
+    ctx.beginPath();
+    ctx.moveTo(0, 4.0);
+    ctx.lineTo(2.4, 6);
+    ctx.lineTo(0, 8.0);
+    ctx.lineTo(-2.4, 6);
+    ctx.closePath();
+    ctx.fill();
+    // brighter cyan inner
+    ctx.fillStyle = "#a5f3fc";
+    ctx.beginPath();
+    ctx.moveTo(0, 4.8);
+    ctx.lineTo(1.4, 6);
+    ctx.lineTo(0, 7.2);
+    ctx.lineTo(-1.4, 6);
+    ctx.closePath();
+    ctx.fill();
+    // white-hot pupil
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.moveTo(0, 5);
-    ctx.lineTo(1, 6);
-    ctx.lineTo(0, 7);
-    ctx.lineTo(-1, 6);
-    ctx.closePath();
+    ctx.arc(0, 6, 0.45, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // ----- GRIP (black wrapped with glowing rune rings) -----
-    const gripG = ctx.createLinearGradient(-3, 0, 3, 0);
-    gripG.addColorStop(0, "#000000");
-    gripG.addColorStop(0.5, "#1a1a2a");
-    gripG.addColorStop(1, "#000000");
-    ctx.fillStyle = gripG;
+    // ===== 5. GRIP — wrapped leather with diagonal weave + rune rings =====
+    // 5a. Top binding ornament (small metal band)
+    ctx.fillStyle = "#1a1a2a";
+    ctx.fillRect(-2.9, 9.5, 5.8, 1.5);
+    ctx.strokeStyle = "rgba(140,160,200,0.4)";
+    ctx.lineWidth = 0.25;
     ctx.beginPath();
-    ctx.moveTo(-2.5, 11);
-    ctx.lineTo(2.5, 11);
-    ctx.lineTo(2.5, 19);
-    ctx.lineTo(-2.5, 19);
-    ctx.closePath();
-    ctx.fill();
-    // glowing wrap rings
+    ctx.moveTo(-2.9, 9.5); ctx.lineTo(2.9, 9.5);
+    ctx.stroke();
+
+    // 5b. Black wrapped grip body
+    const gripG = ctx.createLinearGradient(-3, 0, 3, 0);
+    gripG.addColorStop(0,    "#000000");
+    gripG.addColorStop(0.45, "#181820");
+    gripG.addColorStop(1,    "#000000");
+    ctx.fillStyle = gripG;
+    ctx.fillRect(-2.5, 11, 5, 9);
+
+    // 5c. Diagonal weave lines (leather wrapping texture)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-2.5, 11, 5, 9);
+    ctx.clip();
+    ctx.strokeStyle = "rgba(0,0,0,0.55)";
+    ctx.lineWidth = 0.2;
+    for (let i = 0; i < 7; i++) {
+      const yy = 11 + i * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-3, yy);
+      ctx.lineTo(3, yy + 1.4);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 5d. Glowing rune rings between weaves
     ctx.save();
     ctx.shadowColor = "#22d3ee";
     ctx.shadowBlur = 5;
     ctx.strokeStyle = "#67e8f9";
-    ctx.lineWidth = 0.6;
-    for (const ry of [12.5, 15, 17.5]) {
+    ctx.lineWidth = 0.5;
+    ctx.lineCap = "round";
+    for (const ry of [12.3, 14.5, 16.7, 18.9]) {
       ctx.beginPath();
       ctx.moveTo(-2.5, ry);
       ctx.lineTo(2.5, ry);
@@ -1943,45 +2070,86 @@ function drawOneBlade(b) {
     }
     ctx.restore();
 
-    // ----- POMMEL (spiky diamond with glowing rune) -----
+    // 5e. Bottom binding ornament
+    ctx.fillStyle = "#1a1a2a";
+    ctx.fillRect(-2.9, 19.5, 5.8, 1.5);
+    ctx.strokeStyle = "rgba(140,160,200,0.4)";
+    ctx.lineWidth = 0.25;
+    ctx.beginPath();
+    ctx.moveTo(-2.9, 21); ctx.lineTo(2.9, 21);
+    ctx.stroke();
+
+    // ===== 6. POMMEL — faceted diamond with glowing eye =====
+    // 6a. Top decorative spikes
     ctx.fillStyle = "#0a0a16";
     ctx.beginPath();
-    ctx.moveTo(0, 19);
-    ctx.lineTo(4, 22);
-    ctx.lineTo(0, 25);
-    ctx.lineTo(-4, 22);
-    ctx.closePath();
+    ctx.moveTo(-3.2, 21); ctx.lineTo(0, 19.2); ctx.lineTo(3.2, 21); ctx.closePath();
     ctx.fill();
-    // top edge sheen
-    ctx.strokeStyle = "rgba(120,135,170,0.45)";
-    ctx.lineWidth = 0.4;
-    ctx.beginPath();
-    ctx.moveTo(0, 19);
-    ctx.lineTo(4, 22);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, 19);
-    ctx.lineTo(-4, 22);
-    ctx.stroke();
-    // small jutting tail spike
-    ctx.fillStyle = "#0a0a16";
-    ctx.beginPath();
-    ctx.moveTo(-0.6, 25);
-    ctx.lineTo(0.6, 25);
-    ctx.lineTo(0, 27.5);
-    ctx.closePath();
-    ctx.fill();
-    // Central glowing rune in pommel
+
+    // 6b. Main pommel diamond (with faceted shading)
     ctx.save();
     ctx.shadowColor = "#22d3ee";
     ctx.shadowBlur = 8;
-    ctx.fillStyle = "#67e8f9";
+    ctx.fillStyle = "#0a0a16";
     ctx.beginPath();
-    ctx.arc(0, 22, 1.3, 0, Math.PI * 2);
+    ctx.moveTo(0, 20);
+    ctx.lineTo(4.5, 24.5);
+    ctx.lineTo(0, 29);
+    ctx.lineTo(-4.5, 24.5);
+    ctx.closePath();
     ctx.fill();
+    ctx.restore();
+
+    // 6c. Facet edge highlights
+    ctx.strokeStyle = "rgba(150,170,200,0.55)";
+    ctx.lineWidth = 0.35;
+    ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(4.5, 24.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 20); ctx.lineTo(-4.5, 24.5); ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
+    ctx.beginPath(); ctx.moveTo(0, 29); ctx.lineTo(4.5, 24.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 29); ctx.lineTo(-4.5, 24.5); ctx.stroke();
+
+    // 6d. Bottom tail spike
+    ctx.fillStyle = "#0a0a16";
+    ctx.beginPath();
+    ctx.moveTo(-0.7, 29); ctx.lineTo(0.7, 29); ctx.lineTo(0, 32); ctx.closePath();
+    ctx.fill();
+
+    // 6e. Central glowing eye-rune in pommel
+    ctx.save();
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 10;
+    // outer dark frame
+    ctx.fillStyle = "#040614";
+    ctx.beginPath();
+    ctx.moveTo(0, 21.7);
+    ctx.lineTo(2.6, 24.5);
+    ctx.lineTo(0, 27.3);
+    ctx.lineTo(-2.6, 24.5);
+    ctx.closePath();
+    ctx.fill();
+    // glowing cyan
+    ctx.fillStyle = "#22d3ee";
+    ctx.beginPath();
+    ctx.moveTo(0, 22.5);
+    ctx.lineTo(1.9, 24.5);
+    ctx.lineTo(0, 26.5);
+    ctx.lineTo(-1.9, 24.5);
+    ctx.closePath();
+    ctx.fill();
+    // brighter inner cyan
+    ctx.fillStyle = "#a5f3fc";
+    ctx.beginPath();
+    ctx.moveTo(0, 23.2);
+    ctx.lineTo(1.2, 24.5);
+    ctx.lineTo(0, 25.8);
+    ctx.lineTo(-1.2, 24.5);
+    ctx.closePath();
+    ctx.fill();
+    // white-hot center
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(0, 22, 0.5, 0, Math.PI * 2);
+    ctx.arc(0, 24.5, 0.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
