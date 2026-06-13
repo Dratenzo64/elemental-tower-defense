@@ -514,7 +514,7 @@ const WEAPONS = {
   excalibur: { name: "EXCALIBUR",  type: "melee",  rarity: "legendary", dmg: 110, radius: 70, bleed: 14, color: "#ffd", cost: 900 },
   // Mythic — only obtainable by merging 6 legendaries
   ultra_gun: { name: "ULTRA GUN", type: "ranged", rarity: "mythic", dmg: 500, color: "#22d3ee", cost: 0 },
-  void_blade:{ name: "ZYPHERION", type: "melee", rarity: "mythic", dmg: 280, radius: 90, bleed: 30, color: "#22d3ee", cost: 0 },
+  void_blade:{ name: "ZYPHERION", type: "melee", rarity: "mythic", dmg: 280, radius: 110, bleed: 30, color: "#22d3ee", cost: 0 },
 };
 const RARITY_ORDER = ["common", "rare", "epic", "legendary", "mythic"];
 const RARITY_COLOR = {
@@ -1011,7 +1011,9 @@ function update() {
     } else if (w.type === "melee") {
       const offset = meleeCount > 0 ? (Math.PI * 2 / meleeCount) * meleeIdx : 0;
       meleeIdx++;
-      const angle = game.meleeAngle + offset;
+      // Mythic blades (Zypherion) spin the opposite direction from normal swords
+      const spin = w.rarity === "mythic" ? -game.meleeAngle : game.meleeAngle;
+      const angle = spin + offset;
       const r = w.radius;
       const bx = p.x + Math.cos(angle) * r;
       const by = p.y + Math.sin(angle) * r;
@@ -1735,6 +1737,235 @@ function drawPlayer() {
   }
 }
 
+// ===== ZYPHERION pre-rendered pixel-art sprite =====
+// Built once at startup into an off-screen canvas. Drawing it with
+// imageSmoothingEnabled = false preserves crisp pixels even when rotated.
+const _zypherCanvas = document.createElement("canvas");
+_zypherCanvas.width = 40;
+_zypherCanvas.height = 140;
+const _zypherCtx = _zypherCanvas.getContext("2d");
+_zypherCtx.imageSmoothingEnabled = false;
+// Pivot point (the spot that orbits the player) — at the crossguard center
+const ZYP_ORIGIN_X = 20;
+const ZYP_ORIGIN_Y = 75;
+
+function _zp(x, y, w, h, color) {
+  _zypherCtx.fillStyle = color;
+  _zypherCtx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+}
+
+function buildZypherSprite() {
+  _zypherCtx.clearRect(0, 0, _zypherCanvas.width, _zypherCanvas.height);
+  const cx = 20;
+
+  // ===== BLADE (a 65-px curved scimitar from y=5 to y=70) =====
+  // Each row is [y, leftEdge, rightEdge] as offsets from cx.
+  // The blade bows out toward the spine (right) — true scimitar curve.
+  const bladeRows = [
+    // sharp tip
+    [5,  1, 2], [6,  1, 2], [7,  0, 2], [8,  0, 3], [9,  0, 3],
+    [10, -1, 3], [11, -1, 3], [12, -1, 4], [13, -1, 4],
+    // upper widening
+    [14, -2, 4], [15, -2, 5], [16, -2, 5], [17, -2, 5],
+    [18, -3, 5], [19, -3, 6], [20, -3, 6], [21, -3, 6],
+    // peak / belly
+    [22, -4, 6], [23, -4, 7], [24, -4, 7], [25, -4, 7],
+    [26, -4, 7], [27, -4, 7], [28, -4, 7], [29, -4, 7],
+    [30, -4, 7], [31, -4, 6], [32, -4, 6],
+    // sweeping back inward
+    [33, -4, 6], [34, -4, 6], [35, -4, 6], [36, -4, 5],
+    [37, -4, 5], [38, -4, 5], [39, -4, 5], [40, -3, 5],
+    [41, -3, 5], [42, -3, 4], [43, -3, 4], [44, -3, 4],
+    [45, -3, 4], [46, -3, 4], [47, -3, 3], [48, -3, 3],
+    [49, -3, 3], [50, -3, 3], [51, -3, 3], [52, -3, 3],
+    [53, -3, 3], [54, -3, 3], [55, -3, 3], [56, -3, 3],
+    [57, -3, 3], [58, -3, 3], [59, -3, 3], [60, -3, 3],
+    [61, -3, 3], [62, -3, 3], [63, -3, 3], [64, -3, 3],
+    [65, -3, 3], [66, -3, 3], [67, -3, 3], [68, -3, 3],
+    [69, -3, 3], [70, -3, 3],
+  ];
+  for (const [y, l, r] of bladeRows) {
+    // 1. Outer cyan halo (1 px beyond cutting edge)
+    _zp(cx + l - 2, y, 1, 1, "#0c4a6e");
+    // 2. Bright cyan glow band
+    _zp(cx + l - 1, y, 1, 1, "#22d3ee");
+    // 3. White-hot cutting edge (1 px)
+    _zp(cx + l, y, 1, 1, "#a5f3fc");
+    // 4. Dark void-metal blade body
+    _zp(cx + l + 1, y, r - l - 1, 1, "#0a0a16");
+    // 5. Spine (right edge, slightly lighter dark)
+    _zp(cx + r, y, 1, 1, "#1a1a2a");
+  }
+
+  // ===== Faint hammered banding marks across the blade =====
+  for (let i = 0; i < 8; i++) {
+    const by = 15 + i * 7;
+    _zp(cx - 3, by, 8, 1, "#040614");
+  }
+
+  // ===== Central fuller (subtle steel ridge down the centerline) =====
+  for (let y = 14; y < 60; y += 2) {
+    _zp(cx + 1, y, 1, 1, "#2a2a3a");
+  }
+
+  // ===== 5 GLOWING RUNES along the centerline =====
+  // Rune 1: Upward triangle (y=15-18)
+  _zp(cx + 1, 15, 1, 1, "#67e8f9");
+  _zp(cx,     16, 3, 1, "#22d3ee");
+  _zp(cx + 1, 16, 1, 1, "#a5f3fc");
+  _zp(cx - 1, 17, 5, 1, "#22d3ee");
+  _zp(cx + 1, 17, 1, 1, "#a5f3fc");
+
+  // Rune 2: Norse-style fork (y=25-28)
+  _zp(cx + 1, 25, 1, 4, "#22d3ee");
+  _zp(cx + 2, 25, 1, 1, "#22d3ee");
+  _zp(cx + 3, 26, 1, 1, "#22d3ee");
+  _zp(cx + 2, 28, 1, 1, "#22d3ee");
+  _zp(cx + 3, 29, 1, 1, "#22d3ee");
+  _zp(cx + 1, 26, 1, 1, "#a5f3fc");
+
+  // Rune 3: Diamond (y=33-36)
+  _zp(cx + 1, 33, 1, 1, "#22d3ee");
+  _zp(cx,     34, 3, 1, "#22d3ee");
+  _zp(cx - 1, 35, 5, 1, "#22d3ee");
+  _zp(cx,     36, 3, 1, "#22d3ee");
+  _zp(cx + 1, 37, 1, 1, "#22d3ee");
+  _zp(cx + 1, 35, 1, 1, "#a5f3fc");
+
+  // Rune 4: X cross (y=43-46)
+  _zp(cx - 1, 43, 1, 1, "#22d3ee");
+  _zp(cx + 3, 43, 1, 1, "#22d3ee");
+  _zp(cx,     44, 1, 1, "#22d3ee");
+  _zp(cx + 2, 44, 1, 1, "#22d3ee");
+  _zp(cx + 1, 45, 1, 1, "#a5f3fc");
+  _zp(cx,     46, 1, 1, "#22d3ee");
+  _zp(cx + 2, 46, 1, 1, "#22d3ee");
+  _zp(cx - 1, 47, 1, 1, "#22d3ee");
+  _zp(cx + 3, 47, 1, 1, "#22d3ee");
+
+  // Rune 5: Downward triangle (y=53-56)
+  _zp(cx - 1, 53, 5, 1, "#22d3ee");
+  _zp(cx + 1, 53, 1, 1, "#a5f3fc");
+  _zp(cx,     54, 3, 1, "#22d3ee");
+  _zp(cx + 1, 54, 1, 1, "#a5f3fc");
+  _zp(cx + 1, 55, 1, 1, "#22d3ee");
+
+  // ===== CROSSGUARD (y=71 to y=84) =====
+  // Top edge highlight strip across spine end
+  _zp(cx - 10, 70, 21, 1, "#1a1a2a");
+  // Main horizontal bar
+  _zp(cx - 10, 71, 21, 7, "#0a0a16");
+  _zp(cx - 10, 71, 21, 1, "#1a2030");   // top sheen
+  _zp(cx - 10, 77, 21, 1, "#000000");   // bottom shadow
+  // Wider extension at the middle
+  _zp(cx - 12, 73, 25, 3, "#0a0a16");
+  _zp(cx - 12, 73, 25, 1, "#1a1a2a");
+  // Pointy outer wings
+  _zp(cx - 14, 74, 2, 2, "#0a0a16");
+  _zp(cx + 13, 74, 2, 2, "#0a0a16");
+  _zp(cx - 15, 74, 1, 1, "#1a1a2a");
+  _zp(cx + 15, 74, 1, 1, "#1a1a2a");
+  // Upward shoulder spikes
+  _zp(cx - 7, 68, 2, 3, "#0a0a16");
+  _zp(cx + 6, 68, 2, 3, "#0a0a16");
+  _zp(cx - 7, 67, 1, 1, "#1a1a2a");
+  _zp(cx + 7, 67, 1, 1, "#1a1a2a");
+  // Downward spikes
+  _zp(cx - 1, 78, 2, 4, "#0a0a16");
+  _zp(cx,     82, 1, 2, "#0a0a16");
+  _zp(cx - 6, 78, 1, 2, "#0a0a16");
+  _zp(cx + 6, 78, 1, 2, "#0a0a16");
+  // ----- Central glowing diamond rune -----
+  _zp(cx - 3, 72, 7, 1, "#040614");
+  _zp(cx - 4, 73, 9, 1, "#040614");
+  _zp(cx - 3, 74, 7, 1, "#040614");
+  // Cyan glowing core
+  _zp(cx - 2, 72, 5, 1, "#22d3ee");
+  _zp(cx - 3, 73, 7, 1, "#22d3ee");
+  _zp(cx - 2, 74, 5, 1, "#22d3ee");
+  // Brighter inner
+  _zp(cx - 1, 72, 3, 1, "#a5f3fc");
+  _zp(cx - 2, 73, 5, 1, "#a5f3fc");
+  _zp(cx - 1, 74, 3, 1, "#a5f3fc");
+  // White-hot pupil
+  _zp(cx, 73, 1, 1, "#ffffff");
+  _zp(cx + 1, 73, 1, 1, "#ffffff");
+
+  // ===== GRIP (y=85 to y=110) =====
+  // Top binding band (metal)
+  _zp(cx - 4, 85, 9, 2, "#1a1a2a");
+  _zp(cx - 4, 85, 9, 1, "#2a2a3a");
+  // Black wrapped grip body
+  _zp(cx - 4, 87, 9, 21, "#000000");
+  // Diagonal weave (subtle texture)
+  for (let i = 0; i < 6; i++) {
+    const yy = 88 + i * 4;
+    _zp(cx - 3, yy,     1, 1, "#1a1a2a");
+    _zp(cx - 1, yy + 1, 1, 1, "#1a1a2a");
+    _zp(cx + 1, yy + 2, 1, 1, "#1a1a2a");
+    _zp(cx + 3, yy + 3, 1, 1, "#1a1a2a");
+  }
+  // Glowing cyan rune rings (4 wraps)
+  for (const ry of [89, 94, 99, 104]) {
+    _zp(cx - 4, ry, 9, 1, "#22d3ee");
+    _zp(cx - 4, ry, 1, 1, "#0c4a6e");
+    _zp(cx + 4, ry, 1, 1, "#0c4a6e");
+    _zp(cx,     ry, 1, 1, "#a5f3fc");
+    _zp(cx + 2, ry, 1, 1, "#a5f3fc");
+  }
+  // Bottom binding band
+  _zp(cx - 4, 108, 9, 2, "#1a1a2a");
+  _zp(cx - 4, 108, 9, 1, "#2a2a3a");
+
+  // ===== POMMEL (y=111 to y=133) =====
+  // Top crown spikes
+  _zp(cx - 5, 110, 11, 1, "#0a0a16");
+  _zp(cx - 4, 109, 1, 1, "#1a1a2a");
+  _zp(cx,     108, 1, 1, "#1a1a2a");
+  _zp(cx + 4, 109, 1, 1, "#1a1a2a");
+  // Main pommel diamond body (faceted)
+  _zp(cx - 5, 111, 11, 3, "#0a0a16");
+  _zp(cx - 6, 113, 13, 2, "#0a0a16");
+  _zp(cx - 7, 114, 15, 2, "#0a0a16");   // widest point of pommel
+  _zp(cx - 6, 116, 13, 2, "#0a0a16");
+  _zp(cx - 5, 118, 11, 3, "#0a0a16");
+  _zp(cx - 4, 121, 9, 2, "#0a0a16");
+  _zp(cx - 3, 123, 7, 2, "#0a0a16");
+  _zp(cx - 2, 125, 5, 2, "#0a0a16");
+  _zp(cx - 1, 127, 3, 2, "#0a0a16");
+  // Pommel facet highlights (upper bevels)
+  _zp(cx - 5, 111, 11, 1, "#1a2030");
+  _zp(cx - 6, 113, 1, 1, "#1a2030");
+  _zp(cx + 6, 113, 1, 1, "#1a2030");
+  // Pommel facet shadows (lower bevels)
+  _zp(cx - 5, 120, 11, 1, "#000000");
+  // Tail spike
+  _zp(cx, 129, 1, 4, "#0a0a16");
+  _zp(cx - 1, 128, 1, 1, "#1a1a2a");
+  _zp(cx + 1, 128, 1, 1, "#1a1a2a");
+  // ----- Central glowing eye rune in pommel -----
+  _zp(cx - 3, 113, 7, 1, "#040614");
+  _zp(cx - 4, 114, 9, 1, "#040614");
+  _zp(cx - 4, 115, 9, 1, "#040614");
+  _zp(cx - 3, 116, 7, 1, "#040614");
+  // Cyan glow
+  _zp(cx - 2, 113, 5, 1, "#22d3ee");
+  _zp(cx - 3, 114, 7, 1, "#22d3ee");
+  _zp(cx - 3, 115, 7, 1, "#22d3ee");
+  _zp(cx - 2, 116, 5, 1, "#22d3ee");
+  // Brighter inner
+  _zp(cx - 1, 113, 3, 1, "#a5f3fc");
+  _zp(cx - 2, 114, 5, 1, "#a5f3fc");
+  _zp(cx - 2, 115, 5, 1, "#a5f3fc");
+  _zp(cx - 1, 116, 3, 1, "#a5f3fc");
+  // White-hot pupil
+  _zp(cx,     114, 1, 1, "#ffffff");
+  _zp(cx + 1, 114, 1, 1, "#ffffff");
+  _zp(cx,     115, 1, 1, "#ffffff");
+  _zp(cx + 1, 115, 1, 1, "#ffffff");
+}
+buildZypherSprite();
+
 function drawMeleeBlades() {
   if (!game.meleeBlades || game.meleeBlades.length === 0) return;
   for (const b of game.meleeBlades) drawOneBlade(b);
@@ -1745,11 +1976,13 @@ function drawOneBlade(b) {
   ctx.rotate(b.angle + Math.PI / 2);
 
   if (b.rarity === "mythic") {
-    // ===== ZYPHERION — smooth, hand-painted void/arcane scimitar =====
+    // ===== ZYPHERION — pre-rendered pixel-art sprite =====
+    // Nearest-neighbor sampling keeps the pixels crisp during rotation.
     ctx.save();
-    ctx.imageSmoothingEnabled = true;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(_zypherCanvas, -ZYP_ORIGIN_X, -ZYP_ORIGIN_Y);
+    ctx.restore();
+    /* removed legacy smooth-drawn block
 
     // ===== 1. AMBIENT GLOW (large soft cyan halo behind everything) =====
     ctx.save();
@@ -2154,6 +2387,7 @@ function drawOneBlade(b) {
     ctx.restore();
 
     ctx.restore();
+    */
   } else {
     // ===== STANDARD PIXEL SWORD =====
     px(ctx, -2, -8, 4, 1, "#c8d2dc"); // tip light
