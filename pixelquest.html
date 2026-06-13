@@ -144,10 +144,35 @@
   .choice-card.rarity-rare      { border-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4); }
   .choice-card.rarity-epic      { border-color: #a855f7; box-shadow: 0 0 14px rgba(168, 85, 247, 0.5); }
   .choice-card.rarity-legendary { border-color: #fbbf24; box-shadow: 0 0 18px rgba(251, 191, 36, 0.6); }
+  .choice-card.rarity-mythic    {
+    border-color: #22d3ee;
+    background: linear-gradient(135deg, rgba(0,0,0,0.65) 0%, rgba(34,211,238,0.18) 100%);
+    box-shadow: 0 0 24px rgba(34, 211, 238, 0.85), inset 0 0 10px rgba(34,211,238,0.25);
+    color: #cffafe;
+  }
   .choice-card.rarity-common:hover    { box-shadow: 0 0 14px rgba(156, 163, 175, 0.4); }
   .choice-card.rarity-rare:hover      { box-shadow: 0 0 18px rgba(59, 130, 246, 0.6); }
   .choice-card.rarity-epic:hover      { box-shadow: 0 0 22px rgba(168, 85, 247, 0.7); }
   .choice-card.rarity-legendary:hover { box-shadow: 0 0 26px rgba(251, 191, 36, 0.8); }
+  .choice-card.rarity-mythic:hover    { box-shadow: 0 0 36px rgba(34, 211, 238, 1.0), inset 0 0 14px rgba(34,211,238,0.4); }
+  /* Selected for merge */
+  .choice-card.selected {
+    outline: 3px solid #fcd34d;
+    outline-offset: -3px;
+    transform: translateY(-3px) scale(1.03);
+    filter: brightness(1.15);
+  }
+  /* Merge button */
+  .pixel-btn.merge {
+    background: linear-gradient(135deg, #22d3ee 0%, #1d4ed8 100%);
+    color: #f0fbff;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.6), 0 0 20px rgba(34, 211, 238, 0.6);
+    animation: merge-pulse 1s infinite alternate;
+  }
+  @keyframes merge-pulse {
+    from { box-shadow: 4px 4px 0 rgba(0,0,0,0.6), 0 0 12px rgba(34, 211, 238, 0.5); }
+    to   { box-shadow: 4px 4px 0 rgba(0,0,0,0.6), 0 0 28px rgba(34, 211, 238, 1.0); }
+  }
   .choice-card .c-rarity {
     font-family: 'Press Start 2P', monospace;
     font-size: 9px;
@@ -447,10 +472,13 @@ const WEAPONS = {
   // Legendary
   railgun:   { name: "RAILGUN",    type: "ranged", rarity: "legendary", dmg: 120, color: "#fd5", cost: 900 },
   excalibur: { name: "EXCALIBUR",  type: "melee",  rarity: "legendary", dmg: 110, radius: 70, bleed: 14, color: "#ffd", cost: 900 },
+  // Mythic — only obtainable by merging 6 legendaries
+  ultra_gun: { name: "ULTRA GUN", type: "ranged", rarity: "mythic", dmg: 500, color: "#22d3ee", cost: 0 },
+  void_blade:{ name: "VOID BLADE", type: "melee", rarity: "mythic", dmg: 280, radius: 90, bleed: 30, color: "#22d3ee", cost: 0 },
 };
-const RARITY_ORDER = ["common", "rare", "epic", "legendary"];
+const RARITY_ORDER = ["common", "rare", "epic", "legendary", "mythic"];
 const RARITY_COLOR = {
-  common: "#9ca3af", rare: "#60a5fa", epic: "#c084fc", legendary: "#fcd34d",
+  common: "#9ca3af", rare: "#60a5fa", epic: "#c084fc", legendary: "#fcd34d", mythic: "#22d3ee",
 };
 function randomCommonWeapon() {
   const commons = Object.keys(WEAPONS).filter(k => WEAPONS[k].rarity === "common");
@@ -884,6 +912,7 @@ function update() {
             vy: Math.sin(ang) * BULLET_SPEED,
             dmg: w.dmg * dmgMult,
             color: w.color,
+            rarity: w.rarity,
             life: 90,
             dead: false,
           });
@@ -913,7 +942,7 @@ function update() {
           }
         }
       }
-      game.meleeBlades.push({ x: bx, y: by, angle, color: w.color });
+      game.meleeBlades.push({ x: bx, y: by, angle, color: w.color, rarity: w.rarity });
     }
   }
 
@@ -1596,23 +1625,60 @@ function drawMeleeBlades() {
   for (const b of game.meleeBlades) drawOneBlade(b);
 }
 function drawOneBlade(b) {
-  // pixel sword — drawn upright then rotated as a whole
   ctx.save();
   ctx.translate(Math.round(b.x), Math.round(b.y));
   ctx.rotate(b.angle + Math.PI / 2);
-  // blade (3-shade vertical strip)
-  px(ctx, -2, -8, 4, 1, "#c8d2dc"); // tip light
-  px(ctx, -2, -7, 4, 11, "#a8b4c0");
-  px(ctx, -1, -7, 2, 11, "#e8eef5"); // bright core
-  px(ctx, -2, -7, 1, 11, "#5a6a78"); // dark left edge
-  px(ctx,  1, -7, 1, 11, "#5a6a78"); // dark right edge
-  // crossguard (gold)
-  px(ctx, -3, 4, 6, 2, "#7a4818");
-  px(ctx, -3, 4, 6, 1, "#fcd34d");
-  // grip (dark)
-  px(ctx, -1, 6, 2, 3, "#3a2418");
-  // pommel
-  px(ctx, -1, 9, 2, 1, "#fcd34d");
+
+  if (b.rarity === "mythic") {
+    // ===== GIANT FUTURISTIC MYTHIC BLADE — blue + black void blade =====
+    // Outer black silhouette / void aura
+    px(ctx, -5, -24, 10, 28, "#000000");
+    // Blade body — gradient cyan core
+    px(ctx, -4, -23, 8, 26, "#0c4a6e"); // deep blue
+    px(ctx, -3, -23, 6, 26, "#0e7490"); // mid teal
+    px(ctx, -2, -23, 4, 26, "#22d3ee"); // cyan
+    px(ctx, -1, -23, 2, 26, "#67e8f9"); // bright cyan
+    // Bright tip
+    px(ctx, -2, -25, 4, 2, "#a5f3fc");
+    px(ctx, -1, -26, 2, 1, "#ffffff");
+    // Black edge runes (single pixel dots)
+    px(ctx, -1, -18, 2, 1, "#000000");
+    px(ctx, -1, -10, 2, 1, "#000000");
+    px(ctx, -1, -2,  2, 1, "#000000");
+    // Energy flecks
+    px(ctx, -3, -16, 1, 1, "#a5f3fc");
+    px(ctx,  2, -8,  1, 1, "#a5f3fc");
+    px(ctx, -3, 0,   1, 1, "#a5f3fc");
+    // Futuristic crossguard — wide black with cyan core
+    px(ctx, -7, 4, 14, 4, "#000000");
+    px(ctx, -7, 4, 14, 1, "#22d3ee");
+    px(ctx, -7, 7, 14, 1, "#0e7490");
+    px(ctx, -2, 4, 4, 4, "#67e8f9");
+    px(ctx, -1, 5, 2, 2, "#a5f3fc");
+    // Grip (black with cyan rings)
+    px(ctx, -2, 8, 4, 7, "#000000");
+    px(ctx, -2, 9,  4, 1, "#22d3ee");
+    px(ctx, -2, 12, 4, 1, "#22d3ee");
+    // Pommel — glowing cyan orb
+    px(ctx, -3, 15, 6, 4, "#000000");
+    px(ctx, -2, 15, 4, 4, "#22d3ee");
+    px(ctx, -2, 15, 4, 1, "#67e8f9");
+    px(ctx, -1, 16, 2, 1, "#ffffff");
+  } else {
+    // ===== STANDARD PIXEL SWORD =====
+    px(ctx, -2, -8, 4, 1, "#c8d2dc"); // tip light
+    px(ctx, -2, -7, 4, 11, "#a8b4c0");
+    px(ctx, -1, -7, 2, 11, "#e8eef5"); // bright core
+    px(ctx, -2, -7, 1, 11, "#5a6a78"); // dark left edge
+    px(ctx,  1, -7, 1, 11, "#5a6a78"); // dark right edge
+    // crossguard (gold)
+    px(ctx, -3, 4, 6, 2, "#7a4818");
+    px(ctx, -3, 4, 6, 1, "#fcd34d");
+    // grip (dark)
+    px(ctx, -1, 6, 2, 3, "#3a2418");
+    // pommel
+    px(ctx, -1, 9, 2, 1, "#fcd34d");
+  }
   ctx.restore();
 }
 
@@ -1953,14 +2019,28 @@ function render() {
   }
   // enemies
   for (const e of game.enemies) drawEnemy(e);
-  // player bullets (pixel rects with a 2px tracer behind)
+  // player bullets
   for (const b of game.bullets) {
-    // tracer trail (a few pixels behind)
-    const tx = b.x - b.vx * 1.6, ty = b.y - b.vy * 1.6;
-    px(ctx, tx - 1, ty - 1, 2, 2, b.color);
-    // bullet body
-    px(ctx, b.x - 2, b.y - 2, 4, 4, b.color);
-    px(ctx, b.x - 1, b.y - 1, 2, 2, "#ffffff");
+    if (b.rarity === "mythic") {
+      // GIANT FUTURISTIC PLASMA BOLT — long blue/black core with cyan trail
+      // long trail behind
+      for (let t = 1; t <= 4; t++) {
+        const tx = b.x - b.vx * t * 0.7, ty = b.y - b.vy * t * 0.7;
+        px(ctx, tx - 2, ty - 2, 4, 4, "#0c4a6e");
+        px(ctx, tx - 1, ty - 1, 2, 2, "#22d3ee");
+      }
+      // bullet body — big 8x8 cyan with white core and black outline
+      px(ctx, b.x - 4, b.y - 4, 8, 8, "#000000");
+      px(ctx, b.x - 3, b.y - 3, 6, 6, "#0e7490");
+      px(ctx, b.x - 2, b.y - 2, 4, 4, "#22d3ee");
+      px(ctx, b.x - 1, b.y - 1, 2, 2, "#a5f3fc");
+      px(ctx, b.x,     b.y,     1, 1, "#ffffff");
+    } else {
+      const tx = b.x - b.vx * 1.6, ty = b.y - b.vy * 1.6;
+      px(ctx, tx - 1, ty - 1, 2, 2, b.color);
+      px(ctx, b.x - 2, b.y - 2, 4, 4, b.color);
+      px(ctx, b.x - 1, b.y - 1, 2, 2, "#ffffff");
+    }
   }
   // melee blades (one per equipped melee weapon)
   drawMeleeBlades();
@@ -2058,6 +2138,55 @@ document.getElementById("ability-skip").addEventListener("click", () => {
 
 // === City ===
 let cityWeapons = [];
+let mergeSelection = []; // indices into game.player.weapons that are selected for merge
+function clearMergeSelection() { mergeSelection.length = 0; }
+
+// Returns { ok: true, resultRarity } or { ok: false, why } for the current selection
+function checkMergeSelection() {
+  if (!game) return { ok: false };
+  const sel = mergeSelection.map(i => game.player.weapons[i]).filter(Boolean);
+  if (sel.length !== mergeSelection.length) return { ok: false };
+  if (sel.length === 0) return { ok: false };
+  const rarities = sel.map(w => WEAPONS[w.id].rarity);
+  const same = rarities.every(r => r === rarities[0]);
+  if (!same) return { ok: false, why: "Selected weapons must share a rarity" };
+  const r = rarities[0];
+  // legendary → 6 → mythic
+  if (r === "legendary") {
+    if (sel.length === 6) return { ok: true, resultRarity: "mythic" };
+    return { ok: false, why: `Need 6 legendaries to forge a MYTHIC (selected ${sel.length})` };
+  }
+  // common/rare/epic → 3 → next tier
+  if (r === "common" || r === "rare" || r === "epic") {
+    if (sel.length === 3) {
+      const idx = RARITY_ORDER.indexOf(r);
+      return { ok: true, resultRarity: RARITY_ORDER[idx + 1] };
+    }
+    return { ok: false, why: `Need 3 of same rarity (selected ${sel.length})` };
+  }
+  if (r === "mythic") return { ok: false, why: "Mythic weapons can't be merged further" };
+  return { ok: false };
+}
+
+function performMerge() {
+  const check = checkMergeSelection();
+  if (!check.ok) return false;
+  // pick a random weapon of the result rarity
+  const candidates = Object.keys(WEAPONS).filter(k => WEAPONS[k].rarity === check.resultRarity);
+  if (candidates.length === 0) return false;
+  const newId = candidates[Math.floor(Math.random() * candidates.length)];
+  // remove the selected weapons (highest index first so indices stay valid)
+  const indicesSorted = [...mergeSelection].sort((a, b) => b - a);
+  for (const i of indicesSorted) {
+    game.player.weapons.splice(i, 1);
+  }
+  // add the new merged weapon
+  game.player.weapons.push({ id: newId, cd: 0 });
+  clearMergeSelection();
+  return { id: newId, rarity: check.resultRarity };
+}
+
+
 const EXPLORE_LINES = [
   "An old woman tells you of a sword in a distant cave.",
   "A blacksmith hammers on a glowing blade.",
@@ -2075,6 +2204,9 @@ function openCity() {
   game.cityVisited++;
   // roll 3 weapons (mostly common/rare with chance of epic/legendary)
   cityWeapons = [rollCityWeapon(), rollCityWeapon(), rollCityWeapon()];
+  clearMergeSelection();
+  const banner = document.getElementById("city-explore-text");
+  if (banner) { banner.textContent = ""; banner.style.color = ""; }
   renderCity();
   document.getElementById("city-overlay").classList.add("show");
 }
@@ -2095,10 +2227,15 @@ function renderCity() {
     `Coins: ${game.coins} · HP: ${Math.round(game.player.hp)}/${game.player.maxHp} · Wave ${game.wave}`;
   const shop = document.getElementById("city-shop");
   const atCap = game.player.weapons.length >= MAX_WEAPONS;
+  // prune any selected indices that no longer exist
+  mergeSelection = mergeSelection.filter(i => i < game.player.weapons.length);
+  const mergeCheck = checkMergeSelection();
+
   const loadout = game.player.weapons.map((wi, idx) => {
     const wp = w[wi.id];
     const canDrop = game.player.weapons.length > 1;
-    return `<div class="choice-card rarity-${wp.rarity}" style="padding:8px 10px;">
+    const isSelected = mergeSelection.includes(idx);
+    return `<div class="choice-card rarity-${wp.rarity}${isSelected ? " selected" : ""}" data-select="${idx}" style="padding:8px 10px; cursor:pointer;">
       <div class="c-rarity">${wp.rarity.toUpperCase()}</div>
       <div class="c-name" style="font-size:10px;">${wp.name}</div>
       <div class="c-desc" style="font-size:11px; min-height:0;">${wp.type === "ranged" ? "RANGED" : "MELEE"} · DMG ${wp.dmg}</div>
@@ -2106,12 +2243,43 @@ function renderCity() {
     </div>`;
   }).join("");
 
+  // Build merge area (only shown if at least one weapon is selected)
+  let mergeArea = "";
+  if (mergeSelection.length > 0) {
+    if (mergeCheck.ok) {
+      const tierName = mergeCheck.resultRarity.toUpperCase();
+      const btnLabel = mergeCheck.resultRarity === "mythic"
+        ? "⚡ FORGE MYTHIC ›"
+        : `MERGE → ${tierName} ›`;
+      mergeArea = `
+        <div style="margin-top:6px; text-align:center;">
+          <div style="font-family:'Press Start 2P', monospace; font-size:9px; color:#22d3ee; letter-spacing:1px; margin-bottom:6px;">
+            ${mergeSelection.length} SELECTED · FORGE 1 ${tierName} WEAPON
+          </div>
+          <button class="pixel-btn merge" id="city-merge">${btnLabel}</button>
+          <button class="pixel-btn secondary" id="city-cancel-merge" style="font-size:9px; padding:8px 14px;">CANCEL</button>
+        </div>`;
+    } else {
+      mergeArea = `
+        <div style="margin-top:6px; text-align:center;">
+          <div style="font-family:'Press Start 2P', monospace; font-size:9px; color:#fda4af; letter-spacing:1px; margin-bottom:6px;">
+            ${mergeSelection.length} SELECTED · ${mergeCheck.why || "Invalid selection"}
+          </div>
+          <button class="pixel-btn secondary" id="city-cancel-merge" style="font-size:9px; padding:8px 14px;">CANCEL</button>
+        </div>`;
+    }
+  }
+
   shop.innerHTML = `
     <div style="margin-bottom:6px; font-family:'Press Start 2P', monospace; font-size:10px; color:#fcd34d; letter-spacing:1px;">
-      YOUR LOADOUT (${game.player.weapons.length}/${MAX_WEAPONS})
+      YOUR LOADOUT (${game.player.weapons.length}/${MAX_WEAPONS}) · CLICK TO SELECT FOR MERGE
     </div>
-    <div class="choice-grid" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:16px;">${loadout}</div>
-    <div style="margin-bottom:6px; font-family:'Press Start 2P', monospace; font-size:10px; color:#fcd34d; letter-spacing:1px;">
+    <div class="choice-grid" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:8px;">${loadout}</div>
+    <div style="font-family:'Rajdhani', sans-serif; font-size:12px; color:rgba(240,230,216,0.7); text-align:center; margin-bottom:10px;">
+      MERGE: 3 of same rarity → next tier · 6 LEGENDARIES → MYTHIC
+    </div>
+    ${mergeArea}
+    <div style="margin: 18px 0 6px; font-family:'Press Start 2P', monospace; font-size:10px; color:#fcd34d; letter-spacing:1px;">
       SHOP ${atCap ? "· LOADOUT FULL — DROP A WEAPON FIRST" : ""}
     </div>
     <div class="choice-grid">` +
@@ -2130,6 +2298,18 @@ function renderCity() {
     <div style="margin-top:10px;">
       <button class="pixel-btn secondary" id="city-reroll">RE-ROLL SHOP (20c)</button>
     </div>`;
+  // select for merge (click anywhere on the loadout card)
+  shop.querySelectorAll("[data-select]").forEach(card => {
+    card.addEventListener("click", (ev) => {
+      // ignore clicks that came from the DROP button
+      if (ev.target.closest("[data-drop]")) return;
+      const idx = parseInt(card.dataset.select);
+      const pos = mergeSelection.indexOf(idx);
+      if (pos >= 0) mergeSelection.splice(pos, 1);
+      else mergeSelection.push(idx);
+      renderCity();
+    });
+  });
   // buy
   shop.querySelectorAll("[data-buy]").forEach(card => {
     card.addEventListener("click", () => {
@@ -2140,7 +2320,6 @@ function renderCity() {
       if (game.coins < wp.cost) return;
       game.coins -= wp.cost;
       addWeapon(wid);
-      // remove the bought weapon from the shop so you can't buy it again from same stock
       cityWeapons.splice(i, 1);
       cityWeapons.push(rollCityWeapon());
       renderCity();
@@ -2153,12 +2332,42 @@ function renderCity() {
     btn.addEventListener("click", (ev) => {
       ev.stopPropagation();
       const idx = parseInt(btn.dataset.drop);
+      // also remove from merge selection if present
+      const sp = mergeSelection.indexOf(idx);
+      if (sp >= 0) mergeSelection.splice(sp, 1);
+      // shift any selected indices above idx down by 1
+      mergeSelection = mergeSelection.map(i => i > idx ? i - 1 : i);
       dropWeapon(idx);
       renderCity();
       updateHud();
       savePixelQuest();
     });
   });
+  // merge button
+  const mergeBtn = document.getElementById("city-merge");
+  if (mergeBtn) {
+    mergeBtn.addEventListener("click", () => {
+      const result = performMerge();
+      if (!result) return;
+      renderCity();
+      updateHud();
+      savePixelQuest();
+      // brief reveal banner
+      const wp = WEAPONS[result.id];
+      const banner = document.getElementById("city-explore-text");
+      if (banner) {
+        banner.textContent = `✨ FORGED: ${result.rarity.toUpperCase()} ${wp.name} (${wp.type.toUpperCase()} · DMG ${wp.dmg})`;
+        banner.style.color = RARITY_COLOR[result.rarity] || "#fcd34d";
+      }
+    });
+  }
+  const cancelBtn = document.getElementById("city-cancel-merge");
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", () => {
+      clearMergeSelection();
+      renderCity();
+    });
+  }
   document.getElementById("city-reroll").addEventListener("click", () => {
     if (game.coins < 20) return;
     game.coins -= 20;
@@ -2177,7 +2386,9 @@ document.getElementById("city-heal").addEventListener("click", () => {
 });
 document.getElementById("city-explore").addEventListener("click", () => {
   const line = EXPLORE_LINES[Math.floor(Math.random() * EXPLORE_LINES.length)];
-  document.getElementById("city-explore-text").textContent = line;
+  const banner = document.getElementById("city-explore-text");
+  banner.textContent = line;
+  banner.style.color = "";
 });
 document.getElementById("city-continue").addEventListener("click", () => {
   document.getElementById("city-overlay").classList.remove("show");
