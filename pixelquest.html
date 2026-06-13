@@ -793,6 +793,7 @@ function newGame(startingWeaponId) {
     wave: 0,
     kills: 0,
     maxWeapons: MAX_WEAPONS,
+    mythicAngle: 0,  // Zypherion uses its own slower, reversed spin
     spawnQueue: [],
     spawnTimer: 0,
     waveState: "between", // 'spawning' | 'active' | 'between' | 'city'
@@ -977,7 +978,8 @@ function update() {
   }
 
   // weapons — every equipped weapon fires/spins simultaneously
-  game.meleeAngle += MELEE_SPIN_SPEED * 0.75;
+  game.meleeAngle  += MELEE_SPIN_SPEED * 0.75;   // normal swords: forward
+  game.mythicAngle -= MELEE_SPIN_SPEED * 0.30;   // Zypherion: backward + much slower
   game.meleeBlades = [];
   const dmgMult = abilityValue("bloodlust", "mult", 1);
   // count melee weapons so we can space their orbit angles evenly
@@ -1011,8 +1013,8 @@ function update() {
     } else if (w.type === "melee") {
       const offset = meleeCount > 0 ? (Math.PI * 2 / meleeCount) * meleeIdx : 0;
       meleeIdx++;
-      // Mythic blades (Zypherion) spin the opposite direction from normal swords
-      const spin = w.rarity === "mythic" ? -game.meleeAngle : game.meleeAngle;
+      // Zypherion uses its own counter — slower AND reversed
+      const spin = w.rarity === "mythic" ? game.mythicAngle : game.meleeAngle;
       const angle = spin + offset;
       const r = w.radius;
       const bx = p.x + Math.cos(angle) * r;
