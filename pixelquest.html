@@ -1015,6 +1015,32 @@ function update() {
       if (e.dead) continue;
       if (Math.hypot(b.x - e.x, b.y - e.y) < e.size + 3) {
         damageEnemy(e, b.dmg, "ranged");
+        // ===== MYTHIC ULTRA GUN: COSMIC RIPPLE AoE =====
+        if (b.rarity === "mythic") {
+          const RIPPLE_R = 25;
+          for (const e2 of game.enemies) {
+            if (e2 === e || e2.dead) continue;
+            // hit anyone whose bounding sphere overlaps the ripple
+            if (Math.hypot(b.x - e2.x, b.y - e2.y) < RIPPLE_R + e2.size) {
+              damageEnemy(e2, b.dmg, "ranged");
+            }
+          }
+          // expanding cyan ring visual
+          game.particles.push({
+            type: "ripple", x: b.x, y: b.y,
+            life: 28, max: 28, maxRadius: RIPPLE_R,
+          });
+          // a burst of cosmic sparks
+          for (let i = 0; i < 10; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const s = 1 + Math.random() * 2.5;
+            game.particles.push({
+              type: "spark", x: b.x, y: b.y,
+              vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+              life: 22, max: 22, color: "165,243,252",
+            });
+          }
+        }
         b.dead = true;
         break;
       }
@@ -1980,6 +2006,37 @@ function drawParticles() {
       px(ctx, p.x - 1, p.y - 1, 2, 2, col);
       // single bright pixel in the middle
       px(ctx, p.x, p.y, 1, 1, `rgba(255,255,255,${a * 0.8})`);
+    } else if (p.type === "ripple") {
+      // ===== COSMIC RIPPLE — expanding cyan + white rings =====
+      const progress = 1 - a;                  // 0 → 1 over lifetime
+      const r = Math.max(1, p.maxRadius * progress);
+      // outer soft cyan glow (semi-transparent thick stroke)
+      ctx.strokeStyle = `rgba(34, 211, 238, ${a * 0.35})`;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // mid cyan ring
+      ctx.strokeStyle = `rgba(103, 232, 249, ${a * 0.85})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // bright white inner edge
+      ctx.strokeStyle = `rgba(255, 255, 255, ${a * 0.9})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, r - 1), 0, Math.PI * 2);
+      ctx.stroke();
+      // 4 dark "void" arc-marks at compass points for cosmic feel
+      ctx.strokeStyle = `rgba(12, 74, 110, ${a * 0.8})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) {
+        const ang = (Math.PI / 2) * i + progress * 1.5;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, ang - 0.2, ang + 0.2);
+        ctx.stroke();
+      }
     } else if (p.type === "lightning") {
       // jagged pixel bolt — drawn as small rects at each step
       const pts = [[p.x1, p.y1]];
