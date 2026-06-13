@@ -446,7 +446,15 @@ const BULLET_SPEED = 4.5;
 const MELEE_SPIN_SPEED = 0.08;  // radians/tick
 const BLEED_DURATION = 180;     // 3 sec
 const BLEED_TICK_INTERVAL = 12; // tick every 0.2s
-const MAX_WEAPONS = 6;          // max weapons equipped at once
+const MAX_WEAPONS = 6;          // starting max weapons (raisable via shop)
+const HARD_CAP_WEAPONS = 12;    // absolute max no matter how many slots you buy
+// Cost to unlock the NEXT slot, indexed by extra-slot count (slot 7 = index 0)
+const SLOT_COSTS = [200, 400, 800, 1500, 3000, 6000];
+function nextSlotCost(currentMax) {
+  const idx = currentMax - MAX_WEAPONS;
+  if (idx < 0 || idx >= SLOT_COSTS.length) return null;
+  return SLOT_COSTS[idx];
+}
 
 // ============================================================
 // WEAPONS
@@ -752,6 +760,7 @@ function newGame(startingWeaponId) {
     coins: 0,
     wave: 0,
     kills: 0,
+    maxWeapons: MAX_WEAPONS,
     spawnQueue: [],
     spawnTimer: 0,
     waveState: "between", // 'spawning' | 'active' | 'between' | 'city'
@@ -769,7 +778,7 @@ function newGame(startingWeaponId) {
 // Helpers to manipulate the player's weapon loadout
 function addWeapon(id) {
   if (!game) return false;
-  if (game.player.weapons.length >= MAX_WEAPONS) return false;
+  if (game.player.weapons.length >= (game.maxWeapons || MAX_WEAPONS)) return false;
   game.player.weapons.push({ id, cd: 0 });
   return true;
 }
@@ -2226,7 +2235,8 @@ function renderCity() {
   document.getElementById("city-stats").textContent =
     `Coins: ${game.coins} · HP: ${Math.round(game.player.hp)}/${game.player.maxHp} · Wave ${game.wave}`;
   const shop = document.getElementById("city-shop");
-  const atCap = game.player.weapons.length >= MAX_WEAPONS;
+  const atCap = game.player.weapons.length >= game.maxWeapons;
+  const slotCost = nextSlotCost(game.maxWeapons);
   // prune any selected indices that no longer exist
   mergeSelection = mergeSelection.filter(i => i < game.player.weapons.length);
   const mergeCheck = checkMergeSelection();
@@ -2270,9 +2280,21 @@ function renderCity() {
     }
   }
 
+  // BUY SLOT button (or MAX badge)
+  const slotBtnHtml = slotCost
+    ? `<button class="pixel-btn ${game.coins >= slotCost ? '' : 'secondary'}" id="city-buy-slot"
+         style="font-size:9px; padding:8px 14px; margin-left:10px;"
+         ${game.coins >= slotCost ? '' : 'disabled'}>
+         BUY +1 SLOT (${slotCost}c)
+       </button>`
+    : `<span style="font-family:'Press Start 2P', monospace; font-size:9px; color:#22d3ee; letter-spacing:1px; margin-left:10px;">⚡ MAX SLOTS</span>`;
+
   shop.innerHTML = `
-    <div style="margin-bottom:6px; font-family:'Press Start 2P', monospace; font-size:10px; color:#fcd34d; letter-spacing:1px;">
-      YOUR LOADOUT (${game.player.weapons.length}/${MAX_WEAPONS}) · CLICK TO SELECT FOR MERGE
+    <div style="display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+      <span style="font-family:'Press Start 2P', monospace; font-size:10px; color:#fcd34d; letter-spacing:1px;">
+        YOUR LOADOUT (${game.player.weapons.length}/${game.maxWeapons}) · CLICK TO SELECT FOR MERGE
+      </span>
+      ${slotBtnHtml}
     </div>
     <div class="choice-grid" style="grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); margin-bottom:8px;">${loadout}</div>
     <div style="font-family:'Rajdhani', sans-serif; font-size:12px; color:rgba(240,230,216,0.7); text-align:center; margin-bottom:10px;">
@@ -2313,7 +2335,7 @@ function renderCity() {
   // buy
   shop.querySelectorAll("[data-buy]").forEach(card => {
     card.addEventListener("click", () => {
-      if (game.player.weapons.length >= MAX_WEAPONS) return;
+      if (game.player.weapons.length >= game.maxWeapons) return;
       const i = parseInt(card.dataset.buy);
       const wid = cityWeapons[i];
       const wp = WEAPONS[wid];
@@ -2374,6 +2396,24 @@ function renderCity() {
     cityWeapons = [rollCityWeapon(), rollCityWeapon(), rollCityWeapon()];
     renderCity();
   });
+  // BUY weapon slot
+  const slotBuyBtn = document.getElementById("city-buy-slot");
+  if (slotBuyBtn) {
+    slotBuyBtn.addEventListener("click", () => {
+      const c = nextSlotCost(game.maxWeapons);
+      if (!c || game.coins < c || game.maxWeapons >= HARD_CAP_WEAPONS) return;
+      game.coins -= c;
+      game.maxWeapons++;
+      renderCity();
+      updateHud();
+      savePixelQuest();
+      const banner = document.getElementById("city-explore-text");
+      if (banner) {
+        banner.textContent = `🎒 +1 WEAPON SLOT — now holding ${game.player.weapons.length}/${game.maxWeapons}`;
+        banner.style.color = "#34d399";
+      }
+    });
+  }
 }
 document.getElementById("city-heal").addEventListener("click", () => {
   if (game.coins < 50) return;
@@ -2443,6 +2483,7 @@ function savePixelQuest() {
     weapons: game.player.weapons.map(w => w.id),
     abilities: game.abilities.map(a => ({ id: a.id, rarity: a.rarity })),
     cityVisited: game.cityVisited,
+    maxWeapons: game.maxWeapons,
     v: 1,
   };
   const enc = _b64Encode(JSON.stringify(data));
@@ -2490,7 +2531,8 @@ function showContinuePrompt(data) {
   const sub = document.getElementById("continue-sub");
   const loadout = document.getElementById("continue-loadout");
   const abilityCount = (data.abilities || []).length;
-  sub.textContent = `Resume from wave ${data.wave} · ${data.coins} coins · ${data.hp}/${data.maxHp} HP · ${abilityCount} abilit${abilityCount === 1 ? "y" : "ies"}`;
+  const slotsTxt = data.maxWeapons && data.maxWeapons > MAX_WEAPONS ? ` · ${data.maxWeapons} slots` : "";
+  sub.textContent = `Resume from wave ${data.wave} · ${data.coins} coins · ${data.hp}/${data.maxHp} HP · ${abilityCount} abilit${abilityCount === 1 ? "y" : "ies"}${slotsTxt}`;
   // show weapon loadout
   loadout.innerHTML = (data.weapons || []).map(id => {
     const w = WEAPONS[id];
@@ -2549,6 +2591,7 @@ function resumeFromSave(data) {
   game.coins = data.coins || 0;
   game.kills = data.kills || 0;
   game.cityVisited = data.cityVisited || 0;
+  game.maxWeapons = Math.min(HARD_CAP_WEAPONS, Math.max(MAX_WEAPONS, data.maxWeapons || MAX_WEAPONS));
   game.player.weapons = (data.weapons || ["pistol"])
     .filter(id => WEAPONS[id])
     .map(id => ({ id, cd: 0 }));
