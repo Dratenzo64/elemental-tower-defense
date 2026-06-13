@@ -482,7 +482,7 @@ const WEAPONS = {
   excalibur: { name: "EXCALIBUR",  type: "melee",  rarity: "legendary", dmg: 110, radius: 70, bleed: 14, color: "#ffd", cost: 900 },
   // Mythic — only obtainable by merging 6 legendaries
   ultra_gun: { name: "ULTRA GUN", type: "ranged", rarity: "mythic", dmg: 500, color: "#22d3ee", cost: 0 },
-  void_blade:{ name: "VOID BLADE", type: "melee", rarity: "mythic", dmg: 280, radius: 90, bleed: 30, color: "#22d3ee", cost: 0 },
+  void_blade:{ name: "ZYPHERION", type: "melee", rarity: "mythic", dmg: 280, radius: 90, bleed: 30, color: "#22d3ee", cost: 0 },
 };
 const RARITY_ORDER = ["common", "rare", "epic", "legendary", "mythic"];
 const RARITY_COLOR = {
@@ -1665,40 +1665,101 @@ function drawOneBlade(b) {
   ctx.rotate(b.angle + Math.PI / 2);
 
   if (b.rarity === "mythic") {
-    // ===== GIANT FUTURISTIC MYTHIC BLADE — blue + black void blade =====
-    // Outer black silhouette / void aura
-    px(ctx, -5, -24, 10, 28, "#000000");
-    // Blade body — gradient cyan core
-    px(ctx, -4, -23, 8, 26, "#0c4a6e"); // deep blue
-    px(ctx, -3, -23, 6, 26, "#0e7490"); // mid teal
-    px(ctx, -2, -23, 4, 26, "#22d3ee"); // cyan
-    px(ctx, -1, -23, 2, 26, "#67e8f9"); // bright cyan
-    // Bright tip
-    px(ctx, -2, -25, 4, 2, "#a5f3fc");
-    px(ctx, -1, -26, 2, 1, "#ffffff");
-    // Black edge runes (single pixel dots)
-    px(ctx, -1, -18, 2, 1, "#000000");
-    px(ctx, -1, -10, 2, 1, "#000000");
-    px(ctx, -1, -2,  2, 1, "#000000");
-    // Energy flecks
-    px(ctx, -3, -16, 1, 1, "#a5f3fc");
-    px(ctx,  2, -8,  1, 1, "#a5f3fc");
-    px(ctx, -3, 0,   1, 1, "#a5f3fc");
-    // Futuristic crossguard — wide black with cyan core
-    px(ctx, -7, 4, 14, 4, "#000000");
-    px(ctx, -7, 4, 14, 1, "#22d3ee");
-    px(ctx, -7, 7, 14, 1, "#0e7490");
-    px(ctx, -2, 4, 4, 4, "#67e8f9");
-    px(ctx, -1, 5, 2, 2, "#a5f3fc");
-    // Grip (black with cyan rings)
-    px(ctx, -2, 8, 4, 7, "#000000");
-    px(ctx, -2, 9,  4, 1, "#22d3ee");
-    px(ctx, -2, 12, 4, 1, "#22d3ee");
-    // Pommel — glowing cyan orb
-    px(ctx, -3, 15, 6, 4, "#000000");
-    px(ctx, -2, 15, 4, 4, "#22d3ee");
-    px(ctx, -2, 15, 4, 1, "#67e8f9");
-    px(ctx, -1, 16, 2, 1, "#ffffff");
+    // ===== ZYPHERION — curved void/arcane mythic blade =====
+    // Each row is [y, leftEdge, rightEdge] — describes the cross-section
+    // of the blade at that height. Curve sweeps left toward the cutting edge.
+    const bladeRows = [
+      // tip (super narrow, sharp)
+      [-38, 0, 1],
+      [-36, 0, 1],
+      [-34, -1, 1],
+      [-32, -1, 1],
+      [-30, -1, 2],
+      // upper body (widens, curves)
+      [-28, -2, 2],
+      [-26, -2, 2],
+      [-24, -3, 2],
+      [-22, -3, 2],
+      [-20, -3, 2],
+      // peak of curve (widest point of belly)
+      [-18, -4, 2],
+      [-16, -4, 2],
+      [-14, -4, 2],
+      [-12, -4, 2],
+      // sweeping back inward
+      [-10, -4, 2],
+      [-8,  -3, 2],
+      [-6,  -3, 2],
+      [-4,  -2, 2],
+      [-2,  -2, 2],
+      [0,   -1, 2],
+    ];
+    // 1. Outer cyan glow halo (1 px beyond the cutting edge)
+    for (const [y, l, _r] of bladeRows) {
+      px(ctx, l - 2, y, 1, 2, "#0c4a6e");
+    }
+    // 2. Bright cyan glow (the "energy" along the cutting edge)
+    for (const [y, l, _r] of bladeRows) {
+      px(ctx, l - 1, y, 1, 2, "#22d3ee");
+      px(ctx, l - 1, y, 1, 1, "#67e8f9");
+    }
+    // 3. White-hot cutting edge (1 px)
+    for (const [y, l, _r] of bladeRows) {
+      px(ctx, l, y, 1, 2, "#a5f3fc");
+    }
+    // 4. Dark metal blade body
+    for (const [y, l, r] of bladeRows) {
+      px(ctx, l + 1, y, r - l, 2, "#0a0a16");
+    }
+    // 5. Spine highlight (right edge)
+    for (const [y, _l, r] of bladeRows) {
+      px(ctx, r, y, 1, 2, "#1a1a2a");
+    }
+    // 6. Etched runes (small glowing cyan marks down the spine)
+    const runes = [-32, -24, -16, -8, -2];
+    for (const ry of runes) {
+      px(ctx, -1, ry, 2, 1, "#22d3ee");
+      px(ctx, -1, ry, 1, 1, "#a5f3fc");
+    }
+
+    // ===== CROSSGUARD — jagged black with central rune =====
+    // Main crossbar
+    px(ctx, -8, 1, 16, 4, "#0a0a16");
+    px(ctx, -8, 1, 16, 1, "#1a1a2a");      // top highlight
+    // Outer spike tips
+    px(ctx, -10, 2, 2, 2, "#0a0a16");
+    px(ctx,  8,  2, 2, 2, "#0a0a16");
+    px(ctx, -11, 2, 1, 1, "#1a1a2a");
+    px(ctx,  10, 2, 1, 1, "#1a1a2a");
+    // Downward spikes under crossguard
+    px(ctx, -5, 5, 1, 2, "#0a0a16");
+    px(ctx,  4, 5, 1, 2, "#0a0a16");
+    // Central glowing eye-rune (diamond)
+    px(ctx, -2, 2, 4, 2, "#1a1a2a");
+    px(ctx, -1, 2, 2, 1, "#22d3ee");
+    px(ctx,  0, 3, 1, 1, "#a5f3fc");
+
+    // ===== GRIP — black wrapped with glowing rune rings =====
+    px(ctx, -2, 5, 4, 11, "#000000");
+    px(ctx, -2, 5, 4, 1, "#1a1a2a");       // top binding edge
+    px(ctx, -2, 7, 4, 1, "#22d3ee");       // rune wrap 1
+    px(ctx, -2, 10, 4, 1, "#22d3ee");      // rune wrap 2
+    px(ctx, -2, 13, 4, 1, "#22d3ee");      // rune wrap 3
+    px(ctx,  0, 7, 1, 1, "#a5f3fc");       // accent dots
+    px(ctx, -1, 10, 1, 1, "#a5f3fc");
+    px(ctx,  0, 13, 1, 1, "#a5f3fc");
+    px(ctx, -2, 16, 4, 1, "#1a1a2a");      // bottom binding edge
+
+    // ===== POMMEL — spiky diamond with glowing rune =====
+    // Main diamond
+    px(ctx, -2, 17, 4, 2, "#0a0a16");
+    px(ctx, -3, 18, 1, 1, "#0a0a16");
+    px(ctx,  2, 18, 1, 1, "#0a0a16");
+    px(ctx, -1, 19, 2, 2, "#0a0a16");
+    px(ctx,  0, 21, 1, 1, "#1a1a2a");
+    // Central rune in pommel
+    px(ctx, -1, 18, 2, 1, "#22d3ee");
+    px(ctx,  0, 18, 1, 1, "#67e8f9");
   } else {
     // ===== STANDARD PIXEL SWORD =====
     px(ctx, -2, -8, 4, 1, "#c8d2dc"); // tip light
