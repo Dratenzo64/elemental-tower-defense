@@ -263,11 +263,22 @@
   }
   .input-fields {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1.4fr 1fr;
     gap: 10px;
     margin-bottom: 12px;
   }
-  .input-fields input, .input-fields select {
+  .type-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 640px) {
+    .input-fields { grid-template-columns: 1fr; }
+    .type-row     { grid-template-columns: 1fr; }
+  }
+  .input-fields input, .input-fields select,
+  .type-row select {
     background: rgba(0,0,0,0.4);
     border: 2px solid rgba(255,212,74,0.5);
     color: #f0f4fa;
@@ -279,7 +290,8 @@
     border-radius: 4px;
     outline: none;
   }
-  .input-fields input:focus, .input-fields select:focus {
+  .input-fields input:focus, .input-fields select:focus,
+  .type-row select:focus {
     border-color: #ffd44a;
     box-shadow: 0 0 8px rgba(255,212,74,0.5);
   }
@@ -542,33 +554,76 @@
         <option value="Kalos">Kalos</option>
         <option value="Alola">Alola</option>
         <option value="Galar">Galar</option>
+        <option value="Hisui">Hisui</option>
         <option value="Paldea">Paldea</option>
       </select>
     </div>
-    <div>
-      <div class="field-label">TYPE (EITHER)</div>
-      <select id="in-type">
-        <option value="">— select —</option>
-        <option value="normal">Normal</option>
-        <option value="fire">Fire</option>
-        <option value="water">Water</option>
-        <option value="grass">Grass</option>
-        <option value="electric">Electric</option>
-        <option value="ice">Ice</option>
-        <option value="fighting">Fighting</option>
-        <option value="poison">Poison</option>
-        <option value="ground">Ground</option>
-        <option value="flying">Flying</option>
-        <option value="psychic">Psychic</option>
-        <option value="bug">Bug</option>
-        <option value="rock">Rock</option>
-        <option value="ghost">Ghost</option>
-        <option value="dragon">Dragon</option>
-        <option value="dark">Dark</option>
-        <option value="steel">Steel</option>
-        <option value="fairy">Fairy</option>
-      </select>
-    </div>
+  </div>
+  <div class="field-label" style="margin-top:2px;">TYPES · guess 1 required · 2 &amp; 3 optional (mark both if dual-type)</div>
+  <div class="type-row">
+    <select id="in-type1" class="type-select" data-typeslot="1">
+      <option value="">TYPE 1 — select</option>
+      <option value="normal">Normal</option>
+      <option value="fire">Fire</option>
+      <option value="water">Water</option>
+      <option value="grass">Grass</option>
+      <option value="electric">Electric</option>
+      <option value="ice">Ice</option>
+      <option value="fighting">Fighting</option>
+      <option value="poison">Poison</option>
+      <option value="ground">Ground</option>
+      <option value="flying">Flying</option>
+      <option value="psychic">Psychic</option>
+      <option value="bug">Bug</option>
+      <option value="rock">Rock</option>
+      <option value="ghost">Ghost</option>
+      <option value="dragon">Dragon</option>
+      <option value="dark">Dark</option>
+      <option value="steel">Steel</option>
+      <option value="fairy">Fairy</option>
+    </select>
+    <select id="in-type2" class="type-select" data-typeslot="2">
+      <option value="">TYPE 2 (optional)</option>
+      <option value="normal">Normal</option>
+      <option value="fire">Fire</option>
+      <option value="water">Water</option>
+      <option value="grass">Grass</option>
+      <option value="electric">Electric</option>
+      <option value="ice">Ice</option>
+      <option value="fighting">Fighting</option>
+      <option value="poison">Poison</option>
+      <option value="ground">Ground</option>
+      <option value="flying">Flying</option>
+      <option value="psychic">Psychic</option>
+      <option value="bug">Bug</option>
+      <option value="rock">Rock</option>
+      <option value="ghost">Ghost</option>
+      <option value="dragon">Dragon</option>
+      <option value="dark">Dark</option>
+      <option value="steel">Steel</option>
+      <option value="fairy">Fairy</option>
+    </select>
+    <select id="in-type3" class="type-select" data-typeslot="3">
+      <option value="">TYPE 3 (optional)</option>
+      <option value="normal">Normal</option>
+      <option value="fire">Fire</option>
+      <option value="water">Water</option>
+      <option value="grass">Grass</option>
+      <option value="electric">Electric</option>
+      <option value="ice">Ice</option>
+      <option value="fighting">Fighting</option>
+      <option value="poison">Poison</option>
+      <option value="ground">Ground</option>
+      <option value="flying">Flying</option>
+      <option value="psychic">Psychic</option>
+      <option value="bug">Bug</option>
+      <option value="rock">Rock</option>
+      <option value="ghost">Ghost</option>
+      <option value="dragon">Dragon</option>
+      <option value="dark">Dark</option>
+      <option value="steel">Steel</option>
+      <option value="fairy">Fairy</option>
+    </select>
   </div>
 
   <div class="action-row">
@@ -879,8 +934,17 @@ function checkAnswer(p, ans) {
   const shortTruth = normalizeName(p.name.replace(/^(alolan|galarian|hisuian|paldean)\s*/i, ""));
   const nameOk = nameGuess !== "" && (nameGuess === nameTruth || nameGuess === shortTruth);
   const regionOk = (ans.region || "").toLowerCase() === p.region.toLowerCase();
-  const typeOk = (ans.type || "").toLowerCase() !== "" &&
-    p.types.some(t => t.toLowerCase() === ans.type.toLowerCase());
+  // Type check across up to 3 user-selected types
+  const truthTypes = p.types.map(t => t.toLowerCase());
+  const guessTypes = (ans.types || [])
+    .map(t => (t || "").toLowerCase())
+    .filter(t => t !== "");
+  let typeOk = false;
+  if (guessTypes.length > 0) {
+    const allValid = guessTypes.every(t => truthTypes.includes(t));
+    const atLeastOneRight = guessTypes.some(t => truthTypes.includes(t));
+    typeOk = allValid && atLeastOneRight;
+  }
   return { nameOk, regionOk, typeOk };
 }
 function calculatePoints(p, ans, hintsUsed) {
@@ -985,7 +1049,9 @@ function loadQuestion() {
   // Clear inputs
   document.getElementById("in-name").value = "";
   document.getElementById("in-region").value = "";
-  document.getElementById("in-type").value = "";
+  document.getElementById("in-type1").value = "";
+  document.getElementById("in-type2").value = "";
+  document.getElementById("in-type3").value = "";
   document.getElementById("in-name").focus();
 }
 function updateHintBadge() {
@@ -1022,7 +1088,11 @@ function handleSubmit() {
   const ans = {
     name: document.getElementById("in-name").value,
     region: document.getElementById("in-region").value,
-    type: document.getElementById("in-type").value,
+    types: [
+      document.getElementById("in-type1").value,
+      document.getElementById("in-type2").value,
+      document.getElementById("in-type3").value,
+    ],
   };
   const calc = calculatePoints(currentQ, ans, hintsThisQ);
   showResult(calc.breakdown, calc.points, calc.base, false);
