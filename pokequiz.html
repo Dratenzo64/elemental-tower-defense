@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PokéQuiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 20% 20%, #16385a 0%, transparent 55%),
+      radial-gradient(circle at 80% 80%, #1e3a5f 0%, transparent 55%),
+      linear-gradient(135deg, #0a1826 0%, #14243a 100%);
+    background-attachment: fixed;
+    color: #f0f4fa;
+    font-family: 'Rajdhani', system-ui, sans-serif;
+    padding: 20px 14px 40px;
+    display: flex; flex-direction: column; align-items: center;
+    user-select: none;
+  }
+  h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 26px;
+    letter-spacing: 3px;
+    color: #ffd44a;
+    text-shadow: 4px 4px 0 #b8102a, 0 0 22px rgba(255, 212, 74, 0.35);
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .subtitle {
+    color: rgba(240, 244, 250, 0.6);
+    font-size: 13px;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .home-link {
+    position: fixed; top: 14px; left: 14px;
+    background: rgba(0,0,0,0.55);
+    border: 2px solid #ffd44a;
+    padding: 6px 14px;
+    color: #ffd44a;
+    text-decoration: none;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    z-index: 100;
+  }
+  .home-link:hover { background: rgba(0,0,0,0.85); }
+  #save-indicator {
+    position: fixed; top: 14px; right: 14px;
+    background: rgba(52, 211, 153, 0.18);
+    border: 2px solid #34d399;
+    padding: 6px 12px;
+    color: #6ee7b7;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.25s, transform 0.25s;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+  }
+  #save-indicator.show { opacity: 1; transform: translateY(0); }
+
+  /* Panels */
+  .panel {
+    background: rgba(10, 20, 34, 0.9);
+    border: 4px solid #ffd44a;
+    border-radius: 8px;
+    padding: 22px 26px;
+    max-width: 760px; width: 100%;
+    box-shadow: 6px 6px 0 rgba(0,0,0,0.55);
+  }
+  .panel-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: #ffd44a;
+    text-shadow: 3px 3px 0 #b8102a;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .panel-sub {
+    color: rgba(240, 244, 250, 0.75);
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .anti-cheat {
+    background: rgba(239, 68, 68, 0.15);
+    border: 2px solid #ef4444;
+    padding: 10px 14px;
+    color: #fca5a5;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    line-height: 1.6;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: 16px;
+    border-radius: 4px;
+  }
+
+  /* Filter groups */
+  .filter-group {
+    background: rgba(0,0,0,0.35);
+    border: 2px solid rgba(255,212,74,0.35);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+  }
+  .filter-group h4 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: #ffd44a;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(240, 244, 250, 0.28);
+    padding: 6px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #f0f4fa;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: transform 0.1s, background 0.15s, border-color 0.15s;
+    user-select: none;
+  }
+  .chip:hover { transform: translateY(-1px); background: rgba(255,255,255,0.1); }
+  .chip.on {
+    background: #ffd44a;
+    color: #14243a;
+    border-color: #ffd44a;
+    box-shadow: 0 0 10px rgba(255,212,74,0.5);
+  }
+  .chip.legendary.on { background: #fbbf24; border-color: #fbbf24; }
+  .chip.mythical.on  { background: #a78bfa; color: #14243a; border-color: #a78bfa; }
+  .chip.regional.on  { background: #34d399; color: #14243a; border-color: #34d399; }
+
+  /* Buttons */
+  .btn {
+    background: linear-gradient(180deg, #ffd44a 0%, #d69c00 100%);
+    color: #14243a;
+    border: 3px solid #b8102a;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.6);
+    margin: 4px;
+    transition: transform 0.1s, filter 0.1s;
+  }
+  .btn:hover { transform: translate(-1px,-1px); filter: brightness(1.08); }
+  .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.6); }
+  .btn.secondary {
+    background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
+    color: #f0f4fa;
+    border-color: #718096;
+  }
+  .btn.danger {
+    background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+    color: #fff;
+    border-color: #7f1d1d;
+  }
+  .btn:disabled { background: #4a5568 !important; color: #a0aec0 !important; cursor: not-allowed; border-color: #2d3748 !important; }
+
+  /* Question screen */
+  #game-screen { display: none; }
+  #game-screen.show { display: block; }
+  .qnum-row {
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 10px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: #ffd44a;
+    letter-spacing: 1px;
+  }
+  .qnum-row .pts {
+    color: #34d399;
+  }
+  .pokemon-container {
+    background: linear-gradient(180deg, #1e40af 0%, #172554 100%);
+    border: 3px solid #ffd44a;
+    border-radius: 6px;
+    padding: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+    position: relative;
+    min-height: 260px;
+  }
+  #pokemon-img {
+    max-width: 220px;
+    max-height: 220px;
+    width: auto; height: auto;
+    display: block;
+    filter: brightness(0);
+    transition: filter 0.4s;
+    image-rendering: pixelated;
+  }
+  #pokemon-img.revealed { filter: brightness(1); }
+  #pokemon-img.error { display: none; }
+  #img-fallback {
+    display: none;
+    font-family: 'Press Start 2P', monospace;
+    color: #f0f4fa;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-align: center;
+    padding: 40px 20px;
+  }
+  #img-fallback.show { display: block; }
+  .hint-badge {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #ffd44a;
+    color: #ffd44a;
+    padding: 4px 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    border-radius: 3px;
+  }
+  #hint-image-box {
+    display: none;
+    background: rgba(0,0,0,0.55);
+    border: 2px solid #ffd44a;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  #hint-image-box.show { display: block; }
+  #hint-image-box img {
+    max-width: 120px; max-height: 120px;
+    /* zoomed-in effect */
+    image-rendering: pixelated;
+    transform: scale(2);
+    transform-origin: center;
+    display: inline-block;
+    margin: 40px auto;
+  }
+  .hint-controls {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .input-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .input-fields input, .input-fields select {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,212,74,0.5);
+    color: #f0f4fa;
+    padding: 10px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    outline: none;
+  }
+  .input-fields input:focus, .input-fields select:focus {
+    border-color: #ffd44a;
+    box-shadow: 0 0 8px rgba(255,212,74,0.5);
+  }
+  .input-fields input::placeholder { color: rgba(240,244,250,0.4); }
+  .field-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: rgba(255,212,74,0.75);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .action-row {
+    display: flex; justify-content: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Result screen */
+  #result-screen { display: none; }
+  #result-screen.show { display: block; }
+  .result-img-row {
+    display: flex; gap: 20px; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .result-img-row img {
+    max-width: 180px; max-height: 180px;
+    background: linear-gradient(180deg, #1e40af 0%, #172554 100%);
+    border: 3px solid #ffd44a;
+    border-radius: 6px;
+    padding: 10px;
+    image-rendering: pixelated;
+  }
+  .result-info {
+    text-align: left;
+    line-height: 1.6;
+  }
+  .result-info .rname {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 15px;
+    color: #ffd44a;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .result-info .rdata {
+    color: rgba(240,244,250,0.85);
+    font-size: 14px;
+  }
+  .result-info .rdata strong { color: #ffd44a; }
+  .points-earned {
+    background: rgba(52, 211, 153, 0.14);
+    border: 2px solid #34d399;
+    padding: 12px 16px;
+    text-align: center;
+    margin: 14px 0;
+    border-radius: 4px;
+  }
+  .points-earned .pe-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: #34d399;
+    letter-spacing: 2px;
+  }
+  .points-earned .pe-detail {
+    color: rgba(240,244,250,0.7);
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  .breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .bd {
+    background: rgba(0,0,0,0.35);
+    border: 1.5px solid rgba(255,212,74,0.3);
+    padding: 8px 10px;
+    text-align: center;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+  .bd .bd-name { font-family: 'Press Start 2P', monospace; font-size: 8px; color: rgba(255,212,74,0.75); letter-spacing: 1px; }
+  .bd .bd-val  { font-family: 'Press Start 2P', monospace; font-size: 10px; margin-top: 4px; letter-spacing: 1px; }
+  .bd.ok  .bd-val { color: #34d399; }
+  .bd.bad .bd-val { color: #f87171; }
+
+  /* Final screen */
+  #final-screen { display: none; }
+  #final-screen.show { display: block; }
+  .final-score {
+    background: linear-gradient(180deg, #ffd44a 0%, #d69c00 100%);
+    color: #14243a;
+    padding: 24px;
+    text-align: center;
+    margin: 16px 0;
+    border-radius: 6px;
+    font-family: 'Press Start 2P', monospace;
+  }
+  .final-score .fs-label { font-size: 12px; letter-spacing: 3px; margin-bottom: 8px; }
+  .final-score .fs-num { font-size: 42px; letter-spacing: 4px; text-shadow: 3px 3px 0 rgba(184,16,42,0.5); }
+  .best-badge {
+    color: #b8102a;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-top: 10px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .stat {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,212,74,0.3);
+    padding: 10px;
+    text-align: center;
+    border-radius: 4px;
+  }
+  .stat .st-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    color: #ffd44a;
+    letter-spacing: 1px;
+  }
+  .stat .st-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: rgba(240,244,250,0.65);
+    letter-spacing: 1px;
+    margin-top: 6px;
+  }
+  .best-line {
+    text-align: center;
+    color: rgba(255,212,74,0.75);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  /* Rules panel */
+  .rules {
+    background: rgba(0,0,0,0.3);
+    border: 2px dashed rgba(255,212,74,0.4);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .rules strong { color: #ffd44a; }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="home-link">‹ BACK</a>
+<div id="save-indicator">SAVED ✓</div>
+
+<h1>POKÉQUIZ</h1>
+<p class="subtitle">// GUESS THE POKÉMON FROM THE SILHOUETTE //</p>
+
+<!-- =========== START / SETTINGS =========== -->
+<div id="start-screen" class="panel">
+  <div class="panel-title">SET UP QUIZ</div>
+
+  <div class="anti-cheat">
+    ⚠ NO CHEATING! LOOKING UP POKÉMON ONLINE OR IN A POKÉDEX APP RUINS THE QUIZ FOR YOU. PLAY FAIR!
+  </div>
+
+  <div class="rules">
+    <strong>How scoring works:</strong><br>
+    • Get everything right (name + region/gen + type): <strong>25 pts</strong><br>
+    • Name + region/gen only: <strong>10 pts</strong><br>
+    • Name only: <strong>5 pts</strong><br>
+    • Region/gen only: <strong>2 pts</strong><br>
+    • Type only: <strong>1 pt</strong><br>
+    • Each <strong>HINT</strong> (zoom-in image) halves your final points for that question.<br>
+    • 25 questions per quiz.
+  </div>
+
+  <div class="filter-group">
+    <h4>GENERATIONS</h4>
+    <div class="chip-row" id="gen-chips">
+      <div class="chip on" data-gen="1">GEN 1 · KANTO</div>
+      <div class="chip on" data-gen="2">GEN 2 · JOHTO</div>
+      <div class="chip on" data-gen="3">GEN 3 · HOENN</div>
+      <div class="chip on" data-gen="4">GEN 4 · SINNOH</div>
+      <div class="chip on" data-gen="5">GEN 5 · UNOVA</div>
+      <div class="chip"    data-gen="6">GEN 6 · KALOS</div>
+      <div class="chip"    data-gen="7">GEN 7 · ALOLA</div>
+      <div class="chip"    data-gen="8">GEN 8 · GALAR</div>
+      <div class="chip"    data-gen="9">GEN 9 · PALDEA</div>
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <h4>INCLUDE</h4>
+    <div class="chip-row" id="cat-chips">
+      <div class="chip on"                data-cat="regular">REGULAR</div>
+      <div class="chip legendary on"      data-cat="legendary">LEGENDARIES</div>
+      <div class="chip mythical on"       data-cat="mythical">MYTHICALS</div>
+      <div class="chip regional on"       data-cat="regional">REGIONAL FORMS</div>
+    </div>
+  </div>
+
+  <div class="best-line" id="best-line">BEST SCORE: 0</div>
+
+  <div class="action-row">
+    <button class="btn" id="start-quiz">START QUIZ ›</button>
+  </div>
+</div>
+
+<!-- =========== GAME SCREEN =========== -->
+<div id="game-screen" class="panel">
+  <div class="qnum-row">
+    <span id="qnum-text">QUESTION 1 / 25</span>
+    <span class="pts" id="qnum-total">TOTAL: 0 PTS</span>
+  </div>
+
+  <div class="pokemon-container">
+    <img id="pokemon-img" alt="Silhouette" />
+    <div id="img-fallback">
+      IMAGE FAILED TO LOAD<br><br>
+      (Pokémon sprites need internet access.<br>
+      This game works best on the deployed site!)
+    </div>
+    <div class="hint-badge" id="hint-badge">HINTS USED: 0 · POINTS × 1</div>
+  </div>
+
+  <div id="hint-image-box">
+    <div style="font-family:'Press Start 2P', monospace; font-size:9px; color:#ffd44a; margin-bottom:6px; letter-spacing:1px;">
+      🔍 ZOOM HINT
+    </div>
+    <div style="overflow:hidden; height:120px;">
+      <img id="hint-img" alt="Hint" />
+    </div>
+  </div>
+
+  <div class="hint-controls">
+    <button class="btn secondary" id="btn-hint">🔍 GIVE HINT (–50%)</button>
+    <button class="btn danger" id="btn-skip">SKIP →</button>
+  </div>
+
+  <div class="input-fields">
+    <div>
+      <div class="field-label">POKÉMON NAME</div>
+      <input type="text" id="in-name" placeholder="e.g. Pikachu" autocomplete="off" />
+    </div>
+    <div>
+      <div class="field-label">REGION</div>
+      <select id="in-region">
+        <option value="">— select —</option>
+        <option value="Kanto">Kanto</option>
+        <option value="Johto">Johto</option>
+        <option value="Hoenn">Hoenn</option>
+        <option value="Sinnoh">Sinnoh</option>
+        <option value="Unova">Unova</option>
+        <option value="Kalos">Kalos</option>
+        <option value="Alola">Alola</option>
+        <option value="Galar">Galar</option>
+        <option value="Paldea">Paldea</option>
+      </select>
+    </div>
+    <div>
+      <div class="field-label">TYPE (EITHER)</div>
+      <select id="in-type">
+        <option value="">— select —</option>
+        <option value="normal">Normal</option>
+        <option value="fire">Fire</option>
+        <option value="water">Water</option>
+        <option value="grass">Grass</option>
+        <option value="electric">Electric</option>
+        <option value="ice">Ice</option>
+        <option value="fighting">Fighting</option>
+        <option value="poison">Poison</option>
+        <option value="ground">Ground</option>
+        <option value="flying">Flying</option>
+        <option value="psychic">Psychic</option>
+        <option value="bug">Bug</option>
+        <option value="rock">Rock</option>
+        <option value="ghost">Ghost</option>
+        <option value="dragon">Dragon</option>
+        <option value="dark">Dark</option>
+        <option value="steel">Steel</option>
+        <option value="fairy">Fairy</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn" id="btn-submit">SUBMIT ANSWER ›</button>
+  </div>
+</div>
+
+<!-- =========== RESULT SCREEN =========== -->
+<div id="result-screen" class="panel">
+  <div class="panel-title" id="result-title">CORRECT!</div>
+
+  <div class="result-img-row">
+    <img id="result-img" alt="Revealed Pokémon" />
+    <div class="result-info">
+      <div class="rname" id="result-name">Pokémon</div>
+      <div class="rdata">Region · <strong id="result-region">?</strong></div>
+      <div class="rdata">Generation · <strong id="result-gen">?</strong></div>
+      <div class="rdata">Types · <strong id="result-types">?</strong></div>
+    </div>
+  </div>
+
+  <div class="breakdown" id="result-breakdown"></div>
+
+  <div class="points-earned">
+    <div class="pe-num" id="result-points">+0 PTS</div>
+    <div class="pe-detail" id="result-detail">Total so far: 0 pts</div>
+  </div>
+
+  <div class="action-row">
+    <button class="btn" id="btn-next">NEXT QUESTION ›</button>
+  </div>
+</div>
+
+<!-- =========== FINAL SCREEN =========== -->
+<div id="final-screen" class="panel">
+  <div class="panel-title">QUIZ COMPLETE!</div>
+
+  <div class="final-score">
+    <div class="fs-label">TOTAL SCORE</div>
+    <div class="fs-num" id="final-num">0</div>
+    <div class="best-badge" id="final-best">— NEW BEST —</div>
+  </div>
+
+  <div class="stats-grid" id="final-stats"></div>
+
+  <div class="action-row">
+    <button class="btn" id="btn-again">PLAY AGAIN ›</button>
+    <button class="btn secondary" id="btn-menu">CHANGE SETTINGS</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// POKÉMON DATABASE
+// ============================================================
+// Each entry: {id, name, gen, region, types, category, form?}
+// form is the URL suffix for regional variants (alola, galar, hisui, paldea)
+const POKEMON = [
+  // ===== GEN 1 · KANTO =====
+  { id: 3,   name: "Venusaur",   gen: 1, region: "Kanto", types: ["grass","poison"], category: "regular" },
+  { id: 6,   name: "Charizard",  gen: 1, region: "Kanto", types: ["fire","flying"], category: "regular" },
+  { id: 9,   name: "Blastoise",  gen: 1, region: "Kanto", types: ["water"], category: "regular" },
+  { id: 25,  name: "Pikachu",    gen: 1, region: "Kanto", types: ["electric"], category: "regular" },
+  { id: 26,  name: "Raichu",     gen: 1, region: "Kanto", types: ["electric"], category: "regular" },
+  { id: 39,  name: "Jigglypuff", gen: 1, region: "Kanto", types: ["normal","fairy"], category: "regular" },
+  { id: 65,  name: "Alakazam",   gen: 1, region: "Kanto", types: ["psychic"], category: "regular" },
+  { id: 68,  name: "Machamp",    gen: 1, region: "Kanto", types: ["fighting"], category: "regular" },
+  { id: 76,  name: "Golem",      gen: 1, region: "Kanto", types: ["rock","ground"], category: "regular" },
+  { id: 94,  name: "Gengar",     gen: 1, region: "Kanto", types: ["ghost","poison"], category: "regular" },
+  { id: 130, name: "Gyarados",   gen: 1, region: "Kanto", types: ["water","flying"], category: "regular" },
+  { id: 131, name: "Lapras",     gen: 1, region: "Kanto", types: ["water","ice"], category: "regular" },
+  { id: 133, name: "Eevee",      gen: 1, region: "Kanto", types: ["normal"], category: "regular" },
+  { id: 134, name: "Vaporeon",   gen: 1, region: "Kanto", types: ["water"], category: "regular" },
+  { id: 135, name: "Jolteon",    gen: 1, region: "Kanto", types: ["electric"], category: "regular" },
+  { id: 136, name: "Flareon",    gen: 1, region: "Kanto", types: ["fire"], category: "regular" },
+  { id: 143, name: "Snorlax",    gen: 1, region: "Kanto", types: ["normal"], category: "regular" },
+  { id: 149, name: "Dragonite",  gen: 1, region: "Kanto", types: ["dragon","flying"], category: "regular" },
+  { id: 132, name: "Ditto",      gen: 1, region: "Kanto", types: ["normal"], category: "regular" },
+  { id: 144, name: "Articuno",   gen: 1, region: "Kanto", types: ["ice","flying"], category: "legendary" },
+  { id: 145, name: "Zapdos",     gen: 1, region: "Kanto", types: ["electric","flying"], category: "legendary" },
+  { id: 146, name: "Moltres",    gen: 1, region: "Kanto", types: ["fire","flying"], category: "legendary" },
+  { id: 150, name: "Mewtwo",     gen: 1, region: "Kanto", types: ["psychic"], category: "legendary" },
+  { id: 151, name: "Mew",        gen: 1, region: "Kanto", types: ["psychic"], category: "mythical" },
+
+  // ===== GEN 2 · JOHTO =====
+  { id: 154, name: "Meganium",   gen: 2, region: "Johto", types: ["grass"], category: "regular" },
+  { id: 157, name: "Typhlosion", gen: 2, region: "Johto", types: ["fire"], category: "regular" },
+  { id: 160, name: "Feraligatr", gen: 2, region: "Johto", types: ["water"], category: "regular" },
+  { id: 196, name: "Espeon",     gen: 2, region: "Johto", types: ["psychic"], category: "regular" },
+  { id: 197, name: "Umbreon",    gen: 2, region: "Johto", types: ["dark"], category: "regular" },
+  { id: 208, name: "Steelix",    gen: 2, region: "Johto", types: ["steel","ground"], category: "regular" },
+  { id: 212, name: "Scizor",     gen: 2, region: "Johto", types: ["bug","steel"], category: "regular" },
+  { id: 248, name: "Tyranitar",  gen: 2, region: "Johto", types: ["rock","dark"], category: "regular" },
+  { id: 243, name: "Raikou",     gen: 2, region: "Johto", types: ["electric"], category: "legendary" },
+  { id: 244, name: "Entei",      gen: 2, region: "Johto", types: ["fire"], category: "legendary" },
+  { id: 245, name: "Suicune",    gen: 2, region: "Johto", types: ["water"], category: "legendary" },
+  { id: 249, name: "Lugia",      gen: 2, region: "Johto", types: ["psychic","flying"], category: "legendary" },
+  { id: 250, name: "Ho-Oh",      gen: 2, region: "Johto", types: ["fire","flying"], category: "legendary" },
+  { id: 251, name: "Celebi",     gen: 2, region: "Johto", types: ["psychic","grass"], category: "mythical" },
+
+  // ===== GEN 3 · HOENN =====
+  { id: 254, name: "Sceptile",   gen: 3, region: "Hoenn", types: ["grass"], category: "regular" },
+  { id: 257, name: "Blaziken",   gen: 3, region: "Hoenn", types: ["fire","fighting"], category: "regular" },
+  { id: 260, name: "Swampert",   gen: 3, region: "Hoenn", types: ["water","ground"], category: "regular" },
+  { id: 282, name: "Gardevoir",  gen: 3, region: "Hoenn", types: ["psychic","fairy"], category: "regular" },
+  { id: 373, name: "Salamence",  gen: 3, region: "Hoenn", types: ["dragon","flying"], category: "regular" },
+  { id: 376, name: "Metagross",  gen: 3, region: "Hoenn", types: ["steel","psychic"], category: "regular" },
+  { id: 377, name: "Regirock",   gen: 3, region: "Hoenn", types: ["rock"], category: "legendary" },
+  { id: 378, name: "Regice",     gen: 3, region: "Hoenn", types: ["ice"], category: "legendary" },
+  { id: 379, name: "Registeel",  gen: 3, region: "Hoenn", types: ["steel"], category: "legendary" },
+  { id: 380, name: "Latias",     gen: 3, region: "Hoenn", types: ["dragon","psychic"], category: "legendary" },
+  { id: 381, name: "Latios",     gen: 3, region: "Hoenn", types: ["dragon","psychic"], category: "legendary" },
+  { id: 382, name: "Kyogre",     gen: 3, region: "Hoenn", types: ["water"], category: "legendary" },
+  { id: 383, name: "Groudon",    gen: 3, region: "Hoenn", types: ["ground"], category: "legendary" },
+  { id: 384, name: "Rayquaza",   gen: 3, region: "Hoenn", types: ["dragon","flying"], category: "legendary" },
+  { id: 385, name: "Jirachi",    gen: 3, region: "Hoenn", types: ["steel","psychic"], category: "mythical" },
+  { id: 386, name: "Deoxys",     gen: 3, region: "Hoenn", types: ["psychic"], category: "mythical" },
+
+  // ===== GEN 4 · SINNOH =====
+  { id: 389, name: "Torterra",   gen: 4, region: "Sinnoh", types: ["grass","ground"], category: "regular" },
+  { id: 392, name: "Infernape",  gen: 4, region: "Sinnoh", types: ["fire","fighting"], category: "regular" },
+  { id: 395, name: "Empoleon",   gen: 4, region: "Sinnoh", types: ["water","steel"], category: "regular" },
+  { id: 445, name: "Garchomp",   gen: 4, region: "Sinnoh", types: ["dragon","ground"], category: "regular" },
+  { id: 448, name: "Lucario",    gen: 4, region: "Sinnoh", types: ["fighting","steel"], category: "regular" },
+  { id: 468, name: "Togekiss",   gen: 4, region: "Sinnoh", types: ["fairy","flying"], category: "regular" },
+  { id: 483, name: "Dialga",     gen: 4, region: "Sinnoh", types: ["steel","dragon"], category: "legendary" },
+  { id: 484, name: "Palkia",     gen: 4, region: "Sinnoh", types: ["water","dragon"], category: "legendary" },
+  { id: 487, name: "Giratina",   gen: 4, region: "Sinnoh", types: ["ghost","dragon"], category: "legendary" },
+  { id: 491, name: "Darkrai",    gen: 4, region: "Sinnoh", types: ["dark"], category: "mythical" },
+  { id: 492, name: "Shaymin",    gen: 4, region: "Sinnoh", types: ["grass"], category: "mythical" },
+  { id: 493, name: "Arceus",     gen: 4, region: "Sinnoh", types: ["normal"], category: "mythical" },
+
+  // ===== GEN 5 · UNOVA =====
+  { id: 497, name: "Serperior",  gen: 5, region: "Unova", types: ["grass"], category: "regular" },
+  { id: 500, name: "Emboar",     gen: 5, region: "Unova", types: ["fire","fighting"], category: "regular" },
+  { id: 503, name: "Samurott",   gen: 5, region: "Unova", types: ["water"], category: "regular" },
+  { id: 571, name: "Zoroark",    gen: 5, region: "Unova", types: ["dark"], category: "regular" },
+  { id: 635, name: "Hydreigon",  gen: 5, region: "Unova", types: ["dark","dragon"], category: "regular" },
+  { id: 637, name: "Volcarona",  gen: 5, region: "Unova", types: ["bug","fire"], category: "regular" },
+  { id: 643, name: "Reshiram",   gen: 5, region: "Unova", types: ["dragon","fire"], category: "legendary" },
+  { id: 644, name: "Zekrom",     gen: 5, region: "Unova", types: ["dragon","electric"], category: "legendary" },
+  { id: 646, name: "Kyurem",     gen: 5, region: "Unova", types: ["dragon","ice"], category: "legendary" },
+  { id: 647, name: "Keldeo",     gen: 5, region: "Unova", types: ["water","fighting"], category: "mythical" },
+  { id: 648, name: "Meloetta",   gen: 5, region: "Unova", types: ["normal","psychic"], category: "mythical" },
+  { id: 649, name: "Genesect",   gen: 5, region: "Unova", types: ["bug","steel"], category: "mythical" },
+
+  // ===== GEN 6 · KALOS =====
+  { id: 652, name: "Chesnaught", gen: 6, region: "Kalos", types: ["grass","fighting"], category: "regular" },
+  { id: 655, name: "Delphox",    gen: 6, region: "Kalos", types: ["fire","psychic"], category: "regular" },
+  { id: 658, name: "Greninja",   gen: 6, region: "Kalos", types: ["water","dark"], category: "regular" },
+  { id: 681, name: "Aegislash",  gen: 6, region: "Kalos", types: ["steel","ghost"], category: "regular" },
+  { id: 700, name: "Sylveon",    gen: 6, region: "Kalos", types: ["fairy"], category: "regular" },
+  { id: 716, name: "Xerneas",    gen: 6, region: "Kalos", types: ["fairy"], category: "legendary" },
+  { id: 717, name: "Yveltal",    gen: 6, region: "Kalos", types: ["dark","flying"], category: "legendary" },
+  { id: 718, name: "Zygarde",    gen: 6, region: "Kalos", types: ["dragon","ground"], category: "legendary" },
+  { id: 719, name: "Diancie",    gen: 6, region: "Kalos", types: ["rock","fairy"], category: "mythical" },
+  { id: 720, name: "Hoopa",      gen: 6, region: "Kalos", types: ["psychic","ghost"], category: "mythical" },
+  { id: 721, name: "Volcanion",  gen: 6, region: "Kalos", types: ["fire","water"], category: "mythical" },
+
+  // ===== GEN 7 · ALOLA =====
+  { id: 724, name: "Decidueye",  gen: 7, region: "Alola", types: ["grass","ghost"], category: "regular" },
+  { id: 727, name: "Incineroar", gen: 7, region: "Alola", types: ["fire","dark"], category: "regular" },
+  { id: 730, name: "Primarina",  gen: 7, region: "Alola", types: ["water","fairy"], category: "regular" },
+  { id: 778, name: "Mimikyu",    gen: 7, region: "Alola", types: ["ghost","fairy"], category: "regular" },
+  { id: 791, name: "Solgaleo",   gen: 7, region: "Alola", types: ["psychic","steel"], category: "legendary" },
+  { id: 792, name: "Lunala",     gen: 7, region: "Alola", types: ["psychic","ghost"], category: "legendary" },
+  { id: 800, name: "Necrozma",   gen: 7, region: "Alola", types: ["psychic"], category: "legendary" },
+  { id: 801, name: "Magearna",   gen: 7, region: "Alola", types: ["steel","fairy"], category: "mythical" },
+  { id: 802, name: "Marshadow",  gen: 7, region: "Alola", types: ["fighting","ghost"], category: "mythical" },
+  { id: 807, name: "Zeraora",    gen: 7, region: "Alola", types: ["electric"], category: "mythical" },
+
+  // ===== GEN 8 · GALAR =====
+  { id: 812, name: "Rillaboom",  gen: 8, region: "Galar", types: ["grass"], category: "regular" },
+  { id: 815, name: "Cinderace",  gen: 8, region: "Galar", types: ["fire"], category: "regular" },
+  { id: 818, name: "Inteleon",   gen: 8, region: "Galar", types: ["water"], category: "regular" },
+  { id: 849, name: "Toxtricity", gen: 8, region: "Galar", types: ["electric","poison"], category: "regular" },
+  { id: 862, name: "Obstagoon",  gen: 8, region: "Galar", types: ["dark","normal"], category: "regular" },
+  { id: 887, name: "Dragapult",  gen: 8, region: "Galar", types: ["dragon","ghost"], category: "regular" },
+  { id: 888, name: "Zacian",     gen: 8, region: "Galar", types: ["fairy"], category: "legendary" },
+  { id: 889, name: "Zamazenta",  gen: 8, region: "Galar", types: ["fighting"], category: "legendary" },
+  { id: 890, name: "Eternatus",  gen: 8, region: "Galar", types: ["poison","dragon"], category: "legendary" },
+  { id: 898, name: "Calyrex",    gen: 8, region: "Galar", types: ["psychic","grass"], category: "legendary" },
+
+  // ===== GEN 9 · PALDEA =====
+  { id: 908, name: "Meowscarada", gen: 9, region: "Paldea", types: ["grass","dark"], category: "regular" },
+  { id: 911, name: "Skeledirge",  gen: 9, region: "Paldea", types: ["fire","ghost"], category: "regular" },
+  { id: 914, name: "Quaquaval",   gen: 9, region: "Paldea", types: ["water","fighting"], category: "regular" },
+  { id: 936, name: "Ceruledge",   gen: 9, region: "Paldea", types: ["fire","ghost"], category: "regular" },
+  { id: 998, name: "Baxcalibur",  gen: 9, region: "Paldea", types: ["dragon","ice"], category: "regular" },
+  { id: 1000, name: "Gholdengo",  gen: 9, region: "Paldea", types: ["steel","ghost"], category: "regular" },
+  { id: 1007, name: "Koraidon",   gen: 9, region: "Paldea", types: ["fighting","dragon"], category: "legendary" },
+  { id: 1008, name: "Miraidon",   gen: 9, region: "Paldea", types: ["electric","dragon"], category: "legendary" },
+  { id: 1017, name: "Ogerpon",    gen: 9, region: "Paldea", types: ["grass"], category: "legendary" },
+
+  // ===== REGIONAL VARIANTS =====
+  { id: 26,  form: "alola", name: "Alolan Raichu",     gen: 7, region: "Alola", types: ["electric","psychic"], category: "regional" },
+  { id: 38,  form: "alola", name: "Alolan Ninetales",  gen: 7, region: "Alola", types: ["ice","fairy"], category: "regional" },
+  { id: 105, form: "alola", name: "Alolan Marowak",    gen: 7, region: "Alola", types: ["fire","ghost"], category: "regional" },
+  { id: 52,  form: "alola", name: "Alolan Meowth",     gen: 7, region: "Alola", types: ["dark"], category: "regional" },
+  { id: 53,  form: "alola", name: "Alolan Persian",    gen: 7, region: "Alola", types: ["dark"], category: "regional" },
+  { id: 52,  form: "galar", name: "Galarian Meowth",   gen: 8, region: "Galar", types: ["steel"], category: "regional" },
+  { id: 77,  form: "galar", name: "Galarian Ponyta",   gen: 8, region: "Galar", types: ["psychic"], category: "regional" },
+  { id: 78,  form: "galar", name: "Galarian Rapidash", gen: 8, region: "Galar", types: ["psychic","fairy"], category: "regional" },
+  { id: 83,  form: "galar", name: "Galarian Farfetch'd", gen: 8, region: "Galar", types: ["fighting"], category: "regional" },
+  { id: 555, form: "galar-standard", name: "Galarian Darmanitan", gen: 8, region: "Galar", types: ["ice"], category: "regional" },
+  { id: 570, form: "hisui", name: "Hisuian Zoroark",   gen: 8, region: "Hisui", types: ["normal","ghost"], category: "regional" },
+  { id: 100, form: "hisui", name: "Hisuian Voltorb",   gen: 8, region: "Hisui", types: ["electric","grass"], category: "regional" },
+  { id: 128, form: "paldea-blaze", name: "Paldean Tauros (Blaze)", gen: 9, region: "Paldea", types: ["fighting","fire"], category: "regional" },
+  { id: 194, form: "paldea", name: "Paldean Wooper", gen: 9, region: "Paldea", types: ["poison","ground"], category: "regional" },
+  { id: 58,  form: "hisui", name: "Hisuian Growlithe", gen: 8, region: "Hisui", types: ["fire","rock"], category: "regional" },
+];
+
+// Sprite URL builder (uses PokéAPI official artwork on GitHub)
+function spriteUrl(p) {
+  const base = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/";
+  if (p.form) return base + p.id + "-" + p.form + ".png";
+  return base + p.id + ".png";
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+const SAVE_KEY = "pokequiz-save-v1";
+const HASH_PREFIX = "#pq=";
+function defaultSave() {
+  return {
+    bestScore: 0,
+    totalPlayed: 0,
+    filters: {
+      gens: [1, 2, 3, 4, 5],
+      cats: ["regular", "legendary", "mythical", "regional"],
+    },
+  };
+}
+let persistent = defaultSave();
+function loadSave() {
+  let raw = null;
+  if (location.hash.startsWith(HASH_PREFIX)) raw = location.hash.slice(HASH_PREFIX.length);
+  if (!raw) { try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {} }
+  if (!raw) return;
+  try {
+    const b = raw.replace(/-/g,"+").replace(/_/g,"/");
+    const padded = b + "===".slice((b.length % 4));
+    const data = JSON.parse(atob(padded));
+    if (data && typeof data === "object") Object.assign(persistent, defaultSave(), data);
+  } catch (e) {}
+}
+function save() {
+  try {
+    const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    localStorage.setItem(SAVE_KEY, enc);
+    history.replaceState(null, "", HASH_PREFIX + enc);
+  } catch (e) {}
+  flashSave();
+}
+let saveTimer = null;
+function flashSave() {
+  const el = document.getElementById("save-indicator");
+  if (!el) return;
+  el.classList.add("show");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => el.classList.remove("show"), 1000);
+}
+loadSave();
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const TOTAL_QUESTIONS = 25;
+let quiz = null;
+
+function newQuiz(filtered) {
+  // Randomly select 25 (or fewer if pool is smaller)
+  const shuffled = filtered.slice().sort(() => Math.random() - 0.5);
+  const pool = shuffled.slice(0, TOTAL_QUESTIONS);
+  quiz = {
+    pool,
+    idx: 0,
+    total: 0,
+    hintsUsed: 0,
+    perQuestion: [],
+    correctCount: 0,
+    perfectCount: 0,
+  };
+}
+
+function filteredPokemon() {
+  const gens = persistent.filters.gens;
+  const cats = persistent.filters.cats;
+  return POKEMON.filter(p => {
+    // Regional variants: match by 'region' being one of the regional flags
+    if (p.category === "regional") return cats.includes("regional");
+    return gens.includes(p.gen) && cats.includes(p.category);
+  });
+}
+
+// ============================================================
+// ANSWER VALIDATION + SCORING
+// ============================================================
+function normalizeName(s) {
+  return String(s || "").trim().toLowerCase()
+    .replace(/[^a-z0-9]/g, "");  // strip punctuation, hyphens, apostrophes, spaces
+}
+function checkAnswer(p, ans) {
+  const nameGuess = normalizeName(ans.name);
+  const nameTruth = normalizeName(p.name);
+  // Also accept just the base name for regional variants (e.g. "Raichu" for Alolan Raichu)
+  const shortTruth = normalizeName(p.name.replace(/^(alolan|galarian|hisuian|paldean)\s*/i, ""));
+  const nameOk = nameGuess !== "" && (nameGuess === nameTruth || nameGuess === shortTruth);
+  const regionOk = (ans.region || "").toLowerCase() === p.region.toLowerCase();
+  const typeOk = (ans.type || "").toLowerCase() !== "" &&
+    p.types.some(t => t.toLowerCase() === ans.type.toLowerCase());
+  return { nameOk, regionOk, typeOk };
+}
+function calculatePoints(p, ans, hintsUsed) {
+  const r = checkAnswer(p, ans);
+  let base = 0;
+  // Award the highest tier that fits
+  if (r.nameOk && r.regionOk && r.typeOk) base = 25;
+  else if (r.nameOk && r.regionOk)         base = 10;
+  else if (r.nameOk)                       base = 5;
+  else if (r.regionOk)                     base = 2;
+  else if (r.typeOk)                       base = 1;
+  // Each hint halves the points
+  let final = base;
+  for (let i = 0; i < hintsUsed; i++) final = final / 2;
+  return { points: Math.floor(final), breakdown: r, base };
+}
+
+// ============================================================
+// UI TRANSITIONS
+// ============================================================
+function showScreen(name) {
+  ["start-screen", "game-screen", "result-screen", "final-screen"].forEach(id => {
+    document.getElementById(id).classList.toggle("show", id === name);
+    // For start-screen, the panel is always visible unless we're on another
+    document.getElementById(id).style.display = (id === name) ? "" : "none";
+  });
+}
+
+// Chip toggle handlers
+document.querySelectorAll("#gen-chips .chip").forEach(c => {
+  c.addEventListener("click", () => {
+    c.classList.toggle("on");
+    persistent.filters.gens = Array.from(document.querySelectorAll("#gen-chips .chip.on"))
+      .map(x => parseInt(x.dataset.gen));
+    save();
+  });
+});
+document.querySelectorAll("#cat-chips .chip").forEach(c => {
+  c.addEventListener("click", () => {
+    c.classList.toggle("on");
+    persistent.filters.cats = Array.from(document.querySelectorAll("#cat-chips .chip.on"))
+      .map(x => x.dataset.cat);
+    save();
+  });
+});
+// Apply saved filter selections
+function applyFilterUI() {
+  document.querySelectorAll("#gen-chips .chip").forEach(c => {
+    const g = parseInt(c.dataset.gen);
+    c.classList.toggle("on", persistent.filters.gens.includes(g));
+  });
+  document.querySelectorAll("#cat-chips .chip").forEach(c => {
+    c.classList.toggle("on", persistent.filters.cats.includes(c.dataset.cat));
+  });
+}
+applyFilterUI();
+document.getElementById("best-line").textContent = "BEST SCORE: " + persistent.bestScore;
+
+// ============================================================
+// START QUIZ
+// ============================================================
+document.getElementById("start-quiz").addEventListener("click", () => {
+  const pool = filteredPokemon();
+  if (pool.length < 5) {
+    alert("Not enough Pokémon in your filter — pick more generations or categories!");
+    return;
+  }
+  newQuiz(pool);
+  showScreen("game-screen");
+  loadQuestion();
+});
+
+// ============================================================
+// LOAD QUESTION
+// ============================================================
+let currentQ = null;
+let hintsThisQ = 0;
+
+function loadQuestion() {
+  const p = quiz.pool[quiz.idx];
+  currentQ = p;
+  hintsThisQ = 0;
+  document.getElementById("qnum-text").textContent =
+    "QUESTION " + (quiz.idx + 1) + " / " + TOTAL_QUESTIONS;
+  document.getElementById("qnum-total").textContent =
+    "TOTAL: " + quiz.total + " PTS";
+  // Silhouette
+  const img = document.getElementById("pokemon-img");
+  const fb = document.getElementById("img-fallback");
+  img.classList.remove("revealed", "error");
+  fb.classList.remove("show");
+  img.onerror = () => {
+    img.classList.add("error");
+    fb.classList.add("show");
+  };
+  img.src = spriteUrl(p);
+  // Hint image (same image, will be shown zoomed-in as hint)
+  document.getElementById("hint-img").src = spriteUrl(p);
+  document.getElementById("hint-image-box").classList.remove("show");
+  // Reset badge
+  updateHintBadge();
+  // Clear inputs
+  document.getElementById("in-name").value = "";
+  document.getElementById("in-region").value = "";
+  document.getElementById("in-type").value = "";
+  document.getElementById("in-name").focus();
+}
+function updateHintBadge() {
+  const mult = Math.pow(2, hintsThisQ);
+  const el = document.getElementById("hint-badge");
+  el.textContent = "HINTS USED: " + hintsThisQ + " · POINTS × 1/" + mult;
+}
+
+// ============================================================
+// HINT
+// ============================================================
+document.getElementById("btn-hint").addEventListener("click", () => {
+  hintsThisQ++;
+  updateHintBadge();
+  document.getElementById("hint-image-box").classList.add("show");
+  // Simulate a different zoom-in section per hint (shift transform-origin)
+  const img = document.getElementById("hint-img");
+  const offX = 30 - Math.random() * 60;
+  const offY = 30 - Math.random() * 60;
+  img.style.transformOrigin = (50 + offX) + "% " + (50 + offY) + "%";
+});
+
+// ============================================================
+// SUBMIT / SKIP
+// ============================================================
+document.getElementById("btn-submit").addEventListener("click", handleSubmit);
+document.getElementById("btn-skip").addEventListener("click", () => {
+  showResult({ nameOk: false, regionOk: false, typeOk: false }, 0, 0, true);
+});
+document.getElementById("in-name").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleSubmit();
+});
+function handleSubmit() {
+  const ans = {
+    name: document.getElementById("in-name").value,
+    region: document.getElementById("in-region").value,
+    type: document.getElementById("in-type").value,
+  };
+  const calc = calculatePoints(currentQ, ans, hintsThisQ);
+  showResult(calc.breakdown, calc.points, calc.base, false);
+}
+function showResult(bd, points, base, skipped) {
+  quiz.total += points;
+  quiz.perQuestion.push({ points, base, hints: hintsThisQ });
+  if (bd.nameOk && bd.regionOk && bd.typeOk) quiz.perfectCount++;
+  if (points > 0) quiz.correctCount++;
+  const p = currentQ;
+  const img = document.getElementById("result-img");
+  img.src = spriteUrl(p);
+  img.onerror = () => { img.style.display = "none"; };
+  img.style.display = "";
+  document.getElementById("result-name").textContent = p.name;
+  document.getElementById("result-region").textContent = p.region;
+  document.getElementById("result-gen").textContent = "Gen " + p.gen;
+  document.getElementById("result-types").textContent = p.types.map(t => t.toUpperCase()).join(" / ");
+  // Breakdown
+  const grid = document.getElementById("result-breakdown");
+  grid.innerHTML = "";
+  const rows = [
+    { name: "NAME",   ok: bd.nameOk },
+    { name: "REGION", ok: bd.regionOk },
+    { name: "TYPE",   ok: bd.typeOk },
+  ];
+  for (const r of rows) {
+    const d = document.createElement("div");
+    d.className = "bd " + (r.ok ? "ok" : "bad");
+    d.innerHTML = '<div class="bd-name">' + r.name + '</div><div class="bd-val">' + (r.ok ? "✔ RIGHT" : "✘ MISS") + '</div>';
+    grid.appendChild(d);
+  }
+  const title = document.getElementById("result-title");
+  if (skipped) title.textContent = "SKIPPED";
+  else if (points === 25) title.textContent = "PERFECT!";
+  else if (points > 0) title.textContent = "CORRECT!";
+  else title.textContent = "NO POINTS";
+  document.getElementById("result-points").textContent = "+" + points + " PTS";
+  let detail = "Total so far: " + quiz.total + " pts";
+  if (hintsThisQ > 0) {
+    detail += " · " + hintsThisQ + " hint(s) reduced from base " + base + " pts";
+  }
+  document.getElementById("result-detail").textContent = detail;
+  showScreen("result-screen");
+}
+
+// ============================================================
+// NEXT / FINAL
+// ============================================================
+document.getElementById("btn-next").addEventListener("click", () => {
+  quiz.idx++;
+  if (quiz.idx >= TOTAL_QUESTIONS || quiz.idx >= quiz.pool.length) {
+    showFinal();
+  } else {
+    showScreen("game-screen");
+    loadQuestion();
+  }
+});
+function showFinal() {
+  document.getElementById("final-num").textContent = quiz.total;
+  const wasBest = quiz.total > persistent.bestScore;
+  if (wasBest) persistent.bestScore = quiz.total;
+  persistent.totalPlayed++;
+  save();
+  document.getElementById("final-best").style.display = wasBest ? "" : "none";
+  const stats = document.getElementById("final-stats");
+  stats.innerHTML = "";
+  const items = [
+    { name: "PERFECTS",    num: quiz.perfectCount },
+    { name: "CORRECT",     num: quiz.correctCount + "/" + TOTAL_QUESTIONS },
+    { name: "BEST SCORE",  num: persistent.bestScore },
+    { name: "QUIZZES",     num: persistent.totalPlayed },
+  ];
+  for (const it of items) {
+    const d = document.createElement("div");
+    d.className = "stat";
+    d.innerHTML = '<div class="st-num">' + it.num + '</div><div class="st-name">' + it.name + '</div>';
+    stats.appendChild(d);
+  }
+  showScreen("final-screen");
+}
+document.getElementById("btn-again").addEventListener("click", () => {
+  const pool = filteredPokemon();
+  newQuiz(pool);
+  showScreen("game-screen");
+  loadQuestion();
+});
+document.getElementById("btn-menu").addEventListener("click", () => {
+  showScreen("start-screen");
+  document.getElementById("best-line").textContent = "BEST SCORE: " + persistent.bestScore;
+});
+
+// Initial screen
+showScreen("start-screen");
+</script>
+</body>
+</html>
