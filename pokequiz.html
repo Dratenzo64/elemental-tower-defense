@@ -263,7 +263,7 @@
   }
   .input-fields {
     display: grid;
-    grid-template-columns: 1.4fr 1fr;
+    grid-template-columns: 1.6fr 1fr 1fr;
     gap: 10px;
     margin-bottom: 12px;
   }
@@ -465,10 +465,10 @@
 
   <div class="rules">
     <strong>How scoring works:</strong><br>
-    • Get everything right (name + region/gen + type): <strong>25 pts</strong><br>
-    • Name + region/gen only: <strong>10 pts</strong><br>
+    • Get everything right (name + region + generation + type): <strong>25 pts</strong><br>
+    • Name + (region OR generation): <strong>10 pts</strong><br>
     • Name only: <strong>5 pts</strong><br>
-    • Region/gen only: <strong>2 pts</strong><br>
+    • Region OR generation only: <strong>2 pts</strong><br>
     • Type only: <strong>1 pt</strong><br>
     • Each <strong>HINT</strong> (zoom-in image) halves your final points for that question.<br>
     • 25 questions per quiz.
@@ -556,6 +556,21 @@
         <option value="Galar">Galar</option>
         <option value="Hisui">Hisui</option>
         <option value="Paldea">Paldea</option>
+      </select>
+    </div>
+    <div>
+      <div class="field-label">GENERATION</div>
+      <select id="in-gen">
+        <option value="">— select —</option>
+        <option value="1">Gen 1</option>
+        <option value="2">Gen 2</option>
+        <option value="3">Gen 3</option>
+        <option value="4">Gen 4</option>
+        <option value="5">Gen 5</option>
+        <option value="6">Gen 6</option>
+        <option value="7">Gen 7</option>
+        <option value="8">Gen 8</option>
+        <option value="9">Gen 9</option>
       </select>
     </div>
   </div>
@@ -944,6 +959,7 @@ function checkAnswer(p, ans) {
   const shortTruth = normalizeName(p.name.replace(/^(alolan|galarian|hisuian|paldean)\s*/i, ""));
   const nameOk = nameGuess !== "" && (nameGuess === nameTruth || nameGuess === shortTruth);
   const regionOk = (ans.region || "").toLowerCase() === p.region.toLowerCase();
+  const genOk    = String(ans.gen || "") === String(p.gen);
   // Type check across up to 3 user-selected types
   const truthTypes = p.types.map(t => t.toLowerCase());
   const guessTypes = (ans.types || [])
@@ -955,17 +971,20 @@ function checkAnswer(p, ans) {
     const atLeastOneRight = guessTypes.some(t => truthTypes.includes(t));
     typeOk = allValid && atLeastOneRight;
   }
-  return { nameOk, regionOk, typeOk };
+  return { nameOk, regionOk, genOk, typeOk };
 }
 function calculatePoints(p, ans, hintsUsed) {
   const r = checkAnswer(p, ans);
+  // "gen/region" tier — either one counts as knowing where it's from
+  const regionOrGen = r.regionOk || r.genOk;
   let base = 0;
   // Award the highest tier that fits
-  if (r.nameOk && r.regionOk && r.typeOk) base = 25;
-  else if (r.nameOk && r.regionOk)         base = 10;
-  else if (r.nameOk)                       base = 5;
-  else if (r.regionOk)                     base = 2;
-  else if (r.typeOk)                       base = 1;
+  // 25 pts: perfect — name + region + gen + type (all four)
+  if (r.nameOk && r.regionOk && r.genOk && r.typeOk) base = 25;
+  else if (r.nameOk && regionOrGen)                  base = 10;
+  else if (r.nameOk)                                 base = 5;
+  else if (regionOrGen)                              base = 2;
+  else if (r.typeOk)                                 base = 1;
   // Each hint halves the points
   let final = base;
   for (let i = 0; i < hintsUsed; i++) final = final / 2;
@@ -1059,6 +1078,7 @@ function loadQuestion() {
   // Clear inputs
   document.getElementById("in-name").value = "";
   document.getElementById("in-region").value = "";
+  document.getElementById("in-gen").value = "";
   document.getElementById("in-type1").value = "";
   document.getElementById("in-type2").value = "";
   document.getElementById("in-type3").value = "";
@@ -1098,6 +1118,7 @@ function handleSubmit() {
   const ans = {
     name: document.getElementById("in-name").value,
     region: document.getElementById("in-region").value,
+    gen: document.getElementById("in-gen").value,
     types: [
       document.getElementById("in-type1").value,
       document.getElementById("in-type2").value,
@@ -1110,7 +1131,7 @@ function handleSubmit() {
 function showResult(bd, points, base, skipped) {
   quiz.total += points;
   quiz.perQuestion.push({ points, base, hints: hintsThisQ });
-  if (bd.nameOk && bd.regionOk && bd.typeOk) quiz.perfectCount++;
+  if (bd.nameOk && bd.regionOk && bd.genOk && bd.typeOk) quiz.perfectCount++;
   if (points > 0) quiz.correctCount++;
   const p = currentQ;
   const img = document.getElementById("result-img");
@@ -1127,6 +1148,7 @@ function showResult(bd, points, base, skipped) {
   const rows = [
     { name: "NAME",   ok: bd.nameOk },
     { name: "REGION", ok: bd.regionOk },
+    { name: "GEN",    ok: bd.genOk },
     { name: "TYPE",   ok: bd.typeOk },
   ];
   for (const r of rows) {
