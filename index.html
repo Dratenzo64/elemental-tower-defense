@@ -380,6 +380,125 @@
     0%, 100% { transform: scale(1)   rotate(0deg);   opacity: 0.9; }
     50%      { transform: scale(0.4) rotate(180deg); opacity: 0.5; }
   }
+  /* PokéQuiz — red/white Pokéball-inspired letters */
+  .icon-pkq {
+    background: linear-gradient(180deg, #ee1515 0%, #f0f0f0 50%, #f0f0f0 100%);
+    border-color: rgba(238, 21, 21, 0.55);
+    padding: 14px 4px;
+    position: relative;
+    overflow: visible;
+  }
+  .icon-pkq span {
+    display: inline-block;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    color: #1a1a1a;
+    text-shadow: 2px 2px 0 rgba(255,255,255,0.5), 0 0 8px rgba(238,21,21,0.4);
+    animation: pkq-bob 1.5s infinite ease-in-out;
+  }
+  .icon-pkq .k2 { animation-delay: 0.2s; }
+  .icon-pkq .k3 { animation-delay: 0.4s; }
+  /* horizontal Pokéball equator line */
+  .icon-pkq::before {
+    content: "";
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 50%;
+    height: 3px;
+    background: #1a1a1a;
+    transform: translateY(-1.5px);
+    pointer-events: none;
+  }
+  /* center Pokéball button */
+  .icon-pkq::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    background: #f0f0f0;
+    border: 3px solid #1a1a1a;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 6px rgba(255,255,255,0.8);
+    animation: pkq-blink 2.4s infinite;
+    pointer-events: none;
+  }
+  @keyframes pkq-bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+  }
+  @keyframes pkq-blink {
+    0%, 45%, 55%, 100% { background: #f0f0f0; box-shadow: 0 0 6px rgba(255,255,255,0.8); }
+    50%                { background: #ee1515; box-shadow: 0 0 10px rgba(238,21,21,0.85); }
+  }
+  /* Dragonforge — fiery DRG letters with flame wisps */
+  .icon-drg {
+    background: linear-gradient(180deg, rgba(255,90,30,0.12) 0%, rgba(40,15,5,0.4) 100%);
+    border-color: rgba(255, 110, 40, 0.45);
+    padding: 14px 4px;
+    position: relative;
+    overflow: visible;
+  }
+  .icon-drg span {
+    display: inline-block;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    background: linear-gradient(180deg, #ffe88a 0%, #ff8c30 45%, #d6391a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    text-shadow: 0 0 14px rgba(255, 120, 40, 0.6);
+    animation: drg-flicker 1.4s infinite alternate;
+    position: relative;
+  }
+  .icon-drg .d2 { animation-delay: 0.18s; }
+  .icon-drg .d3 { animation-delay: 0.36s; }
+  /* upward flame wisps near top of icon */
+  .icon-drg::before {
+    content: "";
+    position: absolute;
+    top: -8px; left: 50%; transform: translateX(-50%);
+    width: 60%;
+    height: 14px;
+    background:
+      radial-gradient(ellipse at 20% 100%, rgba(255,160,40,0.6) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(255,90,20,0.6) 0%, transparent 60%);
+    filter: blur(3px);
+    animation: drg-flame 1s infinite alternate;
+    pointer-events: none;
+  }
+  /* tiny dragon scale glints below */
+  .icon-drg::after {
+    content: "";
+    position: absolute;
+    bottom: 6px;
+    left: 22%;
+    width: 10px; height: 4px;
+    background:
+      radial-gradient(ellipse, rgba(255,200,80,0.85) 0%, transparent 70%);
+    box-shadow:
+      18px 1px 0 0 rgba(255,150,40,0.7),
+      36px 0 0 0 rgba(255,200,80,0.85);
+    filter: blur(0.5px);
+    animation: drg-glint 2s infinite;
+    pointer-events: none;
+  }
+  @keyframes drg-flicker {
+    0%   { filter: drop-shadow(0 0 4px #ff7a30); transform: translateY(0); }
+    100% { filter: drop-shadow(0 0 12px #ffb060) drop-shadow(0 0 18px #ff5a1a); transform: translateY(-1px); }
+  }
+  @keyframes drg-flame {
+    0%   { transform: translateX(-50%) scaleY(1);   opacity: 0.85; }
+    100% { transform: translateX(-50%) scaleY(1.5); opacity: 1; }
+  }
+  @keyframes drg-glint {
+    0%, 100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+  }
   .game-genre {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.55);
@@ -531,6 +650,17 @@ const games = [
     description: "A pixelated wave-survival adventure inspired by classic Pokemon. Start with a random common weapon — ranged weapons auto-fire every 0.5s, melee weapons spin around you and bleed enemies. After each wave you earn coins and roll a power-up with rarity weights (40% common, 20% rare, 10% epic, 5% legendary, rest re-roll). Stack lightning/fire/poison/ice orbs, lightning strikes, healing auras and more. Every 10 waves you reach the City of Emberfall to roll new weapons and explore.",
     tags: ["Pixel Art", "Wave Survival", "Loot Rarity", "City Visits"],
     url: "pixelquest.html",
+    available: true,
+  },
+  {
+    title: "PokéQuiz",
+    icon: "PKQ",
+    iconHtml: '<div class="game-icon icon-pkq"><span class="k1">P</span><span class="k2">K</span><span class="k3">Q</span></div>',
+    genre: "Puzzle",
+    category: "puzzle",
+    description: "A silhouette-guessing Pokémon quiz. Pick which generations, legendaries, mythicals, and regional variants (Alolan Raichu, Galarian Meowth, Hisuian Zoroark, and more) you want to include. Every question shows a black silhouette — type the Pokémon name, its region, and its type to score up to 25 points. Zoom-in hints give you a clue but halve the points. 25 questions per quiz, best score saved.",
+    tags: ["Silhouettes", "9 Generations", "Legendaries", "Regional Forms"],
+    url: "dragonforge.html",
     available: true,
   },
 ];
