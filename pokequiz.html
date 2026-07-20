@@ -525,9 +525,9 @@
   <div class="pokemon-container">
     <img id="pokemon-img" alt="Silhouette" />
     <div id="img-fallback">
-      IMAGE FAILED TO LOAD<br><br>
-      (Pokémon sprites need internet access.<br>
-      This game works best on the deployed site!)
+      SPRITE UNAVAILABLE<br><br>
+      This Pokémon's artwork isn't hosted at the expected URL.<br>
+      Click <strong>SKIP →</strong> to try another one.
     </div>
     <div class="hint-badge" id="hint-badge">HINTS USED: 0 · POINTS × 1</div>
   </div>
@@ -860,11 +860,41 @@ const POKEMON = [
   { id: 58,  form: "hisui", name: "Hisuian Growlithe", gen: 8, region: "Hisui", types: ["fire","rock"], category: "regional" },
 ];
 
-// Sprite URL builder (uses PokéAPI official artwork on GitHub)
+// Sprite URL candidates — try official-artwork first, then Pokémon Home
+// artwork, then the classic pixel sprite. Not every regional form has
+// official-artwork, so we chain fallbacks and only give up if all miss.
+function spriteCandidates(p) {
+  const art  = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/";
+  const home = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/";
+  const base = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/";
+  const urls = [];
+  if (p.form) {
+    urls.push(art  + p.id + "-" + p.form + ".png");
+    urls.push(home + p.id + "-" + p.form + ".png");
+    urls.push(base + p.id + "-" + p.form + ".png");
+  }
+  // final fallback: base sprite (works for any Pokémon that exists in PokéAPI)
+  urls.push(art  + p.id + ".png");
+  urls.push(home + p.id + ".png");
+  urls.push(base + p.id + ".png");
+  return urls;
+}
+// Primary URL for legacy code paths (result screen)
 function spriteUrl(p) {
-  const base = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/";
-  if (p.form) return base + p.id + "-" + p.form + ".png";
-  return base + p.id + ".png";
+  return spriteCandidates(p)[0];
+}
+
+// Chained-fallback image loader — tries each candidate until one loads
+function loadImageWithFallback(img, urls, onSuccess, onAllFail) {
+  let idx = 0;
+  function tryNext() {
+    if (idx >= urls.length) { onAllFail && onAllFail(); return; }
+    const url = urls[idx++];
+    img.onerror = tryNext;
+    img.onload  = () => { onSuccess && onSuccess(url); };
+    img.src = url;
+  }
+  tryNext();
 }
 
 // ============================================================
@@ -1086,18 +1116,23 @@ function loadQuestion() {
     "QUESTION " + (quiz.idx + 1) + " / " + quiz.pool.length;
   document.getElementById("qnum-total").textContent =
     "TOTAL: " + quiz.total + " PTS";
-  // Silhouette
+  // Silhouette — try multiple URL sources before giving up
   const img = document.getElementById("pokemon-img");
+  const hintImg = document.getElementById("hint-img");
   const fb = document.getElementById("img-fallback");
   img.classList.remove("revealed", "error");
   fb.classList.remove("show");
-  img.onerror = () => {
-    img.classList.add("error");
-    fb.classList.add("show");
-  };
-  img.src = spriteUrl(p);
-  // Hint image (same image, will be shown zoomed-in as hint)
-  document.getElementById("hint-img").src = spriteUrl(p);
+  const candidates = spriteCandidates(p);
+  loadImageWithFallback(img, candidates,
+    (winningUrl) => {
+      // Point the hint image at the same URL that just worked
+      hintImg.src = winningUrl;
+    },
+    () => {
+      img.classList.add("error");
+      fb.classList.add("show");
+    }
+  );
   document.getElementById("hint-image-box").classList.remove("show");
   // Reset badge
   updateHintBadge();
@@ -1161,9 +1196,11 @@ function showResult(bd, points, base, skipped) {
   if (points > 0) quiz.correctCount++;
   const p = currentQ;
   const img = document.getElementById("result-img");
-  img.src = spriteUrl(p);
-  img.onerror = () => { img.style.display = "none"; };
   img.style.display = "";
+  loadImageWithFallback(img, spriteCandidates(p),
+    null,
+    () => { img.style.display = "none"; }
+  );
   document.getElementById("result-name").textContent = p.name;
   document.getElementById("result-region").textContent = p.region;
   document.getElementById("result-gen").textContent = "Gen " + p.gen;
