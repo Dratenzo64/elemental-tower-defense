@@ -471,7 +471,16 @@
     • Region OR generation only: <strong>2 pts</strong><br>
     • Type only: <strong>1 pt</strong><br>
     • Each <strong>HINT</strong> (zoom-in image) halves your final points for that question.<br>
-    • 25 questions per quiz.
+    • Pick your quiz length below: <strong>Short (5)</strong>, <strong>Medium (10)</strong>, or <strong>Full (25)</strong> questions.
+  </div>
+
+  <div class="filter-group">
+    <h4>QUIZ LENGTH</h4>
+    <div class="chip-row" id="length-chips">
+      <div class="chip"        data-len="5">SHORT · 5 Q</div>
+      <div class="chip"        data-len="10">MEDIUM · 10 Q</div>
+      <div class="chip on"     data-len="25">FULL · 25 Q</div>
+    </div>
   </div>
 
   <div class="filter-group">
@@ -866,10 +875,12 @@ const HASH_PREFIX = "#pq=";
 function defaultSave() {
   return {
     bestScore: 0,
+    bestScoreByLength: { 5: 0, 10: 0, 25: 0 }, // per-length best
     totalPlayed: 0,
     filters: {
       gens: [1, 2, 3, 4, 5],
       cats: ["regular", "legendary", "mythical", "regional"],
+      questionCount: 25,
     },
   };
 }
@@ -907,7 +918,10 @@ loadSave();
 // ============================================================
 // GAME STATE
 // ============================================================
-const TOTAL_QUESTIONS = 25;
+function totalQuestions() {
+  const n = persistent.filters.questionCount;
+  return (n === 5 || n === 10 || n === 25) ? n : 25;
+}
 let quiz = null;
 
 // Fisher-Yates unbiased shuffle
@@ -921,9 +935,9 @@ function shuffle(arr) {
 }
 
 function newQuiz(filtered) {
-  // Pick a fresh random 25 (or fewer if the pool is smaller)
+  // Pick a fresh random N (or fewer if the pool is smaller)
   const shuffled = shuffle(filtered);
-  const pool = shuffled.slice(0, TOTAL_QUESTIONS);
+  const pool = shuffled.slice(0, totalQuestions());
   quiz = {
     pool,
     idx: 0,
@@ -1003,6 +1017,15 @@ function showScreen(name) {
 }
 
 // Chip toggle handlers
+// Length chips — single-select (radio-style)
+document.querySelectorAll("#length-chips .chip").forEach(c => {
+  c.addEventListener("click", () => {
+    document.querySelectorAll("#length-chips .chip").forEach(x => x.classList.remove("on"));
+    c.classList.add("on");
+    persistent.filters.questionCount = parseInt(c.dataset.len);
+    save();
+  });
+});
 document.querySelectorAll("#gen-chips .chip").forEach(c => {
   c.addEventListener("click", () => {
     c.classList.toggle("on");
@@ -1021,6 +1044,9 @@ document.querySelectorAll("#cat-chips .chip").forEach(c => {
 });
 // Apply saved filter selections
 function applyFilterUI() {
+  document.querySelectorAll("#length-chips .chip").forEach(c => {
+    c.classList.toggle("on", parseInt(c.dataset.len) === persistent.filters.questionCount);
+  });
   document.querySelectorAll("#gen-chips .chip").forEach(c => {
     const g = parseInt(c.dataset.gen);
     c.classList.toggle("on", persistent.filters.gens.includes(g));
@@ -1057,7 +1083,7 @@ function loadQuestion() {
   currentQ = p;
   hintsThisQ = 0;
   document.getElementById("qnum-text").textContent =
-    "QUESTION " + (quiz.idx + 1) + " / " + TOTAL_QUESTIONS;
+    "QUESTION " + (quiz.idx + 1) + " / " + quiz.pool.length;
   document.getElementById("qnum-total").textContent =
     "TOTAL: " + quiz.total + " PTS";
   // Silhouette
@@ -1176,7 +1202,7 @@ function showResult(bd, points, base, skipped) {
 // ============================================================
 document.getElementById("btn-next").addEventListener("click", () => {
   quiz.idx++;
-  if (quiz.idx >= TOTAL_QUESTIONS || quiz.idx >= quiz.pool.length) {
+  if (quiz.idx >= quiz.pool.length) {
     showFinal();
   } else {
     showScreen("game-screen");
@@ -1185,18 +1211,21 @@ document.getElementById("btn-next").addEventListener("click", () => {
 });
 function showFinal() {
   document.getElementById("final-num").textContent = quiz.total;
-  const wasBest = quiz.total > persistent.bestScore;
-  if (wasBest) persistent.bestScore = quiz.total;
+  const len = quiz.pool.length;
+  const prevBest = persistent.bestScoreByLength[len] || 0;
+  const wasBest = quiz.total > prevBest;
+  if (wasBest) persistent.bestScoreByLength[len] = quiz.total;
+  if (quiz.total > persistent.bestScore) persistent.bestScore = quiz.total;
   persistent.totalPlayed++;
   save();
   document.getElementById("final-best").style.display = wasBest ? "" : "none";
   const stats = document.getElementById("final-stats");
   stats.innerHTML = "";
   const items = [
-    { name: "PERFECTS",    num: quiz.perfectCount },
-    { name: "CORRECT",     num: quiz.correctCount + "/" + TOTAL_QUESTIONS },
-    { name: "BEST SCORE",  num: persistent.bestScore },
-    { name: "QUIZZES",     num: persistent.totalPlayed },
+    { name: "PERFECTS",             num: quiz.perfectCount },
+    { name: "CORRECT",              num: quiz.correctCount + "/" + len },
+    { name: "BEST · " + len + "Q",  num: persistent.bestScoreByLength[len] || 0 },
+    { name: "QUIZZES",              num: persistent.totalPlayed },
   ];
   for (const it of items) {
     const d = document.createElement("div");
