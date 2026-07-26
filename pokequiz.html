@@ -224,6 +224,30 @@
     padding: 40px 20px;
   }
   #img-fallback.show { display: block; }
+  #img-loading {
+    display: none;
+    font-family: 'Press Start 2P', monospace;
+    color: #ffd44a;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-align: center;
+    padding: 60px 20px;
+  }
+  #img-loading.show { display: block; }
+  .loader-dots::after {
+    content: "";
+    display: inline-block;
+    width: 24px;
+    text-align: left;
+    animation: dots 1.2s infinite steps(4);
+  }
+  @keyframes dots {
+    0%   { content: ""; }
+    25%  { content: "."; }
+    50%  { content: ".."; }
+    75%  { content: "..."; }
+    100% { content: ""; }
+  }
   .hint-badge {
     position: absolute;
     top: 8px; right: 8px;
@@ -524,10 +548,11 @@
 
   <div class="pokemon-container">
     <img id="pokemon-img" alt="Silhouette" />
+    <div id="img-loading">LOADING SPRITE<span class="loader-dots"></span></div>
     <div id="img-fallback">
       SPRITE UNAVAILABLE<br><br>
-      This Pokémon's artwork isn't hosted at the expected URL.<br>
-      Click <strong>SKIP →</strong> to try another one.
+      Couldn't reach the PokéAPI sprite server after multiple retries.<br>
+      Check your connection and click <strong>SKIP →</strong> to try another one.
     </div>
     <div class="hint-badge" id="hint-badge">HINTS USED: 0 · POINTS × 1</div>
   </div>
@@ -884,17 +909,56 @@ function spriteUrl(p) {
   return spriteCandidates(p)[0];
 }
 
-// Chained-fallback image loader — tries each candidate until one loads
-function loadImageWithFallback(img, urls, onSuccess, onAllFail) {
-  let idx = 0;
-  function tryNext() {
-    if (idx >= urls.length) { onAllFail && onAllFail(); return; }
-    const url = urls[idx++];
-    img.onerror = tryNext;
-    img.onload  = () => { onSuccess && onSuccess(url); };
-    img.src = url;
+// Chained-fallback image loader with per-URL timeout + retry.
+// Tries each candidate up to `retries + 1` times, with a `timeoutMs` grace
+// period per attempt to allow slow connections. Only advances to the next
+// URL if the current one truly fails or times out.
+function loadImageWithFallback(img, urls, onSuccess, onAllFail, opts) {
+  const timeoutMs = (opts && opts.timeoutMs) || 6000;
+  const retries   = (opts && opts.retries)   || 1;   // 1 retry per URL (so 2 attempts total)
+  let urlIdx = 0;
+  let attempt = 0;
+  let timer = null;
+  let cancelled = false;
+  function cleanup() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    img.onerror = null;
+    img.onload  = null;
   }
-  tryNext();
+  function fail() {
+    cleanup();
+    // Retry same URL first, then move to next
+    if (attempt < retries) {
+      attempt++;
+      // Small backoff before retrying same URL
+      setTimeout(() => { if (!cancelled) tryCurrent(); }, 250);
+    } else {
+      urlIdx++;
+      attempt = 0;
+      tryCurrent();
+    }
+  }
+  function tryCurrent() {
+    if (cancelled) return;
+    if (urlIdx >= urls.length) {
+      if (onAllFail) onAllFail();
+      return;
+    }
+    const url = urls[urlIdx];
+    img.onerror = fail;
+    img.onload  = () => {
+      cleanup();
+      if (onSuccess) onSuccess(url);
+    };
+    // Bust caching only on retry attempts so a mid-load timeout gets a fresh try
+    const bust = attempt > 0 ? "?r=" + attempt : "";
+    img.src = url + bust;
+    // Timeout guard — if the load hasn't completed in timeoutMs, treat as failed
+    timer = setTimeout(fail, timeoutMs);
+  }
+  tryCurrent();
+  // Return a cancel function so callers can abort if the user navigates away
+  return function cancel() { cancelled = true; cleanup(); };
 }
 
 // ============================================================
@@ -1116,22 +1180,30 @@ function loadQuestion() {
     "QUESTION " + (quiz.idx + 1) + " / " + quiz.pool.length;
   document.getElementById("qnum-total").textContent =
     "TOTAL: " + quiz.total + " PTS";
-  // Silhouette — try multiple URL sources before giving up
+  // Silhouette — try multiple URL sources with timeout + retry
   const img = document.getElementById("pokemon-img");
   const hintImg = document.getElementById("hint-img");
   const fb = document.getElementById("img-fallback");
+  const loading = document.getElementById("img-loading");
   img.classList.remove("revealed", "error");
+  img.style.visibility = "hidden";   // hide until loaded
   fb.classList.remove("show");
+  loading.classList.add("show");     // show LOADING SPRITE... while fetching
+  // Cancel any pending image load from a previous question
+  if (window._currentImgLoad) window._currentImgLoad();
   const candidates = spriteCandidates(p);
-  loadImageWithFallback(img, candidates,
+  window._currentImgLoad = loadImageWithFallback(img, candidates,
     (winningUrl) => {
-      // Point the hint image at the same URL that just worked
+      loading.classList.remove("show");
+      img.style.visibility = "";     // reveal image
       hintImg.src = winningUrl;
     },
     () => {
+      loading.classList.remove("show");
       img.classList.add("error");
       fb.classList.add("show");
-    }
+    },
+    { timeoutMs: 6000, retries: 1 }
   );
   document.getElementById("hint-image-box").classList.remove("show");
   // Reset badge
