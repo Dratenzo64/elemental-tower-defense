@@ -552,7 +552,13 @@
     <div id="img-fallback">
       SPRITE UNAVAILABLE<br><br>
       Couldn't reach the PokéAPI sprite server after multiple retries.<br>
-      Check your connection and click <strong>SKIP →</strong> to try another one.
+      Check your connection and click <strong>SKIP →</strong> to try another one.<br><br>
+      <button id="btn-download-log"
+              style="background:#ef4444;color:#fff;border:2px solid #7f1d1d;padding:8px 16px;
+                     font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:1px;
+                     cursor:pointer;box-shadow:3px 3px 0 rgba(0,0,0,0.5);">
+        ⬇ DOWNLOAD ERROR LOG
+      </button>
     </div>
     <div class="hint-badge" id="hint-badge">HINTS USED: 0 · POINTS × 1</div>
   </div>
@@ -909,28 +915,71 @@ function spriteUrl(p) {
   return spriteCandidates(p)[0];
 }
 
+// ===== ERROR LOG COLLECTOR =====
+// Captures every image load attempt (URL, timing, outcome) so we can
+// diagnose why the SPRITE UNAVAILABLE fallback is showing.
+const errorLog = {
+  startedAt: new Date().toISOString(),
+  userAgent: navigator.userAgent,
+  href: location.href,
+  events: [],
+};
+function logEvent(kind, data) {
+  errorLog.events.push(Object.assign({
+    t: new Date().toISOString(),
+    ms: Math.round(performance.now()),
+    kind: kind,
+  }, data || {}));
+  // Cap the log at 500 events so it doesn't grow unbounded
+  if (errorLog.events.length > 500) errorLog.events.splice(0, errorLog.events.length - 500);
+}
+function downloadErrorLog() {
+  const blob = new Blob([JSON.stringify(errorLog, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "pokequiz-error-log-" + Date.now() + ".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+// Wire the download button (works whenever the fallback is on screen)
+document.addEventListener("click", (e) => {
+  if (e.target && e.target.id === "btn-download-log") {
+    downloadErrorLog();
+  }
+});
+// Log uncaught errors and unhandled promise rejections too
+window.addEventListener("error", (ev) => {
+  logEvent("js-error", { message: ev.message, filename: ev.filename, lineno: ev.lineno });
+});
+window.addEventListener("unhandledrejection", (ev) => {
+  logEvent("promise-rejection", { reason: String(ev.reason) });
+});
+
 // Chained-fallback image loader with per-URL timeout + retry.
-// Tries each candidate up to `retries + 1` times, with a `timeoutMs` grace
-// period per attempt to allow slow connections. Only advances to the next
-// URL if the current one truly fails or times out.
 function loadImageWithFallback(img, urls, onSuccess, onAllFail, opts) {
   const timeoutMs = (opts && opts.timeoutMs) || 6000;
-  const retries   = (opts && opts.retries)   || 1;   // 1 retry per URL (so 2 attempts total)
+  const retries   = (opts && opts.retries)   || 1;
+  const pokemon   = (opts && opts.pokemonLabel) || "?";
   let urlIdx = 0;
   let attempt = 0;
   let timer = null;
+  let started = 0;
   let cancelled = false;
+  logEvent("load-start", { pokemon, candidateCount: urls.length, candidates: urls });
   function cleanup() {
     if (timer) { clearTimeout(timer); timer = null; }
     img.onerror = null;
     img.onload  = null;
   }
-  function fail() {
+  function fail(reason) {
+    const dur = Math.round(performance.now() - started);
+    logEvent("attempt-fail", { pokemon, url: urls[urlIdx], attempt, reason, durMs: dur });
     cleanup();
-    // Retry same URL first, then move to next
     if (attempt < retries) {
       attempt++;
-      // Small backoff before retrying same URL
       setTimeout(() => { if (!cancelled) tryCurrent(); }, 250);
     } else {
       urlIdx++;
@@ -941,24 +990,31 @@ function loadImageWithFallback(img, urls, onSuccess, onAllFail, opts) {
   function tryCurrent() {
     if (cancelled) return;
     if (urlIdx >= urls.length) {
+      logEvent("all-fail", { pokemon });
       if (onAllFail) onAllFail();
       return;
     }
     const url = urls[urlIdx];
-    img.onerror = fail;
+    started = performance.now();
+    logEvent("attempt-start", { pokemon, url, attempt });
+    img.onerror = () => fail("onerror");
     img.onload  = () => {
+      const dur = Math.round(performance.now() - started);
+      logEvent("attempt-success", { pokemon, url, attempt, durMs: dur });
       cleanup();
       if (onSuccess) onSuccess(url);
     };
-    // Bust caching only on retry attempts so a mid-load timeout gets a fresh try
     const bust = attempt > 0 ? "?r=" + attempt : "";
     img.src = url + bust;
-    // Timeout guard — if the load hasn't completed in timeoutMs, treat as failed
-    timer = setTimeout(fail, timeoutMs);
+    timer = setTimeout(() => fail("timeout"), timeoutMs);
   }
   tryCurrent();
-  // Return a cancel function so callers can abort if the user navigates away
-  return function cancel() { cancelled = true; cleanup(); };
+  return function cancel() {
+    if (cancelled) return;
+    cancelled = true;
+    logEvent("load-cancel", { pokemon, atUrl: urls[urlIdx], atAttempt: attempt });
+    cleanup();
+  };
 }
 
 // ============================================================
@@ -1203,7 +1259,7 @@ function loadQuestion() {
       img.classList.add("error");
       fb.classList.add("show");
     },
-    { timeoutMs: 6000, retries: 1 }
+    { timeoutMs: 6000, retries: 1, pokemonLabel: p.name + " (id=" + p.id + (p.form ? ", form=" + p.form : "") + ")" }
   );
   document.getElementById("hint-image-box").classList.remove("show");
   // Reset badge
