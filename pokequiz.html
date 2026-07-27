@@ -874,110 +874,77 @@ const POKEMON = [
   { id: 1017, name: "Ogerpon",    gen: 9, region: "Paldea", types: ["grass"], category: "legendary" },
 
   // ===== REGIONAL VARIANTS =====
+  // The `id` field for each regional form is its PokéAPI *internal variety ID*
+  // (in the 10000+ range). Every one of these is guaranteed to have a sprite
+  // in the PokéAPI sprites GitHub repo at:
+  //   https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{id}.png
+  //   https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/{id}.png
+
   // -- Alolan (Gen 7) --
-  { id: 19,  form: "alola", name: "Alolan Rattata",    gen: 7, region: "Alola", types: ["dark","normal"], category: "regional" },
-  { id: 20,  form: "alola", name: "Alolan Raticate",   gen: 7, region: "Alola", types: ["dark","normal"], category: "regional" },
-  { id: 26,  form: "alola", name: "Alolan Raichu",     gen: 7, region: "Alola", types: ["electric","psychic"], category: "regional" },
-  { id: 27,  form: "alola", name: "Alolan Sandshrew",  gen: 7, region: "Alola", types: ["ice","steel"], category: "regional" },
-  { id: 28,  form: "alola", name: "Alolan Sandslash",  gen: 7, region: "Alola", types: ["ice","steel"], category: "regional" },
-  { id: 37,  form: "alola", name: "Alolan Vulpix",     gen: 7, region: "Alola", types: ["ice"], category: "regional" },
-  { id: 38,  form: "alola", name: "Alolan Ninetales",  gen: 7, region: "Alola", types: ["ice","fairy"], category: "regional" },
-  { id: 50,  form: "alola", name: "Alolan Diglett",    gen: 7, region: "Alola", types: ["ground","steel"], category: "regional" },
-  { id: 51,  form: "alola", name: "Alolan Dugtrio",    gen: 7, region: "Alola", types: ["ground","steel"], category: "regional" },
-  { id: 52,  form: "alola", name: "Alolan Meowth",     gen: 7, region: "Alola", types: ["dark"], category: "regional" },
-  { id: 53,  form: "alola", name: "Alolan Persian",    gen: 7, region: "Alola", types: ["dark"], category: "regional" },
-  { id: 74,  form: "alola", name: "Alolan Geodude",    gen: 7, region: "Alola", types: ["rock","electric"], category: "regional" },
-  { id: 75,  form: "alola", name: "Alolan Graveler",   gen: 7, region: "Alola", types: ["rock","electric"], category: "regional" },
-  { id: 76,  form: "alola", name: "Alolan Golem",      gen: 7, region: "Alola", types: ["rock","electric"], category: "regional" },
-  { id: 88,  form: "alola", name: "Alolan Grimer",     gen: 7, region: "Alola", types: ["poison","dark"], category: "regional" },
-  { id: 89,  form: "alola", name: "Alolan Muk",        gen: 7, region: "Alola", types: ["poison","dark"], category: "regional" },
-  { id: 103, form: "alola", name: "Alolan Exeggutor",  gen: 7, region: "Alola", types: ["grass","dragon"], category: "regional" },
-  { id: 105, form: "alola", name: "Alolan Marowak",    gen: 7, region: "Alola", types: ["fire","ghost"], category: "regional" },
+  { id: 10091, name: "Alolan Rattata",   gen: 7, region: "Alola", types: ["dark","normal"], category: "regional" },
+  { id: 10092, name: "Alolan Raticate",  gen: 7, region: "Alola", types: ["dark","normal"], category: "regional" },
+  { id: 10100, name: "Alolan Raichu",    gen: 7, region: "Alola", types: ["electric","psychic"], category: "regional" },
+  { id: 10101, name: "Alolan Sandshrew", gen: 7, region: "Alola", types: ["ice","steel"], category: "regional" },
+  { id: 10102, name: "Alolan Sandslash", gen: 7, region: "Alola", types: ["ice","steel"], category: "regional" },
+  { id: 10103, name: "Alolan Vulpix",    gen: 7, region: "Alola", types: ["ice"], category: "regional" },
+  { id: 10104, name: "Alolan Ninetales", gen: 7, region: "Alola", types: ["ice","fairy"], category: "regional" },
+  { id: 10105, name: "Alolan Diglett",   gen: 7, region: "Alola", types: ["ground","steel"], category: "regional" },
+  { id: 10106, name: "Alolan Dugtrio",   gen: 7, region: "Alola", types: ["ground","steel"], category: "regional" },
+  { id: 10107, name: "Alolan Meowth",    gen: 7, region: "Alola", types: ["dark"], category: "regional" },
+  { id: 10108, name: "Alolan Persian",   gen: 7, region: "Alola", types: ["dark"], category: "regional" },
+  { id: 10109, name: "Alolan Geodude",   gen: 7, region: "Alola", types: ["rock","electric"], category: "regional" },
+  { id: 10110, name: "Alolan Graveler",  gen: 7, region: "Alola", types: ["rock","electric"], category: "regional" },
+  { id: 10111, name: "Alolan Golem",     gen: 7, region: "Alola", types: ["rock","electric"], category: "regional" },
+  { id: 10112, name: "Alolan Grimer",    gen: 7, region: "Alola", types: ["poison","dark"], category: "regional" },
+  { id: 10113, name: "Alolan Muk",       gen: 7, region: "Alola", types: ["poison","dark"], category: "regional" },
+  { id: 10114, name: "Alolan Exeggutor", gen: 7, region: "Alola", types: ["grass","dragon"], category: "regional" },
+  { id: 10115, name: "Alolan Marowak",   gen: 7, region: "Alola", types: ["fire","ghost"], category: "regional" },
 
   // -- Galarian (Gen 8) --
-  { id: 52,  form: "galar", name: "Galarian Meowth",   gen: 8, region: "Galar", types: ["steel"], category: "regional" },
-  { id: 77,  form: "galar", name: "Galarian Ponyta",   gen: 8, region: "Galar", types: ["psychic"], category: "regional" },
-  { id: 78,  form: "galar", name: "Galarian Rapidash", gen: 8, region: "Galar", types: ["psychic","fairy"], category: "regional" },
-  { id: 79,  form: "galar", name: "Galarian Slowpoke", gen: 8, region: "Galar", types: ["psychic"], category: "regional" },
-  { id: 80,  form: "galar", name: "Galarian Slowbro",  gen: 8, region: "Galar", types: ["poison","psychic"], category: "regional" },
-  { id: 83,  form: "galar", name: "Galarian Farfetch'd", gen: 8, region: "Galar", types: ["fighting"], category: "regional" },
-  { id: 110, form: "galar", name: "Galarian Weezing",  gen: 8, region: "Galar", types: ["poison","fairy"], category: "regional" },
-  { id: 122, form: "galar", name: "Galarian Mr. Mime", gen: 8, region: "Galar", types: ["ice","psychic"], category: "regional" },
-  { id: 199, form: "galar", name: "Galarian Slowking", gen: 8, region: "Galar", types: ["poison","psychic"], category: "regional" },
-  { id: 222, form: "galar", name: "Galarian Corsola",  gen: 8, region: "Galar", types: ["ghost"], category: "regional" },
-  { id: 263, form: "galar", name: "Galarian Zigzagoon", gen: 8, region: "Galar", types: ["dark","normal"], category: "regional" },
-  { id: 264, form: "galar", name: "Galarian Linoone",  gen: 8, region: "Galar", types: ["dark","normal"], category: "regional" },
-  { id: 618, form: "galar", name: "Galarian Stunfisk", gen: 8, region: "Galar", types: ["ground","steel"], category: "regional" },
+  { id: 10161, name: "Galarian Meowth",   gen: 8, region: "Galar", types: ["steel"], category: "regional" },
+  { id: 10162, name: "Galarian Ponyta",   gen: 8, region: "Galar", types: ["psychic"], category: "regional" },
+  { id: 10163, name: "Galarian Rapidash", gen: 8, region: "Galar", types: ["psychic","fairy"], category: "regional" },
+  { id: 10164, name: "Galarian Slowpoke", gen: 8, region: "Galar", types: ["psychic"], category: "regional" },
+  { id: 10165, name: "Galarian Slowbro",  gen: 8, region: "Galar", types: ["poison","psychic"], category: "regional" },
+  { id: 10166, name: "Galarian Farfetch'd", gen: 8, region: "Galar", types: ["fighting"], category: "regional" },
+  { id: 10167, name: "Galarian Weezing",  gen: 8, region: "Galar", types: ["poison","fairy"], category: "regional" },
+  { id: 10168, name: "Galarian Mr. Mime", gen: 8, region: "Galar", types: ["ice","psychic"], category: "regional" },
+  { id: 10172, name: "Galarian Slowking", gen: 8, region: "Galar", types: ["poison","psychic"], category: "regional" },
+  { id: 10173, name: "Galarian Corsola",  gen: 8, region: "Galar", types: ["ghost"], category: "regional" },
+  { id: 10174, name: "Galarian Zigzagoon", gen: 8, region: "Galar", types: ["dark","normal"], category: "regional" },
+  { id: 10175, name: "Galarian Linoone",  gen: 8, region: "Galar", types: ["dark","normal"], category: "regional" },
+  { id: 10180, name: "Galarian Stunfisk", gen: 8, region: "Galar", types: ["ground","steel"], category: "regional" },
 
   // -- Hisuian (Gen 8, PLA) --
-  { id: 58,  form: "hisui", name: "Hisuian Growlithe", gen: 8, region: "Hisui", types: ["fire","rock"], category: "regional" },
-  { id: 59,  form: "hisui", name: "Hisuian Arcanine",  gen: 8, region: "Hisui", types: ["fire","rock"], category: "regional" },
-  { id: 100, form: "hisui", name: "Hisuian Voltorb",   gen: 8, region: "Hisui", types: ["electric","grass"], category: "regional" },
-  { id: 101, form: "hisui", name: "Hisuian Electrode", gen: 8, region: "Hisui", types: ["electric","grass"], category: "regional" },
-  { id: 157, form: "hisui", name: "Hisuian Typhlosion", gen: 8, region: "Hisui", types: ["fire","ghost"], category: "regional" },
-  { id: 211, form: "hisui", name: "Hisuian Qwilfish",  gen: 8, region: "Hisui", types: ["dark","poison"], category: "regional" },
-  { id: 215, form: "hisui", name: "Hisuian Sneasel",   gen: 8, region: "Hisui", types: ["fighting","poison"], category: "regional" },
-  { id: 503, form: "hisui", name: "Hisuian Samurott",  gen: 8, region: "Hisui", types: ["water","dark"], category: "regional" },
-  { id: 549, form: "hisui", name: "Hisuian Lilligant", gen: 8, region: "Hisui", types: ["grass","fighting"], category: "regional" },
-  { id: 571, form: "hisui", name: "Hisuian Zoroark",   gen: 8, region: "Hisui", types: ["normal","ghost"], category: "regional" },
-  { id: 628, form: "hisui", name: "Hisuian Braviary",  gen: 8, region: "Hisui", types: ["psychic","flying"], category: "regional" },
+  { id: 10229, name: "Hisuian Growlithe", gen: 8, region: "Hisui", types: ["fire","rock"], category: "regional" },
+  { id: 10230, name: "Hisuian Arcanine",  gen: 8, region: "Hisui", types: ["fire","rock"], category: "regional" },
+  { id: 10231, name: "Hisuian Voltorb",   gen: 8, region: "Hisui", types: ["electric","grass"], category: "regional" },
+  { id: 10232, name: "Hisuian Electrode", gen: 8, region: "Hisui", types: ["electric","grass"], category: "regional" },
+  { id: 10233, name: "Hisuian Typhlosion",gen: 8, region: "Hisui", types: ["fire","ghost"], category: "regional" },
+  { id: 10234, name: "Hisuian Qwilfish",  gen: 8, region: "Hisui", types: ["dark","poison"], category: "regional" },
+  { id: 10235, name: "Hisuian Sneasel",   gen: 8, region: "Hisui", types: ["fighting","poison"], category: "regional" },
+  { id: 10236, name: "Hisuian Samurott",  gen: 8, region: "Hisui", types: ["water","dark"], category: "regional" },
+  { id: 10237, name: "Hisuian Lilligant", gen: 8, region: "Hisui", types: ["grass","fighting"], category: "regional" },
+  { id: 10239, name: "Hisuian Zoroark",   gen: 8, region: "Hisui", types: ["normal","ghost"], category: "regional" },
+  { id: 10240, name: "Hisuian Braviary",  gen: 8, region: "Hisui", types: ["psychic","flying"], category: "regional" },
 
   // -- Paldean (Gen 9) --
-  { id: 194, form: "paldea", name: "Paldean Wooper",   gen: 9, region: "Paldea", types: ["poison","ground"], category: "regional" },
+  { id: 10253, name: "Paldean Wooper",    gen: 9, region: "Paldea", types: ["poison","ground"], category: "regional" },
 ];
 
-// ----- URL builders for multiple sprite sources -----
-// pokemondb.net uses clean name-based slugs that reliably resolve for
-// every regional variant (e.g. raichu-alolan.jpg, meowth-galarian.jpg).
-function pokemonDbSlug(p) {
-  let name = p.name.toLowerCase();
-  let suffix = "";
-  const regionMap = {
-    "alolan ":   "-alolan",
-    "galarian ": "-galarian",
-    "hisuian ":  "-hisuian",
-    "paldean ":  "-paldean",
-  };
-  for (const prefix in regionMap) {
-    if (name.indexOf(prefix) === 0) {
-      suffix = regionMap[prefix];
-      name = name.slice(prefix.length);
-      break;
-    }
-  }
-  // Clean special characters (Farfetch'd → farfetchd, Mr. Mime → mr-mime)
-  name = name
-    .replace(/'/g, "")
-    .replace(/\./g, "")
-    .replace(/♀/g, "-f").replace(/♂/g, "-m")
-    .replace(/\s+/g, "-");
-  return name + suffix;
-}
-
-// Sprite URL candidates. For regional forms, ONLY use sources that
-// actually host the form artwork — never fall back to the base
-// Pokémon's sprite because that would show the WRONG image.
+// Sprite URL candidates — all from PokéAPI's GitHub sprite repo.
+// Every Pokémon (including regional variants like Alolan Raichu, whose
+// internal ID is 10100) has a sprite at these paths. Verified against
+// the PokéAPI /pokemon/{name-or-id}/ endpoint.
 function spriteCandidates(p) {
-  const urls = [];
-  const pdbSlug = pokemonDbSlug(p);
-  // Primary: pokemondb.net (large official artwork, consistent slugs)
-  urls.push("https://img.pokemondb.net/artwork/large/" + pdbSlug + ".jpg");
-  urls.push("https://img.pokemondb.net/artwork/"       + pdbSlug + ".jpg");
-  // Secondary: PokéAPI (base pokemon only — form suffix is unreliable there)
   const art  = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/";
   const home = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/";
   const base = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/";
-  if (p.form) {
-    // Try the form-suffixed URLs; if they miss, we skip to next candidate.
-    // These sometimes exist for gens 7-8 alolan/galar variants.
-    urls.push(art  + p.id + "-" + p.form + ".png");
-    urls.push(home + p.id + "-" + p.form + ".png");
-  } else {
-    urls.push(art  + p.id + ".png");
-    urls.push(home + p.id + ".png");
-    urls.push(base + p.id + ".png");
-  }
-  return urls;
+  return [
+    art  + p.id + ".png",   // best quality
+    home + p.id + ".png",   // Pokémon Home artwork
+    base + p.id + ".png",   // fallback pixel sprite
+  ];
 }
 // Primary URL for legacy code paths (result screen)
 function spriteUrl(p) {
