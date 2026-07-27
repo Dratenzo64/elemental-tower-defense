@@ -399,8 +399,10 @@
   }
   .bd .bd-name { font-family: 'Press Start 2P', monospace; font-size: 8px; color: rgba(255,212,74,0.75); letter-spacing: 1px; }
   .bd .bd-val  { font-family: 'Press Start 2P', monospace; font-size: 10px; margin-top: 4px; letter-spacing: 1px; }
-  .bd.ok  .bd-val { color: #34d399; }
-  .bd.bad .bd-val { color: #f87171; }
+  .bd.ok      .bd-val { color: #34d399; }
+  .bd.bad     .bd-val { color: #f87171; }
+  .bd.partial .bd-val { color: #fbbf24; }   /* PARTIAL name for regional forms — amber */
+  .bd.partial { border-color: rgba(251,191,36,0.5); }
 
   /* Final screen */
   #final-screen { display: none; }
@@ -489,11 +491,12 @@
 
   <div class="rules">
     <strong>How scoring works:</strong><br>
-    • Get everything right (name + region + generation + type): <strong>25 pts</strong><br>
+    • Full name + region + generation + type: <strong>25 pts</strong><br>
     • Name + (region OR generation): <strong>10 pts</strong><br>
     • Name only: <strong>5 pts</strong><br>
     • Region OR generation only: <strong>2 pts</strong><br>
     • Type only: <strong>1 pt</strong><br>
+    • <strong style="color:#fbbf24;">Regional forms:</strong> you can type just the base name (e.g. "Raichu" for Alolan Raichu) for <strong style="color:#fbbf24;">partial credit</strong> — perfect drops to 15, name-only drops to 3.<br>
     • Each <strong>HINT</strong> (zoom-in image) halves your final points for that question.<br>
     • Pick your quiz length below: <strong>Short (5)</strong>, <strong>Medium (10)</strong>, or <strong>Full (25)</strong> questions.
   </div>
@@ -1155,12 +1158,19 @@ function normalizeName(s) {
 function checkAnswer(p, ans) {
   const nameGuess = normalizeName(ans.name);
   const nameTruth = normalizeName(p.name);
-  // Also accept just the base name for regional variants (e.g. "Raichu" for Alolan Raichu)
+  // For regional variants, also accept just the base name (loses some points)
+  const isRegional = /^(alolan|galarian|hisuian|paldean)\s/i.test(p.name);
   const shortTruth = normalizeName(p.name.replace(/^(alolan|galarian|hisuian|paldean)\s*/i, ""));
-  const nameOk = nameGuess !== "" && (nameGuess === nameTruth || nameGuess === shortTruth);
+  // nameLevel: "full" = exact match, "short" = base name only for regional
+  // variant (still counts but reduced), "none" = wrong/empty
+  let nameLevel = "none";
+  if (nameGuess !== "" && nameGuess === nameTruth) {
+    nameLevel = "full";
+  } else if (isRegional && nameGuess !== "" && nameGuess === shortTruth) {
+    nameLevel = "short";
+  }
   const regionOk = (ans.region || "").toLowerCase() === p.region.toLowerCase();
   const genOk    = String(ans.gen || "") === String(p.gen);
-  // Type check across up to 3 user-selected types
   const truthTypes = p.types.map(t => t.toLowerCase());
   const guessTypes = (ans.types || [])
     .map(t => (t || "").toLowerCase())
@@ -1171,20 +1181,25 @@ function checkAnswer(p, ans) {
     const atLeastOneRight = guessTypes.some(t => truthTypes.includes(t));
     typeOk = allValid && atLeastOneRight;
   }
-  return { nameOk, regionOk, genOk, typeOk };
+  return { nameLevel, regionOk, genOk, typeOk, isRegional };
 }
 function calculatePoints(p, ans, hintsUsed) {
   const r = checkAnswer(p, ans);
-  // "gen/region" tier — either one counts as knowing where it's from
+  const nameFull  = r.nameLevel === "full";
+  const nameShort = r.nameLevel === "short";
+  const anyName   = nameFull || nameShort;
   const regionOrGen = r.regionOk || r.genOk;
   let base = 0;
-  // Award the highest tier that fits
-  // 25 pts: perfect — name + region + gen + type (all four)
-  if (r.nameOk && r.regionOk && r.genOk && r.typeOk) base = 25;
-  else if (r.nameOk && regionOrGen)                  base = 10;
-  else if (r.nameOk)                                 base = 5;
-  else if (regionOrGen)                              base = 2;
-  else if (r.typeOk)                                 base = 1;
+  // Full name (with region prefix if regional) — normal tiers
+  if (nameFull && r.regionOk && r.genOk && r.typeOk) base = 25;
+  // Short name (missing "Alolan/Galarian/etc." prefix) — perfect tier reduced
+  else if (nameShort && r.regionOk && r.genOk && r.typeOk) base = 15;
+  else if (nameFull  && regionOrGen)                       base = 10;
+  else if (nameShort && regionOrGen)                       base = 7;
+  else if (nameFull)                                       base = 5;
+  else if (nameShort)                                      base = 3;
+  else if (regionOrGen)                                    base = 2;
+  else if (r.typeOk)                                       base = 1;
   // Each hint halves the points
   let final = base;
   for (let i = 0; i < hintsUsed; i++) final = final / 2;
@@ -1356,7 +1371,7 @@ function handleSubmit() {
 function showResult(bd, points, base, skipped) {
   quiz.total += points;
   quiz.perQuestion.push({ points, base, hints: hintsThisQ });
-  if (bd.nameOk && bd.regionOk && bd.genOk && bd.typeOk) quiz.perfectCount++;
+  if (bd.nameLevel === "full" && bd.regionOk && bd.genOk && bd.typeOk) quiz.perfectCount++;
   if (points > 0) quiz.correctCount++;
   const p = currentQ;
   const img = document.getElementById("result-img");
@@ -1372,16 +1387,21 @@ function showResult(bd, points, base, skipped) {
   // Breakdown
   const grid = document.getElementById("result-breakdown");
   grid.innerHTML = "";
+  // Name gets three states for regional variants: FULL / PARTIAL / MISS
+  let nameCls, nameLabel;
+  if (bd.nameLevel === "full") { nameCls = "ok"; nameLabel = "✔ FULL"; }
+  else if (bd.nameLevel === "short") { nameCls = "partial"; nameLabel = "◐ PARTIAL"; }
+  else { nameCls = "bad"; nameLabel = "✘ MISS"; }
   const rows = [
-    { name: "NAME",   ok: bd.nameOk },
-    { name: "REGION", ok: bd.regionOk },
-    { name: "GEN",    ok: bd.genOk },
-    { name: "TYPE",   ok: bd.typeOk },
+    { name: "NAME",   cls: nameCls,               label: nameLabel },
+    { name: "REGION", cls: bd.regionOk ? "ok" : "bad", label: bd.regionOk ? "✔ RIGHT" : "✘ MISS" },
+    { name: "GEN",    cls: bd.genOk    ? "ok" : "bad", label: bd.genOk    ? "✔ RIGHT" : "✘ MISS" },
+    { name: "TYPE",   cls: bd.typeOk   ? "ok" : "bad", label: bd.typeOk   ? "✔ RIGHT" : "✘ MISS" },
   ];
   for (const r of rows) {
     const d = document.createElement("div");
-    d.className = "bd " + (r.ok ? "ok" : "bad");
-    d.innerHTML = '<div class="bd-name">' + r.name + '</div><div class="bd-val">' + (r.ok ? "✔ RIGHT" : "✘ MISS") + '</div>';
+    d.className = "bd " + r.cls;
+    d.innerHTML = '<div class="bd-name">' + r.name + '</div><div class="bd-val">' + r.label + '</div>';
     grid.appendChild(d);
   }
   const title = document.getElementById("result-title");
