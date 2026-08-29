@@ -521,7 +521,6 @@
     <div style="font-family:'Cinzel',serif; color:#fcd34d; font-size:14px; letter-spacing:2px; margin-bottom:8px;">CHOOSE YOUR ELEMENT</div>
     <div class="ab-grid" id="start-abilities"></div>
     <div>
-      <button class="btn" id="start-resume" style="display:none; background:linear-gradient(180deg,#22c55e,#166534); border-color:#86efac;">▶ RESUME LAST HUNT</button>
       <button class="btn" id="start-go" disabled>BEGIN HUNT ›</button>
       <button class="btn secondary" id="start-shop">SHOP</button>
       <button class="btn" id="start-remap" style="background:linear-gradient(180deg,#60a5fa,#1e40af); border-color:#93c5fd;">⌨ REMAP KEYS</button>
@@ -958,14 +957,9 @@ function defaultSave() {
     bestKills: 0,
     totalRuns: 0,
     // Per-slot keyboard keys. Slot 0 uses keyBindings[0], etc.
-    // Any single character or named key ("q", "e", "space", "f") works.
     keyBindings: ["1", "2", "3", "4", "5"],
-    // Persistent ability→slot bindings (kept across deaths so you don't re-bind
-    // every run). Whether a slot is USABLE still depends on player level:
-    // slot 0 is always usable, slot 1 unlocks at LV 10, slot 2 at LV 20, etc.
+    // Persistent ability→slot bindings (kept across deaths).
     slotBindings: [null, null, null, null, null],
-    // Mid-run snapshot so you can resume if you close the tab
-    currentRun: null,
   };
 }
 // Reserved keys that can't be bound (used by movement/UI)
@@ -1020,53 +1014,9 @@ function save() {
   } catch (e) {}
   flashSave();
 }
-// Snapshot the CURRENT RUN state so it can be restored on next page load
-function snapshotRun() {
-  if (!player.alive) { persistent.currentRun = null; return; }
-  persistent.currentRun = {
-    hp: player.hp,
-    maxHp: player.maxHp,
-    level: player.level,
-    xp: player.xp,
-    kills: player.kills,
-    runCoins: player.runCoins,
-    x: player.x,
-    y: player.y,
-    slots: player.slots.slice(),
-    unlockedSlots: player.unlockedSlots,
-  };
-}
-// Restore a snapshotted run into the live player state
-function restoreRun(run) {
-  player.x = run.x || 0; player.y = run.y || 0;
-  player.vx = 0; player.vy = 0;
-  player.hp = run.hp; player.maxHp = run.maxHp;
-  player.level = run.level; player.xp = run.xp;
-  player.kills = run.kills; player.runCoins = run.runCoins;
-  player.slots = (run.slots || [null, null, null, null, null]).slice();
-  player.unlockedSlots = run.unlockedSlots || 1;
-  player.cd = {};
-  player.effects.dashLeft = 0;
-  player.alive = true;
-  monsters.length = 0;
-  projectiles.length = 0;
-  eProjectiles.length = 0;
-  effects.length = 0;
-  pops.length = 0;
-  spawnTimer = 60;
-  updateHud();
-  updateSlotBar();
-}
 // Manual save button — always available, top-right corner
 document.getElementById("save-button").addEventListener("click", () => {
   save();
-});
-// Save right before the page unloads so nothing is lost
-window.addEventListener("beforeunload", () => {
-  try {
-    const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    localStorage.setItem(SAVE_KEY, enc);
-  } catch (e) {}
 });
 function flashSave() {
   const el = document.getElementById("save-indicator");
@@ -1465,8 +1415,6 @@ function onLevelUp() {
   }
   updateHud();
   updateSlotBar();
-  // Level-up is an important milestone — snapshot immediately
-  snapshotRun();
   save();
 }
 
@@ -1499,7 +1447,6 @@ function onDeath() {
   persistent.totalRuns++;
   if (player.level > persistent.bestLevel) persistent.bestLevel = player.level;
   if (player.kills > persistent.bestKills) persistent.bestKills = player.kills;
-  persistent.currentRun = null;   // clear mid-run snapshot on death
   save();
   // Show death overlay
   const stats = document.getElementById("death-stats");
@@ -1779,15 +1726,6 @@ function renderStartPicker() {
   grid.innerHTML = "";
   document.getElementById("start-coins").textContent = persistent.coins;
   document.getElementById("start-best").textContent = persistent.bestLevel;
-  // Show RESUME button only if a mid-run snapshot exists
-  const resumeBtn = document.getElementById("start-resume");
-  if (persistent.currentRun && persistent.currentRun.hp > 0) {
-    resumeBtn.style.display = "inline-block";
-    const r = persistent.currentRun;
-    resumeBtn.innerHTML = "▶ RESUME · LV " + r.level + " · " + r.kills + " KILLS";
-  } else {
-    resumeBtn.style.display = "none";
-  }
   for (const id in ABILITIES) {
     const ab = ABILITIES[id];
     if (!ab.starter) continue;
@@ -1818,15 +1756,9 @@ if (chosenStarter) document.getElementById("start-go").disabled = false;
 document.getElementById("start-go").addEventListener("click", () => {
   if (!chosenStarter) return;
   persistent.startingElement = chosenStarter;
-  persistent.currentRun = null;  // starting a fresh run discards any old snapshot
   save();
   document.getElementById("start-overlay").classList.remove("show");
   restartRun();
-});
-document.getElementById("start-resume").addEventListener("click", () => {
-  if (!persistent.currentRun || persistent.currentRun.hp <= 0) return;
-  document.getElementById("start-overlay").classList.remove("show");
-  restoreRun(persistent.currentRun);
 });
 
 // ============================================================
