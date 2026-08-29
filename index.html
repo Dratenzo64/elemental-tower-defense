@@ -499,6 +499,122 @@
     0%, 100% { opacity: 0.5; }
     50%      { opacity: 1; }
   }
+  /* Drazelect — DRZ letters cycling through all 18 Pokémon type colors */
+  .icon-drz {
+    background: linear-gradient(180deg, rgba(150,50,180,0.15) 0%, rgba(20,10,30,0.45) 100%);
+    border-color: rgba(200, 120, 255, 0.55);
+    padding: 16px 6px;
+    letter-spacing: 6px;
+    position: relative;
+    overflow: visible;
+  }
+  .icon-drz span {
+    display: inline-block;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    animation: drz-cycle 6s infinite linear;
+  }
+  .icon-drz .z1 { animation-delay: 0s;   }
+  .icon-drz .z2 { animation-delay: 2s;   }
+  .icon-drz .z3 { animation-delay: 4s;   }
+  @keyframes drz-cycle {
+    0%   { color: #ff6030; text-shadow: 0 0 12px #ff6030; }       /* fire */
+    11%  { color: #4488ff; text-shadow: 0 0 12px #4488ff; }       /* water */
+    22%  { color: #88ff44; text-shadow: 0 0 12px #88ff44; }       /* grass */
+    33%  { color: #ffdd00; text-shadow: 0 0 12px #ffdd00; }       /* electric */
+    44%  { color: #7fd4ff; text-shadow: 0 0 12px #7fd4ff; }       /* ice */
+    55%  { color: #a060c0; text-shadow: 0 0 12px #a060c0; }       /* poison */
+    66%  { color: #f070c0; text-shadow: 0 0 12px #f070c0; }       /* psychic */
+    77%  { color: #8060ff; text-shadow: 0 0 12px #8060ff; }       /* dragon */
+    88%  { color: #ff90d0; text-shadow: 0 0 12px #ff90d0; }       /* fairy */
+    100% { color: #ff6030; text-shadow: 0 0 12px #ff6030; }
+  }
+  /* small sparkle ring around the icon */
+  .icon-drz::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 80%; height: 80%;
+    transform: translate(-50%, -50%);
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.35) 0%, transparent 8%),
+      radial-gradient(circle at 80% 60%, rgba(255,255,255,0.35) 0%, transparent 8%),
+      radial-gradient(circle at 60% 20%, rgba(255,255,255,0.35) 0%, transparent 8%);
+    animation: drz-sparkle 3s infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes drz-sparkle {
+    0%   { opacity: 0.4; transform: translate(-50%, -50%) rotate(0deg); }
+    100% { opacity: 1; transform: translate(-50%, -50%) rotate(15deg); }
+  }
+  /* Wyrmfire — dragon-red WRM letters with fireball breath */
+  .icon-wrm {
+    background: linear-gradient(180deg, rgba(150,20,10,0.15) 0%, rgba(20,5,5,0.4) 100%);
+    border-color: rgba(214, 112, 48, 0.55);
+    padding: 16px 6px;
+    letter-spacing: 5px;
+    position: relative;
+    overflow: visible;
+  }
+  .icon-wrm span {
+    display: inline-block;
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    background: linear-gradient(180deg, #ffe088 0%, #ff6030 45%, #a01810 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    text-shadow: 0 0 12px rgba(255, 100, 30, 0.7);
+    animation: wrm-breathe 1.6s infinite alternate;
+    position: relative;
+  }
+  .icon-wrm .w2 { animation-delay: 0.2s; }
+  .icon-wrm .w3 { animation-delay: 0.4s; }
+  /* Fireball orbiting the icon */
+  .icon-wrm::before {
+    content: "";
+    position: absolute;
+    top: 50%; left: 0;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #fff2a0 0%, #ff9030 40%, #d61510 80%, transparent 100%);
+    box-shadow: 0 0 12px #ff6030, 0 0 22px rgba(255,120,40,0.6);
+    animation: wrm-fireball 3s infinite linear;
+    pointer-events: none;
+  }
+  /* Dragon wing silhouettes flapping behind */
+  .icon-wrm::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 70%;
+    height: 22px;
+    transform: translate(-50%, -50%);
+    background:
+      radial-gradient(ellipse at 15% 50%, rgba(120,30,10,0.4) 0%, transparent 65%),
+      radial-gradient(ellipse at 85% 50%, rgba(120,30,10,0.4) 0%, transparent 65%);
+    filter: blur(1px);
+    animation: wrm-wing 0.7s infinite alternate;
+    pointer-events: none;
+    z-index: -1;
+  }
+  @keyframes wrm-breathe {
+    0%   { filter: drop-shadow(0 0 4px #ff6030); transform: translateY(0); }
+    100% { filter: drop-shadow(0 0 14px #ffa060) drop-shadow(0 0 20px #d61510); transform: translateY(-1px); }
+  }
+  @keyframes wrm-fireball {
+    0%   { transform: translate(0, -50%)      scale(1); }
+    25%  { transform: translate(60px, -180%)  scale(1.15); }
+    50%  { transform: translate(150px, -50%)  scale(1); }
+    75%  { transform: translate(60px, 80%)    scale(0.85); }
+    100% { transform: translate(0, -50%)      scale(1); }
+  }
+  @keyframes wrm-wing {
+    0%   { transform: translate(-50%, -50%) scaleY(0.9); opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scaleY(1.4); opacity: 1; }
+  }
   .game-genre {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.55);
@@ -661,6 +777,17 @@ const games = [
     description: "A silhouette-guessing Pokémon quiz. Pick which generations, legendaries, mythicals, and regional variants (Alolan Raichu, Galarian Meowth, Hisuian Zoroark, and more) you want to include. Every question shows a black silhouette — type the Pokémon name, its region, and its type to score up to 25 points. Zoom-in hints give you a clue but halve the points. 25 questions per quiz, best score saved.",
     tags: ["Silhouettes", "9 Generations", "Legendaries", "Regional Forms"],
     url: "pokequiz.html",
+    available: true,
+  },
+  {
+    title: "Drazelect",
+    icon: "DRZ",
+    iconHtml: '<div class="game-icon icon-drz"><span class="z1">D</span><span class="z2">R</span><span class="z3">Z</span></div>',
+    genre: "Action",
+    category: "action",
+    description: "You are a dragon armed with Pokémon moves. Pick your starting move from all 18 types — Tackle, Ember, Water Gun, Razor Leaf, Thunder Shock, Ice Shard, Karate Chop, Poison Sting, Mud-Slap, Gust, Confusion, Bug Bite, Rock Throw, Lick, Dragon Breath, Bite, Metal Claw, or Fairy Wind. Level up killing monsters; every 10 levels unlocks a new ability slot. Die to earn coins for the Dragon's Hoard, where you can buy elite moves like Flamethrower, Ice Beam, Shadow Ball, Solar Beam, Blizzard, Draco Meteor, Hyper Beam, and legendary Psystrike. Remap any slot to any key you want.",
+    tags: ["All 18 Types", "30+ Moves", "Custom Keys", "Roguelite"],
+    url: "wyrmfire.html",
     available: true,
   },
 ];
