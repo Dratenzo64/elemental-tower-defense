@@ -583,7 +583,7 @@
   <div class="panel" style="max-width: 860px;">
     <div class="panel-title">DRAGON'S HOARD</div>
     <div class="shop-coins">🪙 COINS: <span id="shop-coins">0</span></div>
-    <div class="panel-sub">Powers bought here stay with you forever. Bind them to keys during a hunt.</div>
+    <div class="panel-sub">Buy once — keep forever. To USE a move you need to (1) unlock its ability slot (every 10 levels) and (2) bind it to a key.</div>
     <div class="ab-grid" id="shop-abilities"></div>
     <div style="margin-top:14px;">
       <button class="btn secondary" id="shop-close">LEAVE THE HOARD ›</button>
@@ -897,6 +897,10 @@ function defaultSave() {
     // Per-slot keyboard keys. Slot 0 uses keyBindings[0], etc.
     // Any single character or named key ("q", "e", "space", "f") works.
     keyBindings: ["1", "2", "3", "4", "5"],
+    // Persistent ability→slot bindings (kept across deaths so you don't re-bind
+    // every run). Whether a slot is USABLE still depends on player level:
+    // slot 0 is always usable, slot 1 unlocks at LV 10, slot 2 at LV 20, etc.
+    slotBindings: [null, null, null, null, null],
     // Mid-run snapshot so you can resume if you close the tab
     currentRun: null,
   };
@@ -931,6 +935,18 @@ function loadSave() {
     persistent.startingElement = null;
   }
   persistent.ownedAbilities = (persistent.ownedAbilities || []).filter(id => ABILITIES[id]);
+  // Sanitize slotBindings: drop any that reference abilities you don't own
+  if (!Array.isArray(persistent.slotBindings)) persistent.slotBindings = [null, null, null, null, null];
+  while (persistent.slotBindings.length < 5) persistent.slotBindings.push(null);
+  persistent.slotBindings = persistent.slotBindings.map(id => {
+    if (!id || !ABILITIES[id]) return null;
+    const isOwned = persistent.ownedAbilities.includes(id) || persistent.startingElement === id;
+    return isOwned ? id : null;
+  });
+}
+// Persist the current in-run slot bindings to save (called whenever slots change)
+function persistBindings() {
+  persistent.slotBindings = player.slots.slice();
 }
 let saveTimer = null;
 function save() {
@@ -1601,6 +1617,8 @@ function openBindPicker(abId) {
         // Remove ability from any other slot it was in
         for (let j = 0; j < 5; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
         player.slots[i] = bindingAbilityId;
+        persistBindings();
+        save();
         document.getElementById("bind-overlay").classList.remove("show");
         updateSlotBar();
         // Re-render whatever grid is open
@@ -1631,6 +1649,8 @@ document.getElementById("bind-cancel").addEventListener("click", () => {
 });
 document.getElementById("bind-unbind").addEventListener("click", () => {
   for (let j = 0; j < 5; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
+  persistBindings();
+  save();
   document.getElementById("bind-overlay").classList.remove("show");
   updateSlotBar();
   if (document.getElementById("levelup-overlay").classList.contains("show")) renderAbilityGrid("lu-abilities");
@@ -1757,8 +1777,17 @@ function restartRun() {
   player.maxHp = 100; player.hp = 100;
   player.level = 1; player.xp = 0;
   player.kills = 0; player.runCoins = 0;
-  player.slots = [persistent.startingElement, null, null, null, null];
-  player.unlockedSlots = 1;
+  // Load persistent bindings — but ONLY keep abilities you actually own.
+  // Slot 0 defaults to your starting element if it's not already set.
+  const persisted = (persistent.slotBindings || [null, null, null, null, null]).slice();
+  player.slots = persisted.map(id => {
+    if (!id || !ABILITIES[id]) return null;
+    const isOwned = persistent.ownedAbilities.includes(id) || persistent.startingElement === id;
+    return isOwned ? id : null;
+  });
+  // If slot 0 is empty, drop the starter in there
+  if (!player.slots[0] && persistent.startingElement) player.slots[0] = persistent.startingElement;
+  player.unlockedSlots = 1;   // fresh run — only slot 0 is usable until LV 10
   player.cd = {};
   player.effects.dashLeft = 0;
   player.alive = true;
@@ -1768,6 +1797,7 @@ function restartRun() {
   effects.length = 0;
   pops.length = 0;
   spawnTimer = 30;
+  persistBindings();
   updateHud();
   updateSlotBar();
 }
