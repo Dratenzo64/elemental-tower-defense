@@ -1743,6 +1743,12 @@ function openShop() {
 }
 document.getElementById("shop-close").addEventListener("click", () => {
   document.getElementById("shop-overlay").classList.remove("show");
+  // If the shop was opened from the death screen, bring the death screen back
+  // so the player still has a "NEW HUNT" button to click — otherwise the game
+  // is left frozen with no overlay AND a dead player.
+  if (!player.alive) {
+    document.getElementById("death-overlay").classList.add("show");
+  }
 });
 document.getElementById("death-shop").addEventListener("click", () => {
   document.getElementById("death-overlay").classList.remove("show");
