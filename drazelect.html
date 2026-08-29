@@ -1,0 +1,2184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Drazelect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: #0a0508;
+    color: #f0e6d8;
+    font-family: 'Rajdhani', system-ui, sans-serif;
+    user-select: none;
+  }
+  canvas { display: block; background: #1a0d0a; cursor: crosshair; }
+
+  /* Home link + save chip */
+  .home-link {
+    position: fixed; top: 12px; left: 12px;
+    background: rgba(0,0,0,0.6);
+    border: 2px solid #d67030;
+    padding: 5px 12px;
+    color: #ffb060;
+    text-decoration: none;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    z-index: 100;
+  }
+  .home-link:hover { background: rgba(0,0,0,0.9); }
+  #save-indicator {
+    position: fixed; top: 12px; right: 12px;
+    background: rgba(52, 211, 153, 0.18);
+    border: 2px solid #34d399;
+    padding: 5px 12px;
+    color: #6ee7b7;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+  }
+  #save-indicator.show { opacity: 1; transform: translateY(0); }
+
+  /* HUD */
+  #hud-top {
+    position: fixed; top: 50px; left: 12px;
+    background: rgba(0,0,0,0.65);
+    border: 2px solid #7a3820;
+    padding: 8px 14px;
+    z-index: 20;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  }
+  #hud-top .row { display: flex; gap: 14px; align-items: center; margin-bottom: 6px; }
+  #hud-top .row:last-child { margin-bottom: 0; }
+  .bar {
+    width: 180px; height: 12px;
+    background: rgba(0,0,0,0.75);
+    border: 1px solid #7a3820;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    transition: width 0.2s;
+  }
+  .hpfill  { background: linear-gradient(90deg, #dc2626 0%, #f87171 100%); }
+  .hpfill.mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .hpfill.low { background: #dc2626; }
+  .xpfill  { background: linear-gradient(90deg, #f59e0b 0%, #fcd34d 100%); }
+  #hud-top strong { color: #fcd34d; font-size: 15px; margin-left: 4px; }
+  #hud-top .lvl { color: #fcd34d; font-size: 18px; font-weight: bold; }
+
+  #hud-right {
+    position: fixed; top: 50px; right: 12px;
+    background: rgba(0,0,0,0.65);
+    border: 2px solid #7a3820;
+    padding: 8px 14px;
+    z-index: 20;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    text-align: right;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  }
+  #hud-right .r-line { margin-bottom: 4px; }
+  #hud-right .r-line:last-child { margin-bottom: 0; }
+  #hud-right strong { color: #fcd34d; font-size: 15px; margin-left: 4px; }
+
+  /* Ability slots bar (bottom) */
+  #slot-bar {
+    position: fixed; bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 8px;
+    z-index: 20;
+  }
+  .slot {
+    position: relative;
+    width: 60px; height: 60px;
+    background: rgba(0,0,0,0.75);
+    border: 3px solid #7a3820;
+    border-radius: 6px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .slot.locked { opacity: 0.35; }
+  .slot.empty  { border-style: dashed; }
+  .slot.on-cd::before {
+    content: "";
+    position: absolute;
+    left: 0; bottom: 0;
+    width: 100%;
+    background: rgba(0,0,0,0.6);
+    height: var(--cd, 100%);
+    transition: height 0.05s linear;
+  }
+  .slot .s-icon {
+    font-size: 26px; line-height: 1;
+  }
+  .slot .s-key {
+    position: absolute;
+    top: 2px; left: 4px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: #fcd34d;
+    letter-spacing: 1px;
+  }
+  .slot .s-name {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    color: rgba(240,230,216,0.7);
+    letter-spacing: 0.5px;
+    margin-top: 3px;
+    line-height: 1;
+    text-align: center;
+    padding: 0 2px;
+  }
+
+  #hint {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 6px 12px;
+    font-size: 11px;
+    color: rgba(240,230,216,0.7);
+    z-index: 10;
+    border-radius: 4px;
+  }
+  kbd {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.3);
+    padding: 1px 5px; font-size: 10px;
+    font-family: monospace;
+    margin: 0 1px;
+  }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  .overlay.show { display: flex; }
+  .panel {
+    background: linear-gradient(180deg, #2a1408 0%, #14080a 100%);
+    border: 3px solid #d67030;
+    box-shadow: 0 0 40px rgba(214, 112, 48, 0.35), 6px 6px 0 rgba(0,0,0,0.6);
+    padding: 24px 30px;
+    max-width: 760px; width: 100%;
+    text-align: center;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+  .panel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 28px;
+    color: #fcd34d;
+    text-shadow: 0 2px 8px rgba(252,211,77,0.4);
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+  }
+  .panel-sub {
+    color: rgba(240,230,216,0.7);
+    font-size: 14px;
+    margin-bottom: 18px;
+    letter-spacing: 0.5px;
+  }
+  .btn {
+    background: linear-gradient(180deg, #d67030 0%, #7a3820 100%);
+    color: #fff;
+    border: 2px solid #fcd34d;
+    padding: 12px 22px;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+    margin: 4px;
+    transition: transform 0.1s, filter 0.1s;
+  }
+  .btn:hover { transform: translate(-1px,-1px); filter: brightness(1.12); }
+  .btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.5); }
+  .btn.secondary {
+    background: linear-gradient(180deg, #5a2f18 0%, #2a1408 100%);
+    color: #f0e6d8; border-color: #7a3820;
+  }
+  .btn:disabled {
+    background: #333 !important; color: #888 !important;
+    cursor: not-allowed; border-color: #555 !important;
+  }
+
+  /* Ability grid (used by start picker, level-up, shop) */
+  .ab-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .ab-card {
+    background: rgba(0,0,0,0.45);
+    border: 3px solid #6a3820;
+    padding: 12px 10px;
+    cursor: pointer;
+    text-align: center;
+    border-radius: 6px;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    position: relative;
+  }
+  .ab-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 14px rgba(252,211,77,0.4);
+  }
+  .ab-card.selected {
+    border-color: #fcd34d;
+    background: rgba(252,211,77,0.1);
+    box-shadow: 0 0 20px rgba(252,211,77,0.55);
+  }
+  .ab-card.owned::after {
+    content: "OWNED";
+    position: absolute; top: 4px; right: 6px;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    color: #34d399; letter-spacing: 1px;
+  }
+  .ab-card.equipped::after {
+    content: "EQUIPPED";
+    position: absolute; top: 4px; right: 6px;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    color: #60a5fa; letter-spacing: 1px;
+  }
+  .ab-icon {
+    font-size: 44px; margin-bottom: 6px; line-height: 1;
+  }
+  .ab-name {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    color: #fcd34d;
+    letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+  .ab-desc {
+    color: rgba(240,230,216,0.75);
+    font-size: 12px;
+    line-height: 1.4;
+    min-height: 34px;
+  }
+  .ab-stats {
+    color: rgba(240,230,216,0.6);
+    font-size: 11px;
+    margin-top: 4px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.5px;
+  }
+  .ab-cost {
+    margin-top: 6px;
+    font-family: 'Cinzel', serif;
+    color: #fcd34d;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .ab-hint {
+    margin-top: 6px;
+    font-size: 10px;
+    color: rgba(240,230,216,0.5);
+    letter-spacing: 0.5px;
+  }
+
+  /* Key-bind picker */
+  .keybind-list {
+    display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    margin: 14px 0;
+  }
+  .keybind-slot {
+    width: 110px; height: 110px;
+    background: rgba(0,0,0,0.5);
+    border: 3px solid #7a3820;
+    border-radius: 8px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    padding: 8px;
+    transition: transform 0.1s, border-color 0.15s, box-shadow 0.15s;
+    position: relative;
+  }
+  .keybind-slot:hover:not(.locked) {
+    border-color: #fcd34d;
+    background: rgba(252,211,77,0.14);
+    transform: translateY(-3px);
+    box-shadow: 0 0 18px rgba(252,211,77,0.5);
+  }
+  .keybind-slot.locked { opacity: 0.4; cursor: not-allowed; }
+  .keybind-slot.current-bind {
+    border-color: #fcd34d;
+    background: rgba(252,211,77,0.12);
+    box-shadow: inset 0 0 12px rgba(252,211,77,0.25);
+  }
+  .keybind-slot.current-bind::after {
+    content: "CURRENT";
+    position: absolute; top: -10px; left: 50%;
+    transform: translateX(-50%);
+    background: #fcd34d; color: #1a0508;
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 1.5px;
+    padding: 2px 8px; border-radius: 3px;
+  }
+  .keybind-slot .kb-key {
+    font-family: 'Cinzel', serif;
+    font-size: 34px;
+    font-weight: bold;
+    color: #fcd34d;
+    text-shadow: 0 0 12px rgba(252,211,77,0.5);
+    line-height: 1;
+  }
+  .keybind-slot .kb-current {
+    font-size: 10px;
+    color: rgba(240,230,216,0.7);
+    margin-top: 2px;
+    text-align: center;
+    line-height: 1.2;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.5px;
+  }
+  .keybind-slot .kb-icon { font-size: 20px; margin-top: 2px; }
+
+  /* Death screen */
+  .death-score {
+    background: rgba(0,0,0,0.5);
+    border: 2px solid #fcd34d;
+    padding: 20px;
+    margin: 12px 0 16px;
+    border-radius: 6px;
+  }
+  .death-score .ds-num {
+    font-family: 'Cinzel', serif;
+    font-size: 40px;
+    color: #fcd34d;
+    letter-spacing: 3px;
+  }
+  .death-score .ds-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(240,230,216,0.7);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .death-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .ds-stat {
+    background: rgba(0,0,0,0.45);
+    border: 1.5px solid #7a3820;
+    padding: 10px 8px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .ds-stat .st-num {
+    font-family: 'Cinzel', serif;
+    font-size: 20px; color: #fcd34d;
+  }
+  .ds-stat .st-name {
+    font-family: 'Cinzel', serif;
+    font-size: 10px; color: rgba(240,230,216,0.6);
+    letter-spacing: 1px; margin-top: 4px;
+  }
+  .shop-coins {
+    font-family: 'Cinzel', serif;
+    color: #fcd34d;
+    font-size: 14px;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+
+  /* Level-up flash */
+  #levelup-flash {
+    position: fixed; top: 30%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Cinzel', serif;
+    font-size: 60px;
+    color: #fcd34d;
+    text-shadow: 0 0 30px #ff7030, 4px 4px 0 #7a1810;
+    letter-spacing: 6px;
+    pointer-events: none;
+    z-index: 90;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  #levelup-flash.show {
+    opacity: 1;
+    animation: lvlpulse 1s ease-out;
+  }
+  @keyframes lvlpulse {
+    0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    30%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+  }
+
+  .anti-cheat {
+    background: rgba(239, 68, 68, 0.14);
+    border: 1.5px solid #ef4444;
+    padding: 8px 12px;
+    color: #fca5a5;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-bottom: 12px;
+    border-radius: 4px;
+  }
+
+  /* Damage flash overlay */
+  #damage-flash {
+    position: fixed; inset: 0;
+    background: rgba(239, 68, 68, 0);
+    pointer-events: none;
+    z-index: 50;
+    transition: background 0.15s;
+  }
+  #damage-flash.hit { background: rgba(239, 68, 68, 0.28); }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="home-link">‹ BACK</a>
+<div id="save-indicator">SAVED ✓</div>
+
+<canvas id="game"></canvas>
+<div id="damage-flash"></div>
+<div id="levelup-flash">LEVEL UP</div>
+
+<!-- Key-capture floating prompt -->
+<div id="capture-prompt" style="display:none; position:fixed; top:40%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(180deg,#2a1408,#14080a); border:3px solid #fcd34d; box-shadow:0 0 40px rgba(252,211,77,0.6); padding:28px 40px; z-index:200; text-align:center; border-radius:8px;">
+  <div style="font-family:'Cinzel',serif; color:#fcd34d; font-size:20px; letter-spacing:3px; margin-bottom:8px;">PRESS ANY KEY</div>
+  <div id="capture-msg" style="color:rgba(240,230,216,0.75); font-size:13px; letter-spacing:0.5px;">Press the keyboard key you want to bind to <span id="capture-slot" style="color:#fcd34d;">slot 1</span>. Press <kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.3); padding:1px 6px;">ESC</kbd> to cancel.</div>
+</div>
+
+<div id="hud-top">
+  <div class="row">
+    <span class="lvl">LV <span id="hud-level">1</span></span>
+    <span>HP <div class="bar"><div class="bar-fill hpfill" id="hud-hp" style="width:100%;"></div></div></span>
+  </div>
+  <div class="row">
+    <span>XP <div class="bar"><div class="bar-fill xpfill" id="hud-xp" style="width:0%;"></div></div></span>
+    <span id="hud-xp-text" style="font-size:11px; color:rgba(240,230,216,0.7);">0 / 20</span>
+  </div>
+</div>
+
+<div id="hud-right">
+  <div class="r-line">KILLS <strong id="hud-kills">0</strong></div>
+  <div class="r-line">COINS <strong id="hud-coins">0</strong></div>
+</div>
+
+<div id="slot-bar"></div>
+
+<div id="hint">
+  <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>MOUSE</kbd> aim · use slot keys (default <kbd>1</kbd>-<kbd>5</kbd>, remap in bind menu) · <kbd>Tab</kbd> inventory
+</div>
+
+<!-- ========== START / ELEMENT PICKER ========== -->
+<div id="start-overlay" class="overlay show">
+  <div class="panel">
+    <div class="panel-title">DRAZELECT</div>
+    <div class="panel-sub">// A DRAGON'S HUNT //</div>
+    <div class="anti-cheat">
+      🐉 Choose your starting element — level up by killing monsters, unlock ability slots every 10 levels, earn coins on death to buy new abilities at the shop.
+    </div>
+    <div class="shop-coins">🪙 COINS: <span id="start-coins">0</span> · BEST LV: <span id="start-best">0</span></div>
+    <div style="font-family:'Cinzel',serif; color:#fcd34d; font-size:14px; letter-spacing:2px; margin-bottom:8px;">CHOOSE YOUR ELEMENT</div>
+    <div class="ab-grid" id="start-abilities"></div>
+    <div>
+      <button class="btn" id="start-go" disabled>BEGIN HUNT ›</button>
+      <button class="btn secondary" id="start-shop">SHOP</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LEVEL UP PICKER ========== -->
+<div id="levelup-overlay" class="overlay">
+  <div class="panel">
+    <div class="panel-title" id="lu-title">LEVEL 10</div>
+    <div class="panel-sub" id="lu-sub">A new ability slot has been unlocked! Bind one of your abilities to a key.</div>
+    <div style="font-family:'Cinzel',serif; color:#fcd34d; font-size:12px; letter-spacing:1.5px; margin-bottom:6px;">YOUR ABILITIES · double-click to bind</div>
+    <div class="ab-grid" id="lu-abilities"></div>
+    <div>
+      <button class="btn" id="lu-continue">CONTINUE ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== KEY-BIND PICKER ========== -->
+<div id="bind-overlay" class="overlay">
+  <div class="panel">
+    <div class="panel-title" id="bind-title">BIND ABILITY</div>
+    <div class="panel-sub" id="bind-sub">Pick a key slot for this ability.</div>
+    <div class="keybind-list" id="bind-slots"></div>
+    <div>
+      <button class="btn secondary" id="bind-unbind" style="display:none; background:linear-gradient(180deg,#b91c1c,#7f1d1d); border-color:#fca5a5; color:#fff;">✕ UNBIND</button>
+      <button class="btn secondary" id="bind-cancel">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== INVENTORY ========== -->
+<div id="inv-overlay" class="overlay">
+  <div class="panel">
+    <div class="panel-title">DRAGON'S POWERS</div>
+    <div class="panel-sub">Double-click any ability to bind it to a key slot.</div>
+    <div class="ab-grid" id="inv-abilities"></div>
+    <div>
+      <button class="btn" id="inv-close">CLOSE ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== DEATH ========== -->
+<div id="death-overlay" class="overlay">
+  <div class="panel">
+    <div class="panel-title" style="color:#ef4444;">YOU FELL</div>
+    <div class="panel-sub">The wyrm has been slain… but its hoard grows.</div>
+    <div class="death-stats" id="death-stats"></div>
+    <div class="death-score">
+      <div class="ds-label">COINS EARNED THIS RUN</div>
+      <div class="ds-num">+<span id="death-coins">0</span> 🪙</div>
+    </div>
+    <div>
+      <button class="btn" id="death-shop">🛒 OPEN SHOP</button>
+      <button class="btn secondary" id="death-restart">🐉 NEW HUNT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SHOP ========== -->
+<div id="shop-overlay" class="overlay">
+  <div class="panel" style="max-width: 860px;">
+    <div class="panel-title">DRAGON'S HOARD</div>
+    <div class="shop-coins">🪙 COINS: <span id="shop-coins">0</span></div>
+    <div class="panel-sub">Powers bought here stay with you forever. Bind them to keys during a hunt.</div>
+    <div class="ab-grid" id="shop-abilities"></div>
+    <div style="margin-top:14px;">
+      <button class="btn secondary" id="shop-close">LEAVE THE HOARD ›</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// ABILITIES DEFINITIONS
+// ============================================================
+// type: "projectile" | "beam" | "stream" | "melee" | "aoe" | "self"
+// slot: which key the ability goes into (assigned dynamically)
+// ============================================================
+// ABILITIES — all named after Pokémon moves, covering every one
+// of the 18 Pokémon types. Organized by TIER (cost → power):
+//   Tier 1 (starters, 400 coins, 35 DPS)  — 18 moves, one per type
+//   Tier 2 (700 coins, 45 DPS)            — stronger versions
+//   Tier 3 (1200 coins, 60 DPS)           — elite moves
+//   Tier 4 (2000 coins, 90 DPS)           — legendary moves
+//   Utility (unique costs)                 — heal, freeze-all, etc.
+// ============================================================
+const ABILITIES = {
+  // ============== TIER 1 STARTERS ============== (cost 400, 35 DPS)
+  // ---- one per Pokémon type — all 18 ----
+  tackle: {
+    name: "TACKLE", icon: "💢", element: "normal", starter: true, cost: 400,
+    desc: "Basic body slam — quick melee arc in front",
+    type: "melee", dmg: 18, cooldown: 30, range: 75, arc: 1.4,
+    color: "#c8c0b0", core: "#f0e8d8",
+  },
+  ember: {
+    name: "EMBER", icon: "🔥", element: "fire", starter: true, cost: 400,
+    desc: "Small ball of fire — fast projectile",
+    type: "projectile", dmg: 21, cooldown: 36, speed: 8, life: 70,
+    color: "#ff6030", core: "#ffd49a",
+  },
+  watergun: {
+    name: "WATER GUN", icon: "💧", element: "water", starter: true, cost: 400,
+    desc: "Rapid water shots — highest fire rate",
+    type: "projectile", dmg: 5, cooldown: 9, speed: 9, life: 60,
+    color: "#4488ff", core: "#a8c8ff",
+  },
+  razorleaf: {
+    name: "RAZOR LEAF", icon: "🍃", element: "grass", starter: true, cost: 400,
+    desc: "Sharp leaves — pierce through 2 enemies",
+    type: "projectile", dmg: 21, cooldown: 36, speed: 8, life: 80, pierce: 2,
+    color: "#88ff44", core: "#e0ffb0",
+  },
+  thundershock: {
+    name: "THUNDER SHOCK", icon: "⚡", element: "electric", starter: true, cost: 400,
+    desc: "Instant zap — narrow lightning beam",
+    type: "beam", dmg: 21, cooldown: 36, range: 220, width: 6,
+    color: "#ffdd00", core: "#fff8b0",
+  },
+  iceshard: {
+    name: "ICE SHARD", icon: "🧊", element: "ice", starter: true, cost: 400,
+    desc: "Frozen chunk — slows on hit for 1.5s",
+    type: "projectile", dmg: 18, cooldown: 30, speed: 8, life: 70, slowMs: 1500,
+    color: "#7fd4ff", core: "#e0f5ff",
+  },
+  karatechop: {
+    name: "KARATE CHOP", icon: "✊", element: "fighting", starter: true, cost: 400,
+    desc: "Fast martial strike — wide melee arc",
+    type: "melee", dmg: 18, cooldown: 30, range: 75, arc: 1.5,
+    color: "#c07a30", core: "#f0d090",
+  },
+  poisonsting: {
+    name: "POISON STING", icon: "☠️", element: "poison", starter: true, cost: 400,
+    desc: "Toxic barb — small hit + 3s poison DOT",
+    type: "projectile", dmg: 14, cooldown: 24, speed: 8, life: 60, dotSeconds: 3, dotDmg: 3,
+    color: "#a060c0", core: "#e0b0e0",
+  },
+  mudslap: {
+    name: "MUD-SLAP", icon: "🟤", element: "ground", starter: true, cost: 400,
+    desc: "Mud burst — small AOE around aim point",
+    type: "projectile", dmg: 21, cooldown: 36, speed: 6, life: 70, explodeRadius: 40,
+    color: "#a08050", core: "#d8b878",
+  },
+  gust: {
+    name: "GUST", icon: "🌬️", element: "flying", starter: true, cost: 400,
+    desc: "Wide wind wave — wall of air in front",
+    type: "beam", dmg: 21, cooldown: 36, range: 180, width: 34,
+    color: "#c8e8ff", core: "#f0f8ff",
+  },
+  confusion: {
+    name: "CONFUSION", icon: "🔮", element: "psychic", starter: true, cost: 400,
+    desc: "Psychic orb — seeks the nearest enemy",
+    type: "projectile", dmg: 21, cooldown: 36, speed: 5, life: 120, homing: true,
+    color: "#f070c0", core: "#ffc0e8",
+  },
+  bugbite: {
+    name: "BUG BITE", icon: "🪲", element: "bug", starter: true, cost: 400,
+    desc: "Quick chomp — very fast melee",
+    type: "melee", dmg: 12, cooldown: 20, range: 55, arc: 1.2,
+    color: "#88b040", core: "#c8e090",
+  },
+  rockthrow: {
+    name: "ROCK THROW", icon: "🪨", element: "rock", starter: true, cost: 400,
+    desc: "Heavy stone — stuns on impact for 0.8s",
+    type: "projectile", dmg: 21, cooldown: 36, speed: 5, life: 80, stunMs: 800,
+    color: "#a08050", core: "#d8b878",
+  },
+  lick: {
+    name: "LICK", icon: "👅", element: "ghost", starter: true, cost: 400,
+    desc: "Ghostly tongue — close-range melee",
+    type: "melee", dmg: 12, cooldown: 20, range: 50, arc: 1.3,
+    color: "#a060c0", core: "#e0b0e0",
+  },
+  dragonbreath: {
+    name: "DRAGON BREATH", icon: "🐉", element: "dragon", starter: true, cost: 400,
+    desc: "Draconic stream — multi-particle spray",
+    type: "stream", dmg: 7, cooldown: 12, range: 220, spread: 0.35, particles: 3,
+    color: "#8060ff", core: "#c0a0ff",
+  },
+  bite: {
+    name: "BITE", icon: "🦷", element: "dark", starter: true, cost: 400,
+    desc: "Quick dark bite — fast melee snap",
+    type: "melee", dmg: 12, cooldown: 20, range: 55, arc: 1.2,
+    color: "#604060", core: "#a080a0",
+  },
+  metalclaw: {
+    name: "METAL CLAW", icon: "🦾", element: "steel", starter: true, cost: 400,
+    desc: "Steel slash — wide melee arc",
+    type: "melee", dmg: 18, cooldown: 30, range: 78, arc: 1.5,
+    color: "#a0b0c0", core: "#e0e8f0",
+  },
+  fairywind: {
+    name: "FAIRY WIND", icon: "🧚", element: "fairy", starter: true, cost: 400,
+    desc: "Sparkling breeze — wide beam of pink energy",
+    type: "beam", dmg: 21, cooldown: 36, range: 220, width: 30,
+    color: "#ff90d0", core: "#ffd0e8",
+  },
+
+  // ============== TIER 2 SHOP ============== (cost 700, 45 DPS)
+  flamethrower: {
+    name: "FLAMETHROWER", icon: "🔥", element: "fire", cost: 700,
+    desc: "Long stream of fire — 4 particles per burst",
+    type: "stream", dmg: 9, cooldown: 12, range: 240, spread: 0.4, particles: 4,
+    color: "#ff5020", core: "#ffe0a0",
+  },
+  icebeam: {
+    name: "ICE BEAM", icon: "❄️", element: "ice", cost: 700,
+    desc: "Freezing beam — slows enemies for 3s",
+    type: "beam", dmg: 30, cooldown: 40, range: 280, width: 10, slowMs: 3000,
+    color: "#7fd4ff", core: "#e0f5ff",
+  },
+  thunderbolt: {
+    name: "THUNDERBOLT", icon: "⚡", element: "electric", cost: 700,
+    desc: "Chains between enemies — hits 3 targets",
+    type: "projectile", dmg: 30, cooldown: 40, speed: 8, life: 100, chains: 2,
+    color: "#ffdd00", core: "#fff8b0",
+  },
+  sludgebomb: {
+    name: "SLUDGE BOMB", icon: "🟢", element: "poison", cost: 700,
+    desc: "AOE poison blast — 5s damage over time",
+    type: "aoe", dmg: 30, cooldown: 40, radius: 100, dotSeconds: 5,
+    color: "#88b040", core: "#d0f090",
+  },
+  shadowball: {
+    name: "SHADOW BALL", icon: "🌑", element: "ghost", cost: 700,
+    desc: "Piercing dark orb — through 3 targets",
+    type: "projectile", dmg: 30, cooldown: 40, speed: 7, life: 100, pierce: 3,
+    color: "#7040a0", core: "#c090e0",
+  },
+  crunch: {
+    name: "CRUNCH", icon: "🦷", element: "dark", cost: 700,
+    desc: "Vicious dark bite — huge melee arc",
+    type: "melee", dmg: 22, cooldown: 30, range: 90, arc: 1.7,
+    color: "#402040", core: "#8060a0",
+  },
+  aircutter: {
+    name: "AIR CUTTER", icon: "🌪️", element: "flying", cost: 700,
+    desc: "Wide wind wave — sweeps a huge arc",
+    type: "beam", dmg: 30, cooldown: 40, range: 220, width: 50,
+    color: "#c8e8ff", core: "#f0f8ff",
+  },
+  aurasphere: {
+    name: "AURA SPHERE", icon: "🌀", element: "fighting", cost: 700,
+    desc: "Homing energy sphere — always hits",
+    type: "projectile", dmg: 30, cooldown: 40, speed: 6, life: 140, homing: true,
+    color: "#4090c0", core: "#a0e0ff",
+  },
+
+  // ============== TIER 3 ELITE ============== (cost 1200, 60 DPS)
+  fireblast: {
+    name: "FIRE BLAST", icon: "💥", element: "fire", cost: 1200,
+    desc: "Massive fire AOE — big explosion around you",
+    type: "aoe", dmg: 60, cooldown: 60, radius: 130,
+    color: "#ff5020", core: "#ffe0a0",
+  },
+  hydropump: {
+    name: "HYDRO PUMP", icon: "🌊", element: "water", cost: 1200,
+    desc: "Powerful water jet — pierces through 4 enemies",
+    type: "projectile", dmg: 40, cooldown: 40, speed: 10, life: 100, pierce: 4,
+    color: "#2060e0", core: "#a0c8ff",
+  },
+  solarbeam: {
+    name: "SOLAR BEAM", icon: "🌞", element: "grass", cost: 1200,
+    desc: "Wide green beam — huge damage & long range",
+    type: "beam", dmg: 60, cooldown: 60, range: 320, width: 26,
+    color: "#88ff44", core: "#e0ffb0",
+  },
+  psychicwave: {
+    name: "PSYCHIC", icon: "🔮", element: "psychic", cost: 1200,
+    desc: "Mental wave — AOE around you, ignores obstacles",
+    type: "aoe", dmg: 40, cooldown: 40, radius: 140,
+    color: "#f070c0", core: "#ffc0e8",
+  },
+  stoneedge: {
+    name: "STONE EDGE", icon: "⛰️", element: "rock", cost: 1200,
+    desc: "Sharp stones — pierce & 20% crit for 2× damage",
+    type: "projectile", dmg: 40, cooldown: 40, speed: 7, life: 100, pierce: 3, critChance: 0.2, critMult: 2,
+    color: "#a08050", core: "#d8b878",
+  },
+  ironhead: {
+    name: "IRON HEAD", icon: "🔩", element: "steel", cost: 1200,
+    desc: "Powerful steel charge — dash-slam attack",
+    type: "self", dmg: 60, cooldown: 40, dashDistance: 140,
+    color: "#a0b0c0", core: "#e0e8f0",
+  },
+
+  // ============== UTILITY / SPECIAL ==============
+  thunder: {
+    name: "THUNDER", icon: "🌩️", element: "electric", cost: 1000,
+    desc: "Sky bolt on a random enemy — 200 dmg burst",
+    type: "self", dmg: 200, cooldown: 200, targetRandom: true,
+    color: "#ffe044", core: "#ffffd0",
+  },
+  blizzard: {
+    name: "BLIZZARD", icon: "🌨️", element: "ice", cost: 900,
+    desc: "Freezes ALL enemies on screen for 2s + dmg",
+    type: "self", dmg: 25, cooldown: 180, freezeAll: true, freezeMs: 2000,
+    color: "#a0d8f8", core: "#f0faff",
+  },
+  earthquake: {
+    name: "EARTHQUAKE", icon: "🌍", element: "ground", cost: 1000,
+    desc: "Ground shake — massive AOE around you",
+    type: "aoe", dmg: 55, cooldown: 60, radius: 200,
+    color: "#8a6030", core: "#c89870",
+  },
+  hurricane: {
+    name: "HURRICANE", icon: "🌀", element: "flying", cost: 1500,
+    desc: "Devastating winds — huge AOE + short stun",
+    type: "aoe", dmg: 70, cooldown: 60, radius: 180, stunMs: 500,
+    color: "#c8e8ff", core: "#f0f8ff",
+  },
+  moonblast: {
+    name: "MOONBLAST", icon: "🌙", element: "fairy", cost: 1500,
+    desc: "Homing lunar orb — massive damage",
+    type: "projectile", dmg: 60, cooldown: 40, speed: 6, life: 140, homing: true,
+    color: "#ff90d0", core: "#ffe0f0",
+  },
+  recover: {
+    name: "RECOVER", icon: "💚", element: "normal", cost: 800,
+    desc: "Heal 40 HP instantly",
+    type: "self", healAmount: 40, cooldown: 300,
+    color: "#40e080", core: "#c0ffc0",
+  },
+
+  // ============== TIER 4 LEGENDARY ============== (cost 2000, 90 DPS)
+  dracometeor: {
+    name: "DRACO METEOR", icon: "☄️", element: "dragon", cost: 2000,
+    desc: "3 dragon meteors crash on top enemies",
+    type: "self", dmg: 90, cooldown: 120, meteorCount: 3,
+    color: "#8060ff", core: "#c0a0ff",
+  },
+  hyperbeam: {
+    name: "HYPER BEAM", icon: "🌟", element: "normal", cost: 2000,
+    desc: "Devastating beam — massive range & damage",
+    type: "beam", dmg: 90, cooldown: 60, range: 420, width: 28,
+    color: "#f8f0a0", core: "#ffffff",
+  },
+  psystrike: {
+    name: "PSYSTRIKE", icon: "💠", element: "psychic", cost: 2200,
+    desc: "Mewtwo's move — 300 damage on random target",
+    type: "self", dmg: 300, cooldown: 200, targetRandom: true,
+    color: "#f070c0", core: "#ffc0e8",
+  },
+  vcreate: {
+    name: "V-CREATE", icon: "🔴", element: "fire", cost: 2200,
+    desc: "Victini's flame — huge AOE, all-out attack",
+    type: "aoe", dmg: 100, cooldown: 80, radius: 160,
+    color: "#ff2020", core: "#ffb060",
+  },
+};
+
+// ============================================================
+// DPS HELPER — used by ability cards so players can see balance
+// ============================================================
+function dpsLabel(ab) {
+  if (ab.healAmount) return "HEAL " + ab.healAmount;
+  if (!ab.dmg) return "UTILITY";
+  const dps = Math.round(ab.dmg * 60 / ab.cooldown);
+  return dps + " DPS";
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+const SAVE_KEY = "drazelect-save-v1";
+const HASH_PREFIX = "#wf=";
+function defaultSave() {
+  return {
+    coins: 0,
+    ownedAbilities: [],   // list of ability keys the player has bought
+    startingElement: null, // last chosen starter
+    bestLevel: 0,
+    bestKills: 0,
+    totalRuns: 0,
+    // Per-slot keyboard keys. Slot 0 uses keyBindings[0], etc.
+    // Any single character or named key ("q", "e", "space", "f") works.
+    keyBindings: ["1", "2", "3", "4", "5"],
+  };
+}
+// Reserved keys that can't be bound (used by movement/UI)
+const RESERVED_KEYS = new Set(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright","tab","escape","enter"]);
+// Pretty label for a bound key
+function keyLabel(k) {
+  if (!k) return "—";
+  if (k === " ") return "SPACE";
+  if (k === "arrowup") return "↑";
+  if (k === "arrowdown") return "↓";
+  if (k === "arrowleft") return "←";
+  if (k === "arrowright") return "→";
+  return k.toUpperCase();
+}
+let persistent = defaultSave();
+function loadSave() {
+  let raw = null;
+  if (location.hash.startsWith(HASH_PREFIX)) raw = location.hash.slice(HASH_PREFIX.length);
+  if (!raw) { try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {} }
+  if (!raw) return;
+  try {
+    const b = raw.replace(/-/g,"+").replace(/_/g,"/");
+    const padded = b + "===".slice((b.length % 4));
+    const data = JSON.parse(atob(padded));
+    if (data && typeof data === "object") Object.assign(persistent, defaultSave(), data);
+  } catch (e) {}
+  // Migration: old save may have starter ability IDs that no longer exist
+  // (or are no longer starters). Clear stale references so the UI works.
+  if (persistent.startingElement && (!ABILITIES[persistent.startingElement] || !ABILITIES[persistent.startingElement].starter)) {
+    persistent.startingElement = null;
+  }
+  persistent.ownedAbilities = (persistent.ownedAbilities || []).filter(id => ABILITIES[id]);
+}
+let saveTimer = null;
+function save() {
+  try {
+    const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    localStorage.setItem(SAVE_KEY, enc);
+    history.replaceState(null, "", HASH_PREFIX + enc);
+  } catch (e) {}
+  flashSave();
+}
+function flashSave() {
+  const el = document.getElementById("save-indicator");
+  if (!el) return;
+  el.classList.add("show");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => el.classList.remove("show"), 1000);
+}
+loadSave();
+
+// ============================================================
+// CANVAS
+// ============================================================
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+let W = 0, H = 0;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+window.addEventListener("resize", resize);
+resize();
+
+// ============================================================
+// PLAYER
+// ============================================================
+// Slot key capture: when non-null, the next keypress rebinds this slot instead of firing.
+let capturingKeyForSlot = null;
+function startKeyCapture(slotIdx) {
+  capturingKeyForSlot = slotIdx;
+  const prompt = document.getElementById("capture-prompt");
+  document.getElementById("capture-slot").textContent = "slot " + (slotIdx + 1);
+  document.getElementById("capture-msg").innerHTML =
+    'Press the keyboard key you want to bind to <span style="color:#fcd34d;">slot ' + (slotIdx + 1) +
+    '</span> (current: <span style="color:#fcd34d;">' + keyLabel(persistent.keyBindings[slotIdx]) +
+    '</span>). Press <kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.3); padding:1px 6px;">ESC</kbd> to cancel.';
+  prompt.style.display = "block";
+}
+function showCaptureMessage(msg) {
+  document.getElementById("capture-msg").innerHTML =
+    '<span style="color:#fca5a5;">' + msg + '</span><br>Press a different key, or <kbd style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.3); padding:1px 6px;">ESC</kbd> to cancel.';
+}
+function refreshAllKeyLabels() {
+  document.getElementById("capture-prompt").style.display = "none";
+  updateSlotBar();
+  // Re-render bind picker if open
+  if (document.getElementById("bind-overlay").classList.contains("show") && bindingAbilityId) {
+    openBindPicker(bindingAbilityId);
+  }
+}
+const player = {
+  x: 0, y: 0, vx: 0, vy: 0,
+  hp: 100, maxHp: 100,
+  level: 1, xp: 0,
+  kills: 0,
+  runCoins: 0,          // coins earned this run
+  facing: 0,
+  slots: [null, null, null, null, null],   // ability id per key slot
+  unlockedSlots: 1,     // start with 1 slot unlocked
+  cd: {},               // ability key → cooldown ticks remaining
+  effects: { dashLeft: 0, dashDx: 0, dashDy: 0 },
+  alive: true,
+};
+
+function xpForLevel(lvl) { return 20 + (lvl - 1) * 12; }
+function slotsForLevel(lvl) {
+  // Start with 1 slot; unlock a new one at level 10, 20, 30, 40 → up to 5 slots
+  return 1 + Math.min(4, Math.floor(lvl / 10));
+}
+
+// ============================================================
+// WORLD (top-down)
+// ============================================================
+const WORLD_HALF = 2200;
+// Static decorations
+const decorations = [];
+for (let i = 0; i < 90; i++) {
+  decorations.push({
+    x: (Math.random() - 0.5) * WORLD_HALF * 1.8,
+    y: (Math.random() - 0.5) * WORLD_HALF * 1.8,
+    kind: Math.random() < 0.6 ? "rock" : "bones",
+    size: 6 + Math.random() * 14,
+  });
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+const keys = Object.create(null);
+let mouseX = 0, mouseY = 0;
+let mouseDown = false;
+document.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  // -- Key capture mode: next press becomes the new binding --
+  if (capturingKeyForSlot !== null) {
+    e.preventDefault();
+    if (k === "escape") {
+      capturingKeyForSlot = null;
+      refreshAllKeyLabels();
+      return;
+    }
+    if (RESERVED_KEYS.has(k)) {
+      // Flash the capture UI red — this key is reserved
+      showCaptureMessage("⚠ " + keyLabel(k) + " is reserved for movement/UI. Pick a different key.");
+      return;
+    }
+    // If some other slot already uses this key, swap them
+    const existingSlot = persistent.keyBindings.indexOf(k);
+    if (existingSlot >= 0 && existingSlot !== capturingKeyForSlot) {
+      // Swap: give the old owner what THIS slot had
+      persistent.keyBindings[existingSlot] = persistent.keyBindings[capturingKeyForSlot];
+    }
+    persistent.keyBindings[capturingKeyForSlot] = k;
+    capturingKeyForSlot = null;
+    save();
+    refreshAllKeyLabels();
+    return;
+  }
+  if (["w","a","s","d"," "].includes(k)) e.preventDefault();
+  // Slot keys — check the configurable bindings
+  const slotIdx = persistent.keyBindings.indexOf(k);
+  if (slotIdx >= 0 && player.alive) {
+    useSlot(slotIdx);
+    e.preventDefault();
+  }
+  if (k === "tab") {
+    openInventory();
+    e.preventDefault();
+  }
+});
+document.addEventListener("keyup", (e) => { keys[e.key.toLowerCase()] = false; });
+canvas.addEventListener("mousemove", (e) => {
+  const r = canvas.getBoundingClientRect();
+  mouseX = e.clientX - r.left;
+  mouseY = e.clientY - r.top;
+});
+canvas.addEventListener("mousedown", (e) => { if (e.button === 0) mouseDown = true; });
+canvas.addEventListener("mouseup",   (e) => { if (e.button === 0) mouseDown = false; });
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+// ============================================================
+// MONSTERS
+// ============================================================
+const MONSTER_TYPES = {
+  slime:   { hp: 20, speed: 1.3, dmg: 5,  size: 14, color: "#8ac448", xp: 5,  coin: 1, melee: true },
+  goblin:  { hp: 40, speed: 1.6, dmg: 8,  size: 16, color: "#a86038", xp: 10, coin: 2, melee: true },
+  brute:   { hp: 120, speed: 0.9, dmg: 18, size: 24, color: "#c04040", xp: 25, coin: 5, melee: true },
+  wisp:    { hp: 24, speed: 2.4, dmg: 6,  size: 12, color: "#c088ff", xp: 12, coin: 3, melee: false, flying: true, range: 180 },
+  wraith:  { hp: 60, speed: 1.4, dmg: 12, size: 18, color: "#446a80", xp: 20, coin: 4, melee: false, range: 220 },
+};
+const monsters = [];
+function spawnMonster(type) {
+  const t = MONSTER_TYPES[type];
+  const a = Math.random() * Math.PI * 2;
+  const d = 550 + Math.random() * 250;
+  monsters.push({
+    type, x: player.x + Math.cos(a) * d, y: player.y + Math.sin(a) * d,
+    hp: t.hp, maxHp: t.hp, size: t.size, speed: t.speed, dmg: t.dmg,
+    color: t.color, xp: t.xp, coin: t.coin,
+    melee: t.melee, flying: !!t.flying, range: t.range || 0,
+    cd: 60 + Math.random() * 40, hitFlash: 0,
+    slowLeft: 0, stunLeft: 0,
+    dotLeft: 0, dotDps: 0,
+    kvx: 0, kvy: 0, dead: false,
+  });
+}
+let spawnTimer = 30;
+function updateSpawn() {
+  spawnTimer--;
+  if (spawnTimer > 0) return;
+  // Cap grows with player level
+  const cap = 8 + player.level * 2;
+  if (monsters.length >= cap) return;
+  const r = Math.random();
+  const lv = player.level;
+  let type;
+  if (lv < 3)        { type = "slime"; }
+  else if (lv < 6)   { type = r < 0.7 ? "slime" : "goblin"; }
+  else if (lv < 10)  { type = r < 0.4 ? "slime" : r < 0.75 ? "goblin" : "wisp"; }
+  else if (lv < 20)  { type = r < 0.3 ? "slime" : r < 0.55 ? "goblin" : r < 0.8 ? "wisp" : "wraith"; }
+  else               { type = r < 0.2 ? "slime" : r < 0.4 ? "goblin" : r < 0.6 ? "wisp" : r < 0.85 ? "wraith" : "brute"; }
+  spawnMonster(type);
+  spawnTimer = Math.max(18, 60 - lv * 1.5);
+}
+
+// ============================================================
+// PROJECTILES / EFFECTS
+// ============================================================
+const projectiles = [];    // player projectiles
+const eProjectiles = [];   // enemy projectiles
+const effects = [];        // visual effects (beams, aoe circles)
+const pops = [];           // floating text
+
+function shootAbility(ab, dir) {
+  const p = player;
+  const ang = Math.atan2(dir.y, dir.x);
+  if (ab.type === "projectile") {
+    const count = 1;
+    for (let i = 0; i < count; i++) {
+      projectiles.push({
+        x: p.x + Math.cos(ang) * 30, y: p.y + Math.sin(ang) * 30,
+        vx: Math.cos(ang) * ab.speed, vy: Math.sin(ang) * ab.speed,
+        dmg: ab.dmg, size: 6, color: ab.color, core: ab.core,
+        life: ab.life, maxLife: ab.life,
+        ability: ab, dead: false, hits: new Set(),
+        pierceLeft: ab.pierce || 0,
+        chainsLeft: ab.chains || 0,
+        homing: !!ab.homing,
+      });
+    }
+  } else if (ab.type === "stream") {
+    for (let i = 0; i < (ab.particles || 4); i++) {
+      const spread = (Math.random() - 0.5) * ab.spread;
+      const a2 = ang + spread;
+      const spd = 8 + Math.random() * 3;
+      projectiles.push({
+        x: p.x + Math.cos(ang) * 28, y: p.y + Math.sin(ang) * 28,
+        vx: Math.cos(a2) * spd, vy: Math.sin(a2) * spd,
+        dmg: ab.dmg, size: 8 + Math.random() * 4,
+        color: ab.color, core: ab.core,
+        life: 22, maxLife: 22,
+        ability: ab, dead: false, hits: new Set(),
+      });
+    }
+  } else if (ab.type === "beam") {
+    // Instant hit beam along direction
+    const from = { x: p.x + Math.cos(ang) * 20, y: p.y + Math.sin(ang) * 20 };
+    const to   = { x: p.x + Math.cos(ang) * ab.range, y: p.y + Math.sin(ang) * ab.range };
+    // Damage every monster whose center is within (ab.width) of the line segment
+    for (const m of monsters) {
+      if (m.dead) continue;
+      const t = closestSegmentParam(from, to, m);
+      if (t < 0 || t > 1) continue;
+      const closest = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+      const d = Math.hypot(closest.x - m.x, closest.y - m.y);
+      if (d < ab.width + m.size) applyDamage(m, ab.dmg, ab);
+    }
+    effects.push({ type: "beam", x1: from.x, y1: from.y, x2: to.x, y2: to.y,
+                   width: ab.width, color: ab.color, core: ab.core, life: 14, maxLife: 14 });
+  } else if (ab.type === "melee") {
+    const arc = ab.arc;
+    for (const m of monsters) {
+      if (m.dead) continue;
+      const dx = m.x - p.x, dy = m.y - p.y;
+      const md = Math.hypot(dx, dy);
+      if (md > ab.range + m.size) continue;
+      const mAng = Math.atan2(dy, dx);
+      let dA = Math.abs(((mAng - ang + Math.PI) % (Math.PI * 2)) - Math.PI);
+      if (dA <= arc / 2) applyDamage(m, ab.dmg, ab);
+    }
+    effects.push({ type: "arc", x: p.x, y: p.y, ang, arc, range: ab.range,
+                   color: ab.color, life: 12, maxLife: 12 });
+  } else if (ab.type === "aoe") {
+    // Explosion around player
+    for (const m of monsters) {
+      if (m.dead) continue;
+      const d = Math.hypot(m.x - p.x, m.y - p.y);
+      if (d < ab.radius + m.size) {
+        applyDamage(m, ab.dmg, ab);
+        if (ab.dotSeconds) { m.dotLeft = ab.dotSeconds * 60; m.dotDps = ab.dmg; }
+      }
+    }
+    effects.push({ type: "ring", x: p.x, y: p.y, radius: ab.radius,
+                   color: ab.color, life: 22, maxLife: 22 });
+  } else if (ab.type === "self") {
+    // Handled directly by useSlot below
+  }
+}
+
+function closestSegmentParam(a, b, pt) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return 0;
+  return ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / len2;
+}
+
+function useSlot(slotIdx) {
+  if (!player.alive) return;
+  if (slotIdx >= player.unlockedSlots) return;
+  const abId = player.slots[slotIdx];
+  if (!abId) return;
+  const cdKey = "s" + slotIdx;
+  if ((player.cd[cdKey] || 0) > 0) return;
+  const ab = ABILITIES[abId];
+  if (!ab) return;
+  // Aim direction from player to mouse
+  const dir = { x: (mouseX - W / 2), y: (mouseY - H / 2) };
+  const mag = Math.hypot(dir.x, dir.y);
+  if (mag < 1) { dir.x = Math.cos(player.facing); dir.y = Math.sin(player.facing); }
+  else { dir.x /= mag; dir.y /= mag; }
+  player.facing = Math.atan2(dir.y, dir.x);
+  // Handle self-type abilities
+  if (ab.type === "self") {
+    if (ab.healAmount) {
+      player.hp = Math.min(player.maxHp, player.hp + ab.healAmount);
+      pops.push({ x: player.x, y: player.y - 30, text: "+" + ab.healAmount + " HP",
+                  color: "#34d399", life: 40 });
+    }
+    if (ab.freezeAll) {
+      for (const m of monsters) {
+        if (m.dead) continue;
+        m.slowLeft = Math.max(m.slowLeft, ab.freezeMs / 16);
+        applyDamage(m, ab.dmg, ab);
+      }
+      effects.push({ type: "ring", x: player.x, y: player.y, radius: 400,
+                     color: ab.color, life: 30, maxLife: 30 });
+    }
+    if (ab.targetRandom) {
+      const alive = monsters.filter(m => !m.dead);
+      if (alive.length) {
+        const t = alive[Math.floor(Math.random() * alive.length)];
+        applyDamage(t, ab.dmg, ab);
+        effects.push({ type: "bolt", x1: t.x, y1: t.y - 300, x2: t.x, y2: t.y,
+                       color: ab.color, life: 18, maxLife: 18 });
+      }
+    }
+    if (ab.meteorCount) {
+      const alive = monsters.filter(m => !m.dead);
+      const shuffled = alive.slice().sort(() => Math.random() - 0.5);
+      const targets = shuffled.slice(0, ab.meteorCount);
+      for (const t of targets) {
+        setTimeout(() => {
+          if (t.dead) return;
+          applyDamage(t, ab.dmg, ab);
+          effects.push({ type: "meteor", x: t.x, y: t.y, color: ab.color, life: 22, maxLife: 22 });
+          for (const m of monsters) {
+            if (m === t || m.dead) continue;
+            if (Math.hypot(m.x - t.x, m.y - t.y) < 60) applyDamage(m, ab.dmg * 0.4, ab);
+          }
+        }, 200 + targets.indexOf(t) * 200);
+      }
+    }
+    if (ab.dashDistance) {
+      player.effects.dashLeft = 14;
+      player.effects.dashDx = dir.x * ab.dashDistance / 14;
+      player.effects.dashDy = dir.y * ab.dashDistance / 14;
+      // hit anything in path
+      for (const m of monsters) {
+        if (m.dead) continue;
+        const md = Math.hypot(m.x - player.x, m.y - player.y);
+        if (md < ab.dashDistance + m.size) {
+          const mAng = Math.atan2(m.y - player.y, m.x - player.x);
+          const dA = Math.abs(((mAng - Math.atan2(dir.y, dir.x) + Math.PI) % (Math.PI * 2)) - Math.PI);
+          if (dA < 0.6) applyDamage(m, ab.dmg, ab);
+        }
+      }
+    }
+  } else {
+    shootAbility(ab, dir);
+  }
+  player.cd[cdKey] = ab.cooldown;
+}
+
+function applyDamage(m, dmg, ab) {
+  m.hp -= dmg;
+  m.hitFlash = 6;
+  if (ab && ab.slowMs) m.slowLeft = Math.max(m.slowLeft, ab.slowMs / 16);
+  if (ab && ab.stunMs) m.stunLeft = Math.max(m.stunLeft, ab.stunMs / 16);
+  pops.push({ x: m.x + (Math.random() - 0.5) * 10, y: m.y - m.size - 4,
+              text: Math.round(dmg).toString(), color: (ab && ab.color) || "#f87171", life: 30 });
+  if (m.hp <= 0) killMonster(m);
+}
+
+function killMonster(m) {
+  if (m.dead) return;
+  m.dead = true;
+  const t = MONSTER_TYPES[m.type];
+  player.kills++;
+  player.runCoins += t.coin;
+  gainXp(t.xp);
+  pops.push({ x: m.x, y: m.y - 10, text: "+" + t.xp + " XP", color: "#fcd34d", life: 40 });
+  updateHud();
+}
+
+function gainXp(amount) {
+  player.xp += amount;
+  while (player.xp >= xpForLevel(player.level)) {
+    player.xp -= xpForLevel(player.level);
+    player.level++;
+    onLevelUp();
+  }
+}
+
+function onLevelUp() {
+  const flash = document.getElementById("levelup-flash");
+  flash.textContent = "LEVEL " + player.level;
+  flash.classList.remove("show");
+  void flash.offsetWidth;   // reflow
+  flash.classList.add("show");
+  setTimeout(() => flash.classList.remove("show"), 900);
+  player.maxHp += 8;
+  player.hp = Math.min(player.maxHp, player.hp + 20);
+  // Every 10 levels: unlock a new slot + open the ability picker
+  if (player.level % 10 === 0) {
+    const newSlots = slotsForLevel(player.level);
+    if (newSlots > player.unlockedSlots) player.unlockedSlots = newSlots;
+    openLevelUpPicker();
+  }
+  updateHud();
+  updateSlotBar();
+}
+
+// ============================================================
+// PLAYER MOVEMENT + DAMAGE + DEATH
+// ============================================================
+const PLAYER_ACCEL = 0.55;
+const PLAYER_SPEED = 3.4;
+const PLAYER_FRICTION = 0.86;
+let damageFlashTimer = 0;
+function damagePlayer(d) {
+  if (!player.alive) return;
+  player.hp -= d;
+  damageFlashTimer = 10;
+  const df = document.getElementById("damage-flash");
+  df.classList.add("hit");
+  setTimeout(() => df.classList.remove("hit"), 150);
+  if (player.hp <= 0) {
+    player.hp = 0;
+    player.alive = false;
+    onDeath();
+  }
+  updateHud();
+}
+function onDeath() {
+  // Award coins for the run
+  const bonus = (player.level * 30) + (player.kills * 4);
+  const totalEarned = player.runCoins + bonus;
+  persistent.coins += totalEarned;
+  persistent.totalRuns++;
+  if (player.level > persistent.bestLevel) persistent.bestLevel = player.level;
+  if (player.kills > persistent.bestKills) persistent.bestKills = player.kills;
+  save();
+  // Show death overlay
+  const stats = document.getElementById("death-stats");
+  stats.innerHTML = "";
+  const items = [
+    { name: "LEVEL",      num: player.level },
+    { name: "KILLS",      num: player.kills },
+    { name: "BEST LV",    num: persistent.bestLevel },
+    { name: "RUNS",       num: persistent.totalRuns },
+  ];
+  for (const it of items) {
+    const d = document.createElement("div");
+    d.className = "ds-stat";
+    d.innerHTML = '<div class="st-num">' + it.num + '</div><div class="st-name">' + it.name + '</div>';
+    stats.appendChild(d);
+  }
+  document.getElementById("death-coins").textContent = totalEarned;
+  document.getElementById("death-overlay").classList.add("show");
+}
+
+// ============================================================
+// LEVEL-UP PICKER
+// ============================================================
+function openLevelUpPicker() {
+  const ov = document.getElementById("levelup-overlay");
+  document.getElementById("lu-title").textContent = "LEVEL " + player.level;
+  document.getElementById("lu-sub").textContent =
+    "A new slot has been unlocked! You now have " + player.unlockedSlots +
+    " ability slot" + (player.unlockedSlots > 1 ? "s" : "") + ". Double-click any ability to bind it to a key.";
+  renderAbilityGrid("lu-abilities");
+  ov.classList.add("show");
+}
+document.getElementById("lu-continue").addEventListener("click", () => {
+  document.getElementById("levelup-overlay").classList.remove("show");
+});
+
+// Inventory (open with Tab)
+function openInventory() {
+  if (!player.alive) return;
+  renderAbilityGrid("inv-abilities");
+  document.getElementById("inv-overlay").classList.add("show");
+}
+document.getElementById("inv-close").addEventListener("click", () => {
+  document.getElementById("inv-overlay").classList.remove("show");
+});
+
+// Render owned abilities into a grid (used by level-up + inventory)
+function renderAbilityGrid(gridId) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = "";
+  const owned = allOwnedAbilities();
+  if (!owned.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1; color:rgba(240,230,216,0.6); font-size:13px;">No abilities yet. Buy some at the shop!</div>';
+    return;
+  }
+  for (const id of owned) {
+    const ab = ABILITIES[id];
+    if (!ab) continue;
+    const slotIdx = player.slots.indexOf(id);
+    const equipped = slotIdx >= 0;
+    const card = document.createElement("div");
+    card.className = "ab-card" + (equipped ? " equipped" : "");
+    const equippedLabel = equipped
+      ? '<div style="margin-top:6px; font-family:\'Cinzel\',serif; font-size:11px; color:#60a5fa; letter-spacing:1.5px;">BOUND TO KEY ' + (slotIdx + 1) + '</div>'
+      : '';
+    card.innerHTML =
+      '<div class="ab-icon" style="color:' + ab.color + ';">' + ab.icon + '</div>' +
+      '<div class="ab-name">' + ab.name + '</div>' +
+      '<div class="ab-desc">' + ab.desc + '</div>' +
+      '<div class="ab-stats">DMG ' + (ab.dmg || ab.healAmount || "—") + ' · CD ' + (ab.cooldown / 60).toFixed(1) + 's · ' + dpsLabel(ab) + '</div>' +
+      equippedLabel +
+      '<button class="bind-btn" data-id="' + id + '" style="margin-top:8px; width:100%; padding:8px 4px; background:linear-gradient(180deg,#d67030,#7a3820); color:#fff; border:2px solid #fcd34d; font-family:\'Cinzel\',serif; font-size:11px; letter-spacing:2px; cursor:pointer; border-radius:4px; box-shadow:2px 2px 0 rgba(0,0,0,0.5);">🔗 ' + (equipped ? "REBIND KEY" : "BIND TO KEY") + '</button>';
+    // Both single-click on button AND double-click on card work
+    card.querySelector(".bind-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      openBindPicker(id);
+    });
+    card.addEventListener("dblclick", () => openBindPicker(id));
+    grid.appendChild(card);
+  }
+}
+
+// All abilities available for binding: owned (bought) + current starter (always free)
+function allOwnedAbilities() {
+  const set = new Set(persistent.ownedAbilities);
+  if (persistent.startingElement) set.add(persistent.startingElement);
+  return Array.from(set);
+}
+
+// ============================================================
+// KEY-BIND PICKER
+// ============================================================
+let bindingAbilityId = null;
+function openBindPicker(abId) {
+  bindingAbilityId = abId;
+  const ab = ABILITIES[abId];
+  document.getElementById("bind-title").innerHTML =
+    '<span style="color:' + ab.color + '; text-shadow:0 0 12px ' + ab.color + '88;">' + ab.icon + ' ' + ab.name + '</span>';
+  const currentBoundSlot = player.slots.indexOf(abId);
+  const subText = currentBoundSlot >= 0
+    ? "This ability is currently on key " + (currentBoundSlot + 1) + ". Pick a new key, or click UNBIND to remove it."
+    : "Pick which keyboard key this ability should use. Locked slots unlock at LV 10 / 20 / 30 / 40.";
+  document.getElementById("bind-sub").textContent = subText;
+  const list = document.getElementById("bind-slots");
+  list.innerHTML = "";
+  for (let i = 0; i < 5; i++) {
+    const locked = i >= player.unlockedSlots;
+    const unlockLv = i * 10;   // slot 0 = LV 0, slot 1 = LV 10, ...
+    const currentId = player.slots[i];
+    const currentAb = currentId ? ABILITIES[currentId] : null;
+    const isCurrentBind = currentId === abId;
+    const slot = document.createElement("div");
+    slot.className = "keybind-slot" + (locked ? " locked" : "") + (isCurrentBind ? " current-bind" : "");
+    const keyBtn = locked ? "" :
+      '<button class="remap-key" data-slot="' + i + '" title="Change keyboard key" style="position:absolute; bottom:4px; right:4px; padding:2px 6px; background:rgba(0,0,0,0.6); border:1px solid #7a3820; color:#fcd34d; font-family:\'Cinzel\',serif; font-size:8px; letter-spacing:0.5px; cursor:pointer; border-radius:3px;">⚙ REMAP</button>';
+    slot.innerHTML =
+      '<div class="kb-key">' + keyLabel(persistent.keyBindings[i]) + '</div>' +
+      (currentAb
+        ? '<div class="kb-icon" style="color:' + currentAb.color + ';">' + currentAb.icon + '</div>' +
+          '<div class="kb-current" style="color:' + (isCurrentBind ? '#fcd34d' : 'rgba(240,230,216,0.7)') + ';">' + currentAb.name + '</div>'
+        : (locked
+            ? '<div style="font-size:22px; opacity:0.5;">🔒</div><div class="kb-current">UNLOCK LV ' + unlockLv + '</div>'
+            : '<div style="font-size:22px; opacity:0.5;">·</div><div class="kb-current">Empty</div>'
+          )) +
+      keyBtn;
+    if (!locked) {
+      slot.addEventListener("click", (e) => {
+        // Don't bind when clicking the REMAP button — that's for key rebinding
+        if (e.target.classList.contains("remap-key")) return;
+        // Remove ability from any other slot it was in
+        for (let j = 0; j < 5; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
+        player.slots[i] = bindingAbilityId;
+        document.getElementById("bind-overlay").classList.remove("show");
+        updateSlotBar();
+        // Re-render whatever grid is open
+        if (document.getElementById("levelup-overlay").classList.contains("show")) renderAbilityGrid("lu-abilities");
+        if (document.getElementById("inv-overlay").classList.contains("show")) renderAbilityGrid("inv-abilities");
+      });
+      const remapBtn = slot.querySelector(".remap-key");
+      if (remapBtn) {
+        remapBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          startKeyCapture(i);
+        });
+      }
+    }
+    list.appendChild(slot);
+  }
+  // Show UNBIND button only if this ability is currently bound
+  const unbindBtn = document.getElementById("bind-unbind");
+  if (currentBoundSlot >= 0) {
+    unbindBtn.style.display = "inline-block";
+  } else {
+    unbindBtn.style.display = "none";
+  }
+  document.getElementById("bind-overlay").classList.add("show");
+}
+document.getElementById("bind-cancel").addEventListener("click", () => {
+  document.getElementById("bind-overlay").classList.remove("show");
+});
+document.getElementById("bind-unbind").addEventListener("click", () => {
+  for (let j = 0; j < 5; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
+  document.getElementById("bind-overlay").classList.remove("show");
+  updateSlotBar();
+  if (document.getElementById("levelup-overlay").classList.contains("show")) renderAbilityGrid("lu-abilities");
+  if (document.getElementById("inv-overlay").classList.contains("show")) renderAbilityGrid("inv-abilities");
+});
+
+// ============================================================
+// SHOP
+// ============================================================
+function openShop() {
+  document.getElementById("shop-coins").textContent = persistent.coins;
+  const grid = document.getElementById("shop-abilities");
+  grid.innerHTML = "";
+  const shopIds = Object.keys(ABILITIES);
+  for (const id of shopIds) {
+    const ab = ABILITIES[id];
+    const owned = persistent.ownedAbilities.includes(id) ||
+                  (persistent.startingElement === id);
+    const canAfford = persistent.coins >= ab.cost;
+    const card = document.createElement("div");
+    card.className = "ab-card" + (owned ? " owned" : "");
+    card.innerHTML =
+      '<div class="ab-icon" style="color:' + ab.color + ';">' + ab.icon + '</div>' +
+      '<div class="ab-name">' + ab.name + '</div>' +
+      '<div class="ab-desc">' + ab.desc + '</div>' +
+      '<div class="ab-stats">DMG ' + (ab.dmg || ab.healAmount || "—") + ' · CD ' + (ab.cooldown / 60).toFixed(1) + 's · ' + dpsLabel(ab) + '</div>' +
+      '<div class="ab-cost">' + (owned ? "OWNED" : ab.cost + " 🪙") + '</div>';
+    if (!owned) {
+      if (canAfford) {
+        card.style.cursor = "pointer";
+        card.addEventListener("click", () => {
+          if (persistent.coins < ab.cost) return;
+          persistent.coins -= ab.cost;
+          persistent.ownedAbilities.push(id);
+          save();
+          openShop();  // refresh
+        });
+      } else {
+        card.style.opacity = 0.55;
+        card.style.cursor = "not-allowed";
+      }
+    }
+    grid.appendChild(card);
+  }
+  document.getElementById("shop-overlay").classList.add("show");
+}
+document.getElementById("shop-close").addEventListener("click", () => {
+  document.getElementById("shop-overlay").classList.remove("show");
+});
+document.getElementById("death-shop").addEventListener("click", () => {
+  document.getElementById("death-overlay").classList.remove("show");
+  openShop();
+});
+document.getElementById("death-restart").addEventListener("click", () => {
+  document.getElementById("death-overlay").classList.remove("show");
+  restartRun();
+});
+document.getElementById("start-shop").addEventListener("click", openShop);
+
+// ============================================================
+// START ELEMENT PICKER
+// ============================================================
+let chosenStarter = null;
+function renderStartPicker() {
+  const grid = document.getElementById("start-abilities");
+  grid.innerHTML = "";
+  document.getElementById("start-coins").textContent = persistent.coins;
+  document.getElementById("start-best").textContent = persistent.bestLevel;
+  for (const id in ABILITIES) {
+    const ab = ABILITIES[id];
+    if (!ab.starter) continue;
+    const card = document.createElement("div");
+    card.className = "ab-card";
+    if (chosenStarter === id) card.classList.add("selected");
+    card.innerHTML =
+      '<div class="ab-icon" style="color:' + ab.color + ';">' + ab.icon + '</div>' +
+      '<div class="ab-name" style="font-size:18px; color:' + ab.color + '; text-shadow:0 0 12px ' + ab.color + '55;">' + ab.element.toUpperCase() + '</div>' +
+      '<div style="font-family:\'Cinzel\',serif; font-size:11px; color:rgba(240,230,216,0.75); letter-spacing:1.5px; margin-bottom:4px;">' + ab.name + '</div>' +
+      '<div class="ab-desc">' + ab.desc + '</div>' +
+      '<div class="ab-stats">DMG ' + ab.dmg + ' · CD ' + (ab.cooldown / 60).toFixed(1) + 's · ' + dpsLabel(ab) + '</div>';
+    card.addEventListener("click", () => {
+      chosenStarter = id;
+      renderStartPicker();
+      document.getElementById("start-go").disabled = false;
+    });
+    grid.appendChild(card);
+  }
+}
+// Pre-select last-used starter if available
+if (persistent.startingElement && ABILITIES[persistent.startingElement]) {
+  chosenStarter = persistent.startingElement;
+}
+renderStartPicker();
+if (chosenStarter) document.getElementById("start-go").disabled = false;
+
+document.getElementById("start-go").addEventListener("click", () => {
+  if (!chosenStarter) return;
+  persistent.startingElement = chosenStarter;
+  save();
+  document.getElementById("start-overlay").classList.remove("show");
+  restartRun();
+});
+
+// ============================================================
+// RESTART RUN
+// ============================================================
+function restartRun() {
+  player.x = 0; player.y = 0; player.vx = 0; player.vy = 0;
+  player.maxHp = 100; player.hp = 100;
+  player.level = 1; player.xp = 0;
+  player.kills = 0; player.runCoins = 0;
+  player.slots = [persistent.startingElement, null, null, null, null];
+  player.unlockedSlots = 1;
+  player.cd = {};
+  player.effects.dashLeft = 0;
+  player.alive = true;
+  monsters.length = 0;
+  projectiles.length = 0;
+  eProjectiles.length = 0;
+  effects.length = 0;
+  pops.length = 0;
+  spawnTimer = 30;
+  updateHud();
+  updateSlotBar();
+}
+
+// ============================================================
+// HUD
+// ============================================================
+function updateHud() {
+  const hpPct = (player.hp / player.maxHp) * 100;
+  const hpEl = document.getElementById("hud-hp");
+  hpEl.style.width = hpPct + "%";
+  hpEl.className = "bar-fill hpfill" + (hpPct < 30 ? " low" : hpPct < 60 ? " mid" : "");
+  document.getElementById("hud-level").textContent = player.level;
+  document.getElementById("hud-kills").textContent = player.kills;
+  document.getElementById("hud-coins").textContent = persistent.coins + " (+" + player.runCoins + ")";
+  const xpNeed = xpForLevel(player.level);
+  document.getElementById("hud-xp").style.width = ((player.xp / xpNeed) * 100) + "%";
+  document.getElementById("hud-xp-text").textContent = player.xp + " / " + xpNeed;
+}
+function updateSlotBar() {
+  const bar = document.getElementById("slot-bar");
+  bar.innerHTML = "";
+  for (let i = 0; i < 5; i++) {
+    const locked = i >= player.unlockedSlots;
+    const abId = player.slots[i];
+    const ab = abId ? ABILITIES[abId] : null;
+    const slot = document.createElement("div");
+    slot.className = "slot" + (locked ? " locked" : ab ? "" : " empty");
+    slot.dataset.slot = i;
+    slot.innerHTML =
+      '<div class="s-key">' + keyLabel(persistent.keyBindings[i]) + '</div>' +
+      (locked
+        ? '<div class="s-icon">🔒</div><div class="s-name">LV ' + ((i) * 10) + '</div>'
+        : (ab
+            ? '<div class="s-icon" style="color:' + ab.color + ';">' + ab.icon + '</div><div class="s-name">' + ab.name + '</div>'
+            : '<div class="s-icon" style="opacity:0.35;">·</div><div class="s-name">EMPTY</div>'
+          ));
+    slot.addEventListener("click", () => { if (!locked) useSlot(i); });
+    // Right-click OR double-click a slot to open the inventory + bind picker
+    slot.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if (!locked) openInventory();
+    });
+    slot.addEventListener("dblclick", () => {
+      if (!locked) openInventory();
+    });
+    slot.title = locked ? "Locked" : "Left-click to use · Right-click to bind";
+    bar.appendChild(slot);
+  }
+}
+
+// ============================================================
+// MAIN UPDATE / RENDER LOOP
+// ============================================================
+function anyOverlayOpen() {
+  return ["start-overlay","levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay"]
+    .some(id => document.getElementById(id).classList.contains("show"));
+}
+function update() {
+  const paused = anyOverlayOpen() || !player.alive;
+  if (!paused) {
+    // Movement
+    let mvx = 0, mvy = 0;
+    if (keys.w || keys.arrowup)    mvy -= 1;
+    if (keys.s || keys.arrowdown)  mvy += 1;
+    if (keys.a || keys.arrowleft)  mvx -= 1;
+    if (keys.d || keys.arrowright) mvx += 1;
+    if (mvx || mvy) {
+      const l = Math.hypot(mvx, mvy);
+      mvx /= l; mvy /= l;
+      player.vx += mvx * PLAYER_ACCEL;
+      player.vy += mvy * PLAYER_ACCEL;
+    }
+    player.vx *= PLAYER_FRICTION; player.vy *= PLAYER_FRICTION;
+    const sp = Math.hypot(player.vx, player.vy);
+    if (sp > PLAYER_SPEED) { player.vx = (player.vx / sp) * PLAYER_SPEED; player.vy = (player.vy / sp) * PLAYER_SPEED; }
+    // Dash effect
+    if (player.effects.dashLeft > 0) {
+      player.effects.dashLeft--;
+      player.vx += player.effects.dashDx;
+      player.vy += player.effects.dashDy;
+    }
+    player.x += player.vx;
+    player.y += player.vy;
+    // Clamp
+    const lim = WORLD_HALF - 60;
+    if (player.x > lim) player.x = lim;
+    if (player.x < -lim) player.x = -lim;
+    if (player.y > lim) player.y = lim;
+    if (player.y < -lim) player.y = -lim;
+    // Facing tracks mouse
+    const dx = mouseX - W / 2, dy = mouseY - H / 2;
+    if (Math.hypot(dx, dy) > 6) player.facing = Math.atan2(dy, dx);
+    // Cooldowns
+    for (const k in player.cd) {
+      if (player.cd[k] > 0) player.cd[k]--;
+    }
+    // Spawn + monster AI
+    updateSpawn();
+    updateMonsters();
+    updateProjectiles();
+    updateEnemyProjectiles();
+    // Effects lifetime
+    for (const e of effects) e.life--;
+    for (let i = effects.length - 1; i >= 0; i--) if (effects[i].life <= 0) effects.splice(i, 1);
+    // Pops
+    for (const p of pops) { p.life--; p.y -= 0.5; }
+    for (let i = pops.length - 1; i >= 0; i--) if (pops[i].life <= 0) pops.splice(i, 1);
+  }
+  if (damageFlashTimer > 0) damageFlashTimer--;
+  render();
+  // Update cooldown display in slot bar
+  for (const slot of document.querySelectorAll("#slot-bar .slot")) {
+    const i = parseInt(slot.dataset.slot);
+    const abId = player.slots[i];
+    const ab = abId ? ABILITIES[abId] : null;
+    if (!ab) { slot.classList.remove("on-cd"); continue; }
+    const cd = player.cd["s" + i] || 0;
+    if (cd > 0) {
+      slot.classList.add("on-cd");
+      slot.style.setProperty("--cd", ((cd / ab.cooldown) * 100) + "%");
+    } else {
+      slot.classList.remove("on-cd");
+    }
+  }
+}
+function updateMonsters() {
+  for (const m of monsters) {
+    if (m.dead) continue;
+    if (m.hitFlash > 0) m.hitFlash--;
+    if (m.slowLeft > 0) m.slowLeft--;
+    if (m.stunLeft > 0) { m.stunLeft--; continue; }
+    // DOT
+    if (m.dotLeft > 0) {
+      m.dotLeft--;
+      if (m.dotLeft % 30 === 0) applyDamage(m, m.dotDps, { color: "#88b040" });
+    }
+    // Knockback
+    if (m.kvx || m.kvy) {
+      m.x += m.kvx; m.y += m.kvy;
+      m.kvx *= 0.82; m.kvy *= 0.82;
+      if (Math.abs(m.kvx) < 0.05) m.kvx = 0;
+      if (Math.abs(m.kvy) < 0.05) m.kvy = 0;
+    }
+    const dx = player.x - m.x, dy = player.y - m.y;
+    const d = Math.hypot(dx, dy);
+    const speedMult = m.slowLeft > 0 ? 0.4 : 1;
+    if (m.melee) {
+      if (d > m.size + 12) { const n = 1 / d; m.x += dx * n * m.speed * speedMult; m.y += dy * n * m.speed * speedMult; }
+      else { m.cd--; if (m.cd <= 0) { damagePlayer(m.dmg); m.cd = 60; } }
+    } else {
+      const tgt = m.range * 0.7;
+      if (d > tgt + 30) { const n = 1 / d; m.x += dx * n * m.speed * speedMult; m.y += dy * n * m.speed * speedMult; }
+      else if (d < tgt - 30 && !m.flying) { const n = 1 / d; m.x -= dx * n * m.speed * 0.6 * speedMult; m.y -= dy * n * m.speed * 0.6 * speedMult; }
+      m.cd--;
+      if (m.cd <= 0 && d < m.range) {
+        const dir = { x: dx / d, y: dy / d };
+        eProjectiles.push({ x: m.x, y: m.y, vx: dir.x * 4.5, vy: dir.y * 4.5, dmg: m.dmg, life: 120, dead: false });
+        m.cd = 90 + Math.random() * 40;
+      }
+    }
+  }
+  for (let i = monsters.length - 1; i >= 0; i--) if (monsters[i].dead) monsters.splice(i, 1);
+}
+function updateProjectiles() {
+  for (const p of projectiles) {
+    if (p.dead) continue;
+    // Homing
+    if (p.homing) {
+      let tgt = null, best = Infinity;
+      for (const m of monsters) {
+        if (m.dead || p.hits.has(m)) continue;
+        const dd = Math.hypot(m.x - p.x, m.y - p.y);
+        if (dd < best) { best = dd; tgt = m; }
+      }
+      if (tgt) {
+        const ang = Math.atan2(tgt.y - p.y, tgt.x - p.x);
+        const spd = Math.hypot(p.vx, p.vy);
+        p.vx += Math.cos(ang) * 0.6;
+        p.vy += Math.sin(ang) * 0.6;
+        const s2 = Math.hypot(p.vx, p.vy);
+        p.vx = (p.vx / s2) * spd;
+        p.vy = (p.vy / s2) * spd;
+      }
+    }
+    p.x += p.vx; p.y += p.vy;
+    p.life--;
+    if (p.life <= 0) { p.dead = true; continue; }
+    for (const m of monsters) {
+      if (m.dead || p.hits.has(m)) continue;
+      if (Math.hypot(p.x - m.x, p.y - m.y) < m.size + p.size) {
+        // Crit roll (Stone Edge etc.)
+        let dmgToDeal = p.dmg;
+        if (p.ability && p.ability.critChance && Math.random() < p.ability.critChance) {
+          dmgToDeal = p.dmg * (p.ability.critMult || 2);
+          pops.push({ x: m.x, y: m.y - m.size - 12, text: "CRIT!", color: "#fcd34d", life: 30 });
+        }
+        applyDamage(m, dmgToDeal, p.ability);
+        // Projectile DOT (Poison Sting)
+        if (p.ability && p.ability.dotSeconds && p.ability.dotDmg) {
+          m.dotLeft = p.ability.dotSeconds * 60;
+          m.dotDps = p.ability.dotDmg;
+        }
+        // Small on-hit explosion (Mud-Slap)
+        if (p.ability && p.ability.explodeRadius) {
+          for (const o of monsters) {
+            if (o === m || o.dead) continue;
+            if (Math.hypot(o.x - m.x, o.y - m.y) < p.ability.explodeRadius) {
+              applyDamage(o, p.dmg * 0.5, p.ability);
+            }
+          }
+          effects.push({ type: "ring", x: m.x, y: m.y, radius: p.ability.explodeRadius,
+                         color: p.color, life: 14, maxLife: 14 });
+        }
+        p.hits.add(m);
+        // Chain lightning
+        if (p.chainsLeft > 0) {
+          const nearby = monsters.filter(o => !o.dead && !p.hits.has(o) && Math.hypot(o.x - m.x, o.y - m.y) < 140)
+            .sort((a, b) => Math.hypot(a.x - m.x, a.y - m.y) - Math.hypot(b.x - m.x, b.y - m.y));
+          if (nearby.length) {
+            const t = nearby[0];
+            applyDamage(t, p.dmg * 0.7, p.ability);
+            p.hits.add(t);
+            effects.push({ type: "line", x1: m.x, y1: m.y, x2: t.x, y2: t.y, color: p.color, life: 10, maxLife: 10 });
+            p.chainsLeft--;
+          }
+        }
+        // Pierce
+        if (p.pierceLeft > 0) { p.pierceLeft--; }
+        else { p.dead = true; break; }
+      }
+    }
+  }
+  for (let i = projectiles.length - 1; i >= 0; i--) if (projectiles[i].dead) projectiles.splice(i, 1);
+}
+function updateEnemyProjectiles() {
+  for (const ep of eProjectiles) {
+    if (ep.dead) continue;
+    ep.x += ep.vx; ep.y += ep.vy;
+    ep.life--;
+    if (ep.life <= 0) { ep.dead = true; continue; }
+    if (Math.hypot(ep.x - player.x, ep.y - player.y) < 24) {
+      damagePlayer(ep.dmg);
+      ep.dead = true;
+    }
+  }
+  for (let i = eProjectiles.length - 1; i >= 0; i--) if (eProjectiles[i].dead) eProjectiles.splice(i, 1);
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  // Ground
+  ctx.fillStyle = "#2a1810";
+  ctx.fillRect(0, 0, W, H);
+  // Grid pattern
+  ctx.fillStyle = "#1e1108";
+  const gs = 40;
+  const ox = ((player.x % gs) + gs) % gs;
+  const oy = ((player.y % gs) + gs) % gs;
+  for (let x = -ox; x < W; x += gs) {
+    for (let y = -oy; y < H; y += gs) {
+      if ((Math.floor((x + player.x) / gs) + Math.floor((y + player.y) / gs)) % 2 === 0) {
+        ctx.fillRect(x, y, gs, gs);
+      }
+    }
+  }
+  // Decorations
+  for (const d of decorations) {
+    const sx = W / 2 + (d.x - player.x);
+    const sy = H / 2 + (d.y - player.y);
+    if (sx < -20 || sx > W + 20 || sy < -20 || sy > H + 20) continue;
+    if (d.kind === "rock") {
+      ctx.fillStyle = "#4a3020";
+      ctx.beginPath();
+      ctx.arc(sx, sy, d.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#5a4030";
+      ctx.beginPath();
+      ctx.arc(sx - d.size * 0.3, sy - d.size * 0.3, d.size * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#c8b898";
+      ctx.fillRect(sx - d.size / 2, sy - 1, d.size, 2);
+      ctx.fillRect(sx - 2, sy - d.size / 2, 4, d.size);
+    }
+  }
+  // World bounds
+  const bx = W / 2 - player.x;
+  const by = H / 2 - player.y;
+  ctx.strokeStyle = "#7a3820";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(bx - WORLD_HALF, by - WORLD_HALF, WORLD_HALF * 2, WORLD_HALF * 2);
+  // Enemy projectiles
+  for (const ep of eProjectiles) {
+    const sx = W / 2 + (ep.x - player.x);
+    const sy = H / 2 + (ep.y - player.y);
+    ctx.fillStyle = "#c060ff";
+    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f0d0ff";
+    ctx.beginPath(); ctx.arc(sx, sy, 2, 0, Math.PI * 2); ctx.fill();
+  }
+  // Effects
+  for (const e of effects) {
+    const alpha = e.life / e.maxLife;
+    if (e.type === "beam") {
+      const x1 = W / 2 + (e.x1 - player.x), y1 = H / 2 + (e.y1 - player.y);
+      const x2 = W / 2 + (e.x2 - player.x), y2 = H / 2 + (e.y2 - player.y);
+      ctx.strokeStyle = e.color;
+      ctx.globalAlpha = alpha * 0.6;
+      ctx.lineWidth = e.width * 2;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.strokeStyle = e.core;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = Math.max(2, e.width);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (e.type === "line") {
+      const x1 = W / 2 + (e.x1 - player.x), y1 = H / 2 + (e.y1 - player.y);
+      const x2 = W / 2 + (e.x2 - player.x), y2 = H / 2 + (e.y2 - player.y);
+      ctx.strokeStyle = e.color;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (e.type === "arc") {
+      const sx = W / 2, sy = H / 2;
+      ctx.strokeStyle = e.color;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(sx, sy, e.range, e.ang - e.arc / 2, e.ang + e.arc / 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (e.type === "ring") {
+      const sx = W / 2 + (e.x - player.x), sy = H / 2 + (e.y - player.y);
+      ctx.strokeStyle = e.color;
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(sx, sy, e.radius * (1 - alpha + 0.4), 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (e.type === "bolt") {
+      const x1 = W / 2 + (e.x1 - player.x), y1 = H / 2 + (e.y1 - player.y);
+      const x2 = W / 2 + (e.x2 - player.x), y2 = H / 2 + (e.y2 - player.y);
+      ctx.strokeStyle = e.color;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      const steps = 6;
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const mx = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 30;
+        const my = y1 + (y2 - y1) * t;
+        ctx.lineTo(mx, my);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (e.type === "meteor") {
+      const sx = W / 2 + (e.x - player.x), sy = H / 2 + (e.y - player.y);
+      const rad = 40 + (1 - alpha) * 60;
+      const grad = ctx.createRadialGradient(sx, sy, 4, sx, sy, rad);
+      grad.addColorStop(0, e.color);
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad; ctx.globalAlpha = alpha;
+      ctx.beginPath(); ctx.arc(sx, sy, rad, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  // Player projectiles
+  for (const p of projectiles) {
+    const sx = W / 2 + (p.x - player.x), sy = H / 2 + (p.y - player.y);
+    const a = Math.max(0, p.life / (p.maxLife || 40));
+    // outer glow
+    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.size * 2);
+    g.addColorStop(0, p.core);
+    g.addColorStop(0.5, p.color);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g; ctx.globalAlpha = a;
+    ctx.beginPath(); ctx.arc(sx, sy, p.size * 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = p.core; ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(sx, sy, p.size * 0.55, 0, Math.PI * 2); ctx.fill();
+  }
+  // Monsters
+  for (const m of monsters) {
+    if (m.dead) continue;
+    const sx = W / 2 + (m.x - player.x), sy = H / 2 + (m.y - player.y);
+    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
+    // Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.beginPath(); ctx.ellipse(sx + 2, sy + m.size * 0.7, m.size * 0.7, m.size * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    // Body
+    const col = m.hitFlash > 0 ? "#ffffff" : m.color;
+    ctx.fillStyle = col;
+    if (m.flying) {
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - m.size);
+      ctx.lineTo(sx + m.size * 0.8, sy);
+      ctx.lineTo(sx, sy + m.size);
+      ctx.lineTo(sx - m.size * 0.8, sy);
+      ctx.closePath(); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.arc(sx, sy, m.size, 0, Math.PI * 2); ctx.fill();
+    }
+    // Eyes
+    ctx.fillStyle = "#ff2020";
+    ctx.beginPath(); ctx.arc(sx - m.size * 0.3, sy - m.size * 0.2, 2, 0, Math.PI * 2); ctx.arc(sx + m.size * 0.3, sy - m.size * 0.2, 2, 0, Math.PI * 2); ctx.fill();
+    // Status rings
+    if (m.slowLeft > 0) {
+      ctx.strokeStyle = "rgba(160,200,255,0.6)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(sx, sy, m.size + 3, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (m.stunLeft > 0) {
+      ctx.strokeStyle = "rgba(255,240,120,0.7)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(sx, sy, m.size + 3, 0, Math.PI * 2); ctx.stroke();
+    }
+    // HP bar
+    if (m.hp < m.maxHp) {
+      const bw = Math.max(m.size * 2, 26);
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(sx - bw / 2, sy - m.size - 9, bw, 4);
+      const r = Math.max(0, m.hp / m.maxHp);
+      ctx.fillStyle = r > 0.5 ? "#5c5" : r > 0.25 ? "#fa3" : "#f55";
+      ctx.fillRect(sx - bw / 2, sy - m.size - 9, bw * r, 4);
+    }
+  }
+  // Dragon (player)
+  drawDragon();
+  // Pops
+  for (const p of pops) {
+    const sx = W / 2 + (p.x - player.x), sy = H / 2 + (p.y - player.y);
+    ctx.fillStyle = p.color;
+    ctx.font = "bold 14px 'Cinzel', serif";
+    ctx.textAlign = "center";
+    ctx.globalAlpha = Math.min(1, p.life / 30);
+    ctx.fillText(p.text, sx, sy);
+    ctx.globalAlpha = 1;
+  }
+  // Minimap
+  drawMinimap();
+}
+
+function drawDragon() {
+  const sx = W / 2, sy = H / 2;
+  const el = ABILITIES[player.slots[0] || persistent.startingElement || "flamethrower"];
+  const bodyColor = "#7a3820";
+  const bellyColor = el ? el.color : "#c86040";
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(player.facing);
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.beginPath(); ctx.ellipse(4, 6, 28, 14, 0, 0, Math.PI * 2); ctx.fill();
+  // Wings (flap)
+  const flap = Math.sin(Date.now() * 0.011) * 0.7;
+  ctx.fillStyle = "#4a2010";
+  ctx.save(); ctx.rotate(-0.2 + flap * 0.35);
+  ctx.beginPath();
+  ctx.moveTo(0, -6);
+  ctx.quadraticCurveTo(-10, -30, -30, -18);
+  ctx.quadraticCurveTo(-18, -4, 0, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.save(); ctx.rotate(0.2 - flap * 0.35);
+  ctx.beginPath();
+  ctx.moveTo(0, 6);
+  ctx.quadraticCurveTo(-10, 30, -30, 18);
+  ctx.quadraticCurveTo(-18, 4, 0, 0);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // Tail
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath();
+  ctx.moveTo(-18, -4);
+  ctx.quadraticCurveTo(-34, 0, -20, 4);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#180800";
+  ctx.beginPath();
+  ctx.moveTo(-30, -2); ctx.lineTo(-38, 0); ctx.lineTo(-30, 2); ctx.closePath(); ctx.fill();
+  // Body
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(0, 0, 22, 13, 0, 0, Math.PI * 2); ctx.fill();
+  // Belly (colored by starting element)
+  ctx.fillStyle = bellyColor;
+  ctx.beginPath(); ctx.ellipse(3, 0, 15, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // Neck + head
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.arc(20, 0, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(24, -3, 9, 6);
+  // Horns
+  ctx.fillStyle = "#180800";
+  ctx.beginPath(); ctx.moveTo(16, -7); ctx.lineTo(11, -15); ctx.lineTo(18, -8); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(21, -8); ctx.lineTo(18, -17); ctx.lineTo(23, -8); ctx.closePath(); ctx.fill();
+  // Eye
+  ctx.fillStyle = "#fcd34d";
+  ctx.beginPath(); ctx.arc(23, -3, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.arc(23.5, -3, 1, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawMinimap() {
+  const mw = 130, mh = 130;
+  const mx = W - mw - 12;
+  const my = H - mh - 100;
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(mx, my, mw, mh);
+  ctx.strokeStyle = "#7a3820";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(mx, my, mw, mh);
+  const s = mw / (WORLD_HALF * 2);
+  // Monsters
+  ctx.fillStyle = "#ff5040";
+  for (const m of monsters) {
+    if (m.dead) continue;
+    const px = mx + mw / 2 + m.x * s;
+    const py = my + mh / 2 + m.y * s;
+    if (px < mx || px > mx + mw || py < my || py > my + mh) continue;
+    ctx.fillRect(px - 1, py - 1, 3, 3);
+  }
+  // Player
+  ctx.fillStyle = "#fcd34d";
+  ctx.save();
+  ctx.translate(mx + mw / 2 + player.x * s, my + mh / 2 + player.y * s);
+  ctx.rotate(player.facing);
+  ctx.beginPath();
+  ctx.moveTo(6, 0); ctx.lineTo(-3, -3); ctx.lineTo(-3, 3); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function loop() {
+  try { update(); } catch (e) { console.error(e); }
+  requestAnimationFrame(loop);
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+updateHud();
+updateSlotBar();
+loop();
+</script>
+</body>
+</html>
