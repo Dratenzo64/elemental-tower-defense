@@ -1945,15 +1945,27 @@ function render() {
   // Ground
   ctx.fillStyle = "#2a1810";
   ctx.fillRect(0, 0, W, H);
-  // Grid pattern
+  // Checkerboard pattern anchored to WORLD coordinates, not screen coordinates.
+  // Each tile at world (wx, wy) has color determined by (wx/gs + wy/gs) parity —
+  // this way tiles keep their color as the camera scrolls, no flicker/jitter.
   ctx.fillStyle = "#1e1108";
   const gs = 40;
-  const ox = ((player.x % gs) + gs) % gs;
-  const oy = ((player.y % gs) + gs) % gs;
-  for (let x = -ox; x < W; x += gs) {
-    for (let y = -oy; y < H; y += gs) {
-      if ((Math.floor((x + player.x) / gs) + Math.floor((y + player.y) / gs)) % 2 === 0) {
-        ctx.fillRect(x, y, gs, gs);
+  // Half-viewport in world space
+  const halfW = W / 2, halfH = H / 2;
+  // Snap the visible world bounds to tile grid, then iterate
+  const worldLeft   = Math.floor((player.x - halfW) / gs) * gs;
+  const worldTop    = Math.floor((player.y - halfH) / gs) * gs;
+  const worldRight  = player.x + halfW;
+  const worldBottom = player.y + halfH;
+  for (let wx = worldLeft; wx < worldRight; wx += gs) {
+    for (let wy = worldTop; wy < worldBottom; wy += gs) {
+      const tileX = Math.floor(wx / gs);
+      const tileY = Math.floor(wy / gs);
+      if ((tileX + tileY) % 2 === 0) {
+        // World → screen: subtract camera (player) position, add half-viewport
+        const sx = Math.round(wx - player.x + halfW);
+        const sy = Math.round(wy - player.y + halfH);
+        ctx.fillRect(sx, sy, gs, gs);
       }
     }
   }
