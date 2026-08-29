@@ -948,7 +948,7 @@ function dpsLabel(ab) {
 // SAVE / LOAD
 // ============================================================
 const SAVE_KEY = "drazelect-save-v1";
-const HASH_PREFIX = "#wf=";
+const HASH_PREFIX = "#dz=";
 function defaultSave() {
   return {
     coins: 0,
@@ -1066,19 +1066,10 @@ function restoreRun(run) {
 }
 // Manual save button — always available, top-right corner
 document.getElementById("save-button").addEventListener("click", () => {
-  if (player.alive) snapshotRun();
   save();
 });
-// Auto-save every 5 seconds during gameplay (with visible confirmation flash)
-setInterval(() => {
-  if (player.alive && !anyOverlayOpen()) {
-    snapshotRun();
-    save();
-  }
-}, 5000);
-// Also save right before the page unloads
+// Save right before the page unloads so nothing is lost
 window.addEventListener("beforeunload", () => {
-  if (player.alive) snapshotRun();
   try {
     const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
     localStorage.setItem(SAVE_KEY, enc);
