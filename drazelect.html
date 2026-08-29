@@ -65,24 +65,6 @@
   }
   #save-button:hover { filter: brightness(1.15); transform: translate(-1px, -1px); }
   #save-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
-  #restart-button {
-    position: fixed; top: 12px; right: 100px;
-    background: linear-gradient(180deg, #dc2626 0%, #7f1d1d 100%);
-    border: 2px solid #fca5a5;
-    padding: 5px 12px;
-    color: #fff;
-    font-family: 'Cinzel', serif;
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 1.5px;
-    z-index: 100;
-    cursor: pointer;
-    box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
-    transition: transform 0.1s, filter 0.1s;
-    border-radius: 4px;
-  }
-  #restart-button:hover { filter: brightness(1.15); transform: translate(-1px, -1px); }
-  #restart-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
 
   /* HUD */
   #hud-top {
@@ -494,7 +476,6 @@
 <a href="index.html" class="home-link">‹ BACK</a>
 <div id="save-indicator">AUTO-SAVED ✓</div>
 <button id="save-button" title="Save your progress now">💾 SAVE</button>
-<button id="restart-button" title="Give up the current run and start a new one">🔄 RESTART</button>
 
 <canvas id="game"></canvas>
 <div id="damage-flash"></div>
@@ -1031,20 +1012,13 @@ function persistBindings() {
   persistent.slotBindings = player.slots.slice();
 }
 let saveTimer = null;
-let saveOk = true;  // set false if localStorage rejects us
 function save() {
-  let didSave = false;
   try {
     const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
     localStorage.setItem(SAVE_KEY, enc);
     history.replaceState(null, "", HASH_PREFIX + enc);
-    didSave = true;
-    saveOk = true;
-  } catch (e) {
-    saveOk = false;
-    console.warn("save failed:", e);
-  }
-  flashSave(didSave);
+  } catch (e) {}
+  flashSave();
 }
 // Snapshot the CURRENT RUN state so it can be restored on next page load
 function snapshotRun() {
@@ -1087,48 +1061,6 @@ function restoreRun(run) {
 document.getElementById("save-button").addEventListener("click", () => {
   save();
 });
-// Restart button — WIPES EVERYTHING (coins, owned abilities, best score,
-// bindings, key remaps, current run). Full factory reset.
-document.getElementById("restart-button").addEventListener("click", () => {
-  if (!confirm(
-    "⚠ FULL RESET — WIPE ALL SAVE DATA?\n\n" +
-    "This will erase:\n" +
-    "  • All " + persistent.coins + " coins\n" +
-    "  • All " + persistent.ownedAbilities.length + " bought abilities\n" +
-    "  • Best level (" + persistent.bestLevel + ") and total runs (" + persistent.totalRuns + ")\n" +
-    "  • Every ability binding and custom keybind\n" +
-    "  • The current run\n\n" +
-    "You'll start over from scratch. This CANNOT be undone."
-  )) return;
-  // Wipe localStorage + URL hash so nothing survives a page refresh
-  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-  history.replaceState(null, "", location.pathname + location.search);
-  // Reset persistent state in memory to defaults
-  persistent = defaultSave();
-  // Reset per-run state
-  player.slots = [null, null, null, null, null];
-  player.unlockedSlots = 1;
-  player.hp = 100; player.maxHp = 100;
-  player.level = 1; player.xp = 0;
-  player.kills = 0; player.runCoins = 0;
-  player.x = 0; player.y = 0; player.vx = 0; player.vy = 0;
-  player.cd = {};
-  player.alive = false;   // force back to start screen
-  chosenStarter = null;
-  monsters.length = 0;
-  projectiles.length = 0;
-  eProjectiles.length = 0;
-  effects.length = 0;
-  pops.length = 0;
-  // Close any open overlay, then show the start screen fresh
-  ["levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay","remap-overlay"]
-    .forEach(id => document.getElementById(id).classList.remove("show"));
-  document.getElementById("start-go").disabled = true;
-  renderStartPicker();
-  document.getElementById("start-overlay").classList.add("show");
-  updateHud();
-  updateSlotBar();
-});
 // Save right before the page unloads so nothing is lost
 window.addEventListener("beforeunload", () => {
   try {
@@ -1136,23 +1068,12 @@ window.addEventListener("beforeunload", () => {
     localStorage.setItem(SAVE_KEY, enc);
   } catch (e) {}
 });
-function flashSave(ok) {
+function flashSave() {
   const el = document.getElementById("save-indicator");
   if (!el) return;
-  if (ok === false) {
-    el.textContent = "⚠ SAVE FAILED";
-    el.style.background = "rgba(239,68,68,0.18)";
-    el.style.borderColor = "#ef4444";
-    el.style.color = "#fca5a5";
-  } else {
-    el.textContent = "AUTO-SAVED ✓";
-    el.style.background = "rgba(52,211,153,0.18)";
-    el.style.borderColor = "#34d399";
-    el.style.color = "#6ee7b7";
-  }
   el.classList.add("show");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => el.classList.remove("show"), 1200);
+  saveTimer = setTimeout(() => el.classList.remove("show"), 1000);
 }
 loadSave();
 
