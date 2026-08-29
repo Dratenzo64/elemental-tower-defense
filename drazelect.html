@@ -32,7 +32,7 @@
   }
   .home-link:hover { background: rgba(0,0,0,0.9); }
   #save-indicator {
-    position: fixed; top: 12px; right: 12px;
+    position: fixed; top: 12px; right: 108px;
     background: rgba(52, 211, 153, 0.18);
     border: 2px solid #34d399;
     padding: 5px 12px;
@@ -47,6 +47,24 @@
     pointer-events: none;
   }
   #save-indicator.show { opacity: 1; transform: translateY(0); }
+  #save-button {
+    position: fixed; top: 12px; right: 12px;
+    background: linear-gradient(180deg, #22c55e 0%, #166534 100%);
+    border: 2px solid #86efac;
+    padding: 5px 14px;
+    color: #fff;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    z-index: 100;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+    transition: transform 0.1s, filter 0.1s;
+    border-radius: 4px;
+  }
+  #save-button:hover { filter: brightness(1.15); transform: translate(-1px, -1px); }
+  #save-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
 
   /* HUD */
   #hud-top {
@@ -457,6 +475,7 @@
 
 <a href="index.html" class="home-link">‹ BACK</a>
 <div id="save-indicator">AUTO-SAVED ✓</div>
+<button id="save-button" title="Save your progress now">💾 SAVE</button>
 
 <canvas id="game"></canvas>
 <div id="damage-flash"></div>
@@ -1045,6 +1064,11 @@ function restoreRun(run) {
   updateHud();
   updateSlotBar();
 }
+// Manual save button — always available, top-right corner
+document.getElementById("save-button").addEventListener("click", () => {
+  if (player.alive) snapshotRun();
+  save();
+});
 // Auto-save every 5 seconds during gameplay (with visible confirmation flash)
 setInterval(() => {
   if (player.alive && !anyOverlayOpen()) {
