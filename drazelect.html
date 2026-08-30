@@ -1006,24 +1006,71 @@ function persistBindings() {
   persistent.slotBindings = player.slots.slice();
 }
 let saveTimer = null;
+let lastSaveError = "";
 function save() {
+  let ok = false;
   try {
     const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
     localStorage.setItem(SAVE_KEY, enc);
+    // Verify by reading back — some browsers silently discard writes
+    const readback = localStorage.getItem(SAVE_KEY);
+    if (readback !== enc) throw new Error("localStorage readback mismatch");
     history.replaceState(null, "", HASH_PREFIX + enc);
-  } catch (e) {}
-  flashSave();
+    ok = true;
+    lastSaveError = "";
+  } catch (e) {
+    lastSaveError = String(e && e.message || e);
+    console.error("SAVE FAILED:", lastSaveError);
+  }
+  flashSave(ok);
 }
 // Manual save button — always available, top-right corner
 document.getElementById("save-button").addEventListener("click", () => {
   save();
 });
-function flashSave() {
+// Diagnostic — long-press save button (right click) to see raw save state
+document.getElementById("save-button").addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  let lsWorks = false;
+  try {
+    localStorage.setItem("_test_lc", "1");
+    lsWorks = localStorage.getItem("_test_lc") === "1";
+    localStorage.removeItem("_test_lc");
+  } catch (err) { lsWorks = false; }
+  const lsVal = (() => { try { return localStorage.getItem(SAVE_KEY); } catch (e) { return "[error: " + e.message + "]"; } })();
+  alert(
+    "=== SAVE DIAGNOSTIC ===\n" +
+    "SAVE_KEY: " + SAVE_KEY + "\n" +
+    "localStorage available: " + lsWorks + "\n" +
+    "localStorage entry: " + (lsVal ? lsVal.substring(0, 40) + "... (" + lsVal.length + " bytes)" : "[EMPTY]") + "\n" +
+    "URL hash: " + (location.hash || "[none]").substring(0, 60) + "\n" +
+    "Last save error: " + (lastSaveError || "none") + "\n" +
+    "\nIn-memory state:\n" +
+    "  coins: " + persistent.coins + "\n" +
+    "  bestLevel: " + persistent.bestLevel + "\n" +
+    "  bestKills: " + persistent.bestKills + "\n" +
+    "  totalRuns: " + persistent.totalRuns + "\n" +
+    "  ownedAbilities: " + JSON.stringify(persistent.ownedAbilities) + "\n" +
+    "  startingElement: " + persistent.startingElement
+  );
+});
+function flashSave(ok) {
   const el = document.getElementById("save-indicator");
   if (!el) return;
+  if (ok === false) {
+    el.textContent = "⚠ SAVE FAILED";
+    el.style.background = "rgba(239,68,68,0.18)";
+    el.style.borderColor = "#ef4444";
+    el.style.color = "#fca5a5";
+  } else {
+    el.textContent = "SAVED ✓ (LS: " + ((localStorage.getItem(SAVE_KEY) || "").length) + "b)";
+    el.style.background = "rgba(52,211,153,0.18)";
+    el.style.borderColor = "#34d399";
+    el.style.color = "#6ee7b7";
+  }
   el.classList.add("show");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => el.classList.remove("show"), 1000);
+  saveTimer = setTimeout(() => el.classList.remove("show"), 2000);
 }
 loadSave();
 
