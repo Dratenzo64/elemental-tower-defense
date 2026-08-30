@@ -32,7 +32,7 @@
   }
   .home-link:hover { background: rgba(0,0,0,0.9); }
   #save-indicator {
-    position: fixed; top: 12px; right: 220px;
+    position: fixed; top: 12px; right: 118px;
     background: rgba(52, 211, 153, 0.18);
     border: 2px solid #34d399;
     padding: 5px 12px;
@@ -41,12 +41,12 @@
     font-size: 11px;
     letter-spacing: 1px;
     z-index: 100;
-    opacity: 0;
-    transform: translateY(-6px);
-    transition: opacity 0.25s, transform 0.25s;
+    opacity: 0.55;   /* always visible at 55%, brightens on save */
+    transition: opacity 0.25s, background 0.25s, border-color 0.25s;
     pointer-events: none;
+    border-radius: 4px;
   }
-  #save-indicator.show { opacity: 1; transform: translateY(0); }
+  #save-indicator.show { opacity: 1; }
   #save-button {
     position: fixed; top: 12px; right: 12px;
     background: linear-gradient(180deg, #22c55e 0%, #166534 100%);
@@ -474,8 +474,8 @@
 <body>
 
 <a href="index.html" class="home-link">‹ BACK</a>
-<div id="save-indicator">AUTO-SAVED ✓</div>
-<button id="save-button" title="Save your progress now">💾 SAVE</button>
+<div id="save-indicator" class="show">AUTO-SAVE</div>
+<button id="save-button" title="Save your progress now (right-click for diagnostic)">💾 SAVE</button>
 
 <canvas id="game"></canvas>
 <div id="damage-flash"></div>
@@ -1063,15 +1063,16 @@ function flashSave(ok) {
   if (!el) return;
   if (ok === false) {
     el.textContent = "⚠ SAVE FAILED";
-    el.style.background = "rgba(239,68,68,0.18)";
+    el.style.background = "rgba(239,68,68,0.22)";
     el.style.borderColor = "#ef4444";
     el.style.color = "#fca5a5";
   } else {
-    el.textContent = "SAVED ✓ (LS: " + ((localStorage.getItem(SAVE_KEY) || "").length) + "b)";
-    el.style.background = "rgba(52,211,153,0.18)";
+    el.textContent = "SAVED ✓ (" + ((localStorage.getItem(SAVE_KEY) || "").length) + "b)";
+    el.style.background = "rgba(52,211,153,0.22)";
     el.style.borderColor = "#34d399";
     el.style.color = "#6ee7b7";
   }
+  // Flash bright, then fall back to the always-visible dim state (still shows text).
   el.classList.add("show");
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => el.classList.remove("show"), 2000);
