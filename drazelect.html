@@ -524,7 +524,45 @@
       <button class="btn" id="start-go" disabled>BEGIN HUNT ›</button>
       <button class="btn secondary" id="start-shop">SHOP</button>
       <button class="btn" id="start-remap" style="background:linear-gradient(180deg,#60a5fa,#1e40af); border-color:#93c5fd;">⌨ REMAP KEYS</button>
+      <button class="btn" id="start-tree" style="background:linear-gradient(180deg,#3a80ff,#0a1a5a); border-color:#70c0ff;">🌳 EVOLUTION TREE</button>
     </div>
+  </div>
+</div>
+
+<!-- ========== EVOLUTION TREE (animated) ========== -->
+<div id="evo-tree-overlay" class="overlay">
+  <div class="panel" style="max-width:900px;">
+    <div class="panel-title" style="color:#60b0ff; text-shadow:0 0 20px rgba(96,176,255,0.6);">🌳 EVOLUTION TREE</div>
+    <div class="panel-sub">Your dragon's path of evolution. Current form glows brighter.</div>
+    <canvas id="evo-tree-canvas" width="820" height="440" style="display:block; margin: 12px auto; background: radial-gradient(ellipse at center, rgba(58,128,255,0.08) 0%, rgba(8,8,14,0.6) 70%); border: 2px solid #3a80ff; border-radius: 8px;"></canvas>
+    <div>
+      <button class="btn" id="evo-tree-close">CLOSE ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== EVOLUTION CHOICE (LV 40) ========== -->
+<div id="evo-overlay" class="overlay">
+  <div class="panel" style="max-width:820px;">
+    <div class="panel-title" style="color:#60b0ff; text-shadow:0 0 20px rgba(96,176,255,0.6);">✦ EVOLUTION ✦</div>
+    <div class="panel-sub">You've reached LV 40. Choose your evolved form — this choice is <strong style="color:#fcd34d;">permanent for this run</strong>.</div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin: 18px 0;">
+      <div class="evo-card" id="evo-scales" style="background:linear-gradient(180deg, rgba(58,128,255,0.15) 0%, rgba(8,8,14,0.5) 100%); border:3px solid #3a80ff; padding:20px; border-radius:8px; cursor:pointer; transition:transform 0.15s, box-shadow 0.15s;">
+        <div style="font-family:'Cinzel',serif; font-size:22px; color:#60b0ff; letter-spacing:3px; text-shadow:0 0 12px rgba(96,176,255,0.7); text-align:center; margin-bottom:8px;">SCALES DRAGON</div>
+        <canvas id="evo-preview-scales" width="200" height="140" style="display:block; margin:0 auto 8px;"></canvas>
+        <div style="color:rgba(240,230,216,0.85); font-size:13px; text-align:center; line-height:1.5;">
+          Quadrupedal armored wyvern with <strong style="color:#60b0ff;">wings that never stop flapping</strong>, blue-lit belly plates, spine spikes, and a long snouted head with swept-back horns.
+        </div>
+      </div>
+      <div class="evo-card" id="evo-snake" style="background:linear-gradient(180deg, rgba(58,128,255,0.15) 0%, rgba(8,8,14,0.5) 100%); border:3px solid #3a80ff; padding:20px; border-radius:8px; cursor:pointer; transition:transform 0.15s, box-shadow 0.15s;">
+        <div style="font-family:'Cinzel',serif; font-size:22px; color:#60b0ff; letter-spacing:3px; text-shadow:0 0 12px rgba(96,176,255,0.7); text-align:center; margin-bottom:8px;">SNAKE DRAGON</div>
+        <canvas id="evo-preview-snake" width="200" height="140" style="display:block; margin:0 auto 8px;"></canvas>
+        <div style="color:rgba(240,230,216,0.85); font-size:13px; text-align:center; line-height:1.5;">
+          Long serpentine cobra with 10 undulating body segments, bared fangs, glowing dual eyes, and a <strong style="color:#60b0ff;">flickering forked tongue</strong>.
+        </div>
+      </div>
+    </div>
+    <div style="font-size:12px; color:rgba(240,230,216,0.55);">Click either form to commit and continue.</div>
   </div>
 </div>
 
@@ -562,6 +600,7 @@
     <div class="ab-grid" id="inv-abilities"></div>
     <div>
       <button class="btn" id="inv-remap" style="background:linear-gradient(180deg,#60a5fa,#1e40af); border-color:#93c5fd;">⌨ REMAP KEYS</button>
+      <button class="btn" id="inv-tree" style="background:linear-gradient(180deg,#3a80ff,#0a1a5a); border-color:#70c0ff;">🌳 EVOLUTION TREE</button>
       <button class="btn" id="inv-close">CLOSE ›</button>
     </div>
   </div>
@@ -875,17 +914,17 @@ const ABILITIES = {
     type: "beam", dmg: 90, cooldown: 60, range: 420, width: 28,
     color: "#f8f0a0", core: "#ffffff",
   },
-  psystrike: {
-    name: "PSYSTRIKE", icon: "💠", element: "psychic", cost: 2200,
-    desc: "Mewtwo's move — 300 damage on random target",
-    type: "self", dmg: 300, cooldown: 200, targetRandom: true,
-    color: "#f070c0", core: "#ffc0e8",
-  },
   vcreate: {
     name: "SUPERNOVA", icon: "🔴", element: "fire", cost: 2200,
     desc: "Detonate a searing star of flame — huge AOE burn",
     type: "aoe", dmg: 100, cooldown: 80, radius: 160,
     color: "#ff2020", core: "#ffb060",
+  },
+  psystrike: {
+    name: "PSYSTRIKE", icon: "💠", element: "psychic", cost: 2200,
+    desc: "A focused mind-blast that pierces one distant foe — 300 dmg",
+    type: "self", dmg: 300, cooldown: 200, targetRandom: true,
+    color: "#f070c0", core: "#ffc0e8",
   },
 };
 
@@ -960,6 +999,8 @@ function defaultSave() {
     keyBindings: ["1", "2", "3", "4", "5", "6"],
     // Persistent ability→slot bindings (kept across deaths).
     slotBindings: [null, null, null, null, null, null],
+    // Chosen evolution form at LV 40: "scales" | "snake" | null (not chosen yet)
+    evolutionForm: null,
   };
 }
 // Reserved keys that can't be bound (used by movement/UI)
@@ -1461,7 +1502,11 @@ function onLevelUp() {
   setTimeout(() => flash.classList.remove("show"), 900);
   player.maxHp += 8;
   player.hp = Math.min(player.maxHp, player.hp + 20);
-  // Every 10 levels: unlock a new slot + open the ability picker
+  // LV 40: first time — open evolution-form picker
+  if (player.level === 40 && !persistent.evolutionForm) {
+    openEvolutionPicker();
+  }
+  // Every 20 levels: unlock a new slot + open the ability picker
   if (player.level % 20 === 0 && player.level <= 100) {
     const newSlots = slotsForLevel(player.level);
     if (newSlots > player.unlockedSlots) player.unlockedSlots = newSlots;
@@ -1471,6 +1516,216 @@ function onLevelUp() {
   updateSlotBar();
   save();
 }
+
+// ============================================================
+// EVOLUTION PICKER — shown at LV 40, once per game
+// ============================================================
+function openEvolutionPicker() {
+  document.getElementById("evo-overlay").classList.add("show");
+  // Render mini previews of each form
+  drawEvolutionPreview("evo-preview-scales", "scales");
+  drawEvolutionPreview("evo-preview-snake", "snake");
+}
+function drawEvolutionPreview(canvasId, form) {
+  const c = document.getElementById(canvasId);
+  if (!c) return;
+  const pctx = c.getContext("2d");
+  pctx.clearRect(0, 0, c.width, c.height);
+  // Temporarily hijack ctx + player.facing to draw the mini dragon
+  const origCtx = ctx;
+  const origFacing = player.facing;
+  window.ctx = pctx;   // functions read the global "ctx"
+  player.facing = 0;
+  try {
+    if (form === "scales") drawScalesDragon(c.width / 2, c.height / 2 + 5, "#3a80ff");
+    else drawSnakeDragon(c.width / 2, c.height / 2 + 5, "#3a80ff");
+  } catch (e) {}
+  window.ctx = origCtx;
+  player.facing = origFacing;
+}
+// ============================================================
+// EVOLUTION TREE — animated visualization of dragon evolution paths
+// ============================================================
+function openEvolutionTree() {
+  document.getElementById("evo-tree-overlay").classList.add("show");
+  if (!evoTreeAnimHandle) {
+    evoTreeAnimHandle = setInterval(drawEvolutionTree, 40);   // ~25 FPS
+  }
+  drawEvolutionTree();
+}
+let evoTreeAnimHandle = null;
+function closeEvolutionTree() {
+  document.getElementById("evo-tree-overlay").classList.remove("show");
+  if (evoTreeAnimHandle) { clearInterval(evoTreeAnimHandle); evoTreeAnimHandle = null; }
+}
+document.getElementById("start-tree").addEventListener("click", openEvolutionTree);
+document.getElementById("inv-tree").addEventListener("click", openEvolutionTree);
+document.getElementById("evo-tree-close").addEventListener("click", closeEvolutionTree);
+
+// Current form the player is (or would be at their current level)
+function currentDragonForm() {
+  if (player.level >= 40) return persistent.evolutionForm || "scales";
+  return "baby";
+}
+
+// Node in the evolution tree: { form, x, y, r, minLevel, unlocked, current, label }
+function evoNodes() {
+  const lvl = Math.max(player.level, persistent.bestLevel || 1);
+  const chosen = persistent.evolutionForm;
+  const curr = currentDragonForm();
+  return [
+    { form: "baby",   x: 410, y: 70,  r: 45, minLevel: 1,   label: "BABY",   labelSub: "LV 1",  unlocked: true,        current: curr === "baby" },
+    { form: "scales", x: 240, y: 240, r: 55, minLevel: 40,  label: "SCALES", labelSub: "LV 40", unlocked: lvl >= 40 && (chosen !== "snake"),  current: curr === "scales" },
+    { form: "snake",  x: 580, y: 240, r: 55, minLevel: 40,  label: "SNAKE",  labelSub: "LV 40", unlocked: lvl >= 40 && (chosen !== "scales"), current: curr === "snake" },
+    { form: "future", x: 410, y: 380, r: 40, minLevel: 80,  label: "???",    labelSub: "LV 80", unlocked: false, current: false },
+  ];
+}
+
+function drawEvolutionTree() {
+  const c = document.getElementById("evo-tree-canvas");
+  if (!c) return;
+  const tctx = c.getContext("2d");
+  tctx.clearRect(0, 0, c.width, c.height);
+  const nodes = evoNodes();
+  const byForm = {};
+  for (const n of nodes) byForm[n.form] = n;
+
+  // ===== Connections (animated pulse flowing from parent to children) =====
+  const pulse = (Date.now() / 800) % 1;   // 0 → 1 over 800ms
+  const connections = [
+    { from: byForm.baby,   to: byForm.scales, live: byForm.scales.unlocked || player.level >= 40 },
+    { from: byForm.baby,   to: byForm.snake,  live: byForm.snake.unlocked  || player.level >= 40 },
+    { from: byForm.scales, to: byForm.future, live: false },
+    { from: byForm.snake,  to: byForm.future, live: false },
+  ];
+  for (const conn of connections) {
+    const { from, to, live } = conn;
+    // Base line
+    tctx.strokeStyle = live ? "rgba(96,176,255,0.55)" : "rgba(96,176,255,0.15)";
+    tctx.lineWidth = live ? 3 : 2;
+    tctx.setLineDash(live ? [] : [6, 6]);
+    tctx.beginPath();
+    tctx.moveTo(from.x, from.y + from.r);
+    tctx.lineTo(to.x,   to.y   - to.r);
+    tctx.stroke();
+    tctx.setLineDash([]);
+    // Animated flowing pulse dot along active connections
+    if (live) {
+      for (let p = 0; p < 3; p++) {
+        const t = (pulse + p / 3) % 1;
+        const px = from.x + (to.x - from.x) * t;
+        const py = (from.y + from.r) + ((to.y - to.r) - (from.y + from.r)) * t;
+        const grad = tctx.createRadialGradient(px, py, 0, px, py, 8);
+        grad.addColorStop(0, "#e0f0ff");
+        grad.addColorStop(0.5, "#70c0ff");
+        grad.addColorStop(1, "rgba(96,176,255,0)");
+        tctx.fillStyle = grad;
+        tctx.beginPath(); tctx.arc(px, py, 8, 0, Math.PI * 2); tctx.fill();
+      }
+    }
+  }
+
+  // ===== Nodes =====
+  for (const n of nodes) {
+    // Halo/glow behind current form
+    if (n.current) {
+      const glowSize = n.r + 20 + Math.sin(Date.now() * 0.005) * 4;
+      const halo = tctx.createRadialGradient(n.x, n.y, n.r * 0.6, n.x, n.y, glowSize);
+      halo.addColorStop(0, "rgba(96,176,255,0.4)");
+      halo.addColorStop(1, "rgba(96,176,255,0)");
+      tctx.fillStyle = halo;
+      tctx.beginPath(); tctx.arc(n.x, n.y, glowSize, 0, Math.PI * 2); tctx.fill();
+    }
+    // Circular frame
+    tctx.fillStyle = n.unlocked ? "rgba(10,10,18,0.9)" : "rgba(10,10,18,0.6)";
+    tctx.beginPath(); tctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); tctx.fill();
+    // Ring
+    tctx.strokeStyle = n.current ? "#e0f0ff" : (n.unlocked ? "#3a80ff" : "rgba(96,176,255,0.3)");
+    tctx.lineWidth = n.current ? 4 : (n.unlocked ? 2.5 : 1.5);
+    tctx.beginPath(); tctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); tctx.stroke();
+    // Dragon inside (or ? for locked)
+    if (n.form === "future" || !n.unlocked) {
+      // Locked / unknown
+      tctx.fillStyle = n.unlocked ? "#70c0ff" : "rgba(96,176,255,0.4)";
+      tctx.font = "bold " + Math.floor(n.r * 0.9) + "px 'Cinzel', serif";
+      tctx.textAlign = "center"; tctx.textBaseline = "middle";
+      tctx.fillText(n.form === "future" ? "?" : "🔒", n.x, n.y);
+    } else {
+      // Draw the actual dragon inside the node
+      const origCtx = ctx; const origFacing = player.facing;
+      window.ctx = tctx; player.facing = 0;
+      // Clip to circle so dragon can't spill out
+      tctx.save();
+      tctx.beginPath(); tctx.arc(n.x, n.y, n.r - 3, 0, Math.PI * 2); tctx.clip();
+      // Scale factor: fit ~80px dragon into node radius
+      const scale = n.r / 45;
+      tctx.translate(n.x, n.y);
+      tctx.scale(scale, scale);
+      try {
+        if (n.form === "baby") drawBabyDragon(0, 0, "#3a80ff");
+        else if (n.form === "scales") drawScalesDragon(0, 0, "#3a80ff");
+        else if (n.form === "snake") drawSnakeDragon(0, 0, "#3a80ff");
+      } catch (e) {}
+      tctx.restore();
+      window.ctx = origCtx; player.facing = origFacing;
+    }
+    // Label
+    tctx.fillStyle = n.current ? "#e0f0ff" : (n.unlocked ? "#fcd34d" : "rgba(240,230,216,0.5)");
+    tctx.font = "bold 14px 'Cinzel', serif";
+    tctx.textAlign = "center"; tctx.textBaseline = "middle";
+    tctx.fillText(n.label, n.x, n.y + n.r + 16);
+    // Sub-label (LV requirement)
+    tctx.fillStyle = "rgba(240,230,216,0.6)";
+    tctx.font = "11px 'Cinzel', serif";
+    tctx.fillText(n.labelSub, n.x, n.y + n.r + 32);
+    // "CURRENT" tag above the current node
+    if (n.current) {
+      tctx.fillStyle = "#fcd34d";
+      tctx.fillRect(n.x - 40, n.y - n.r - 22, 80, 18);
+      tctx.fillStyle = "#0a0a12";
+      tctx.font = "bold 11px 'Cinzel', serif";
+      tctx.fillText("★ CURRENT ★", n.x, n.y - n.r - 13);
+    }
+  }
+
+  // Title text at top
+  tctx.fillStyle = "rgba(240,230,216,0.5)";
+  tctx.font = "11px 'Cinzel', serif";
+  tctx.textAlign = "left";
+  tctx.fillText("Best LV reached: " + (persistent.bestLevel || 1), 12, 18);
+  tctx.textAlign = "right";
+  tctx.fillText("Current LV: " + player.level, c.width - 12, 18);
+}
+
+document.getElementById("evo-scales").addEventListener("click", () => {
+  persistent.evolutionForm = "scales";
+  save();
+  document.getElementById("evo-overlay").classList.remove("show");
+});
+document.getElementById("evo-snake").addEventListener("click", () => {
+  persistent.evolutionForm = "snake";
+  save();
+  document.getElementById("evo-overlay").classList.remove("show");
+});
+// Hover feedback for evo cards
+for (const cardId of ["evo-scales", "evo-snake"]) {
+  const card = document.getElementById(cardId);
+  card.addEventListener("mouseenter", () => {
+    card.style.transform = "translateY(-4px)";
+    card.style.boxShadow = "0 0 30px rgba(96,176,255,0.6)";
+  });
+  card.addEventListener("mouseleave", () => {
+    card.style.transform = "";
+    card.style.boxShadow = "";
+  });
+}
+// Re-render previews continuously while overlay is open (so the animation shows)
+setInterval(() => {
+  if (document.getElementById("evo-overlay").classList.contains("show")) {
+    drawEvolutionPreview("evo-preview-scales", "scales");
+    drawEvolutionPreview("evo-preview-snake", "snake");
+  }
+}, 60);
 
 // ============================================================
 // PLAYER MOVEMENT + DAMAGE + DEATH
@@ -2303,8 +2558,10 @@ function drawDragon() {
   const sx = W / 2, sy = H / 2;
   const el = ABILITIES[player.slots[0] || persistent.startingElement];
   const bellyColor = el ? el.color : "#c86040";
-  // Choose evolution form by level: baby → scales (LV 40) → snake (LV 80)
-  if (player.level >= 80) {
+  // LV 1-39: baby dragon.
+  // LV 40+: the form the player chose at the LV 40 evolution prompt
+  //         (either "scales" or "snake"). Defaults to scales if no choice.
+  if (player.level >= 40 && persistent.evolutionForm === "snake") {
     drawSnakeDragon(sx, sy, bellyColor);
   } else if (player.level >= 40) {
     drawScalesDragon(sx, sy, bellyColor);
@@ -2350,198 +2607,436 @@ function drawBabyDragon(sx, sy, bellyColor) {
   ctx.restore();
 }
 
-// ---- SCALES DRAGON (LV 40-79): bigger, detailed scales, dramatic always-flapping wings ----
+// ---- SCALES DRAGON (LV 40+): black body with electric-blue lightning veins ----
+// Matches the electric black+blue reference — obsidian body, lightning-cracked
+// wing membrane, jagged blue fringe spikes all over, glowing blue eye.
 function drawScalesDragon(sx, sy, bellyColor) {
-  const bodyColor  = "#5a2410";
-  const scaleLight = "#a05030";
-  const scaleDark  = "#3a1808";
+  const bodyBlack = "#0a0a12";
+  const bodyEdge  = "#1c1c28";
+  const bluBright = "#2050ff";
+  const bluDeep   = "#0a1a5a";
+  const bluGlow   = "#70c0ff";
+  const bluCore   = "#e0f0ff";
   ctx.save();
   ctx.translate(sx, sy);
   ctx.rotate(player.facing);
-  // Shadow (bigger)
-  ctx.fillStyle = "rgba(0,0,0,0.55)";
-  ctx.beginPath(); ctx.ellipse(6, 10, 42, 20, 0, 0, Math.PI * 2); ctx.fill();
-  // Big always-flapping wings (dramatic amplitude, faster cycle)
-  const flap = Math.sin(Date.now() * 0.014);   // continuous, never stops
-  ctx.fillStyle = "#3a1408";
-  // Left wing
-  ctx.save(); ctx.rotate(-0.15 + flap * 0.6);
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.65)";
+  ctx.beginPath(); ctx.ellipse(6, 14, 50, 22, 0, 0, Math.PI * 2); ctx.fill();
+  // ===== WINGS — dark membrane with electric lightning veins =====
+  const flap = Math.sin(Date.now() * 0.014);
+  const lightningPulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.008);
+  drawScalesWing(-1, -0.15 + flap * 0.65, bodyBlack, bodyEdge, bluBright, bluGlow, bluCore, lightningPulse);
+  drawScalesWing(1, 0.15 - flap * 0.65, bodyBlack, bodyEdge, bluBright, bluGlow, bluCore, lightningPulse);
+  // ===== TAIL — segmented with jagged blue fringe =====
+  ctx.fillStyle = bodyBlack;
   ctx.beginPath();
-  ctx.moveTo(2, -8);
-  ctx.quadraticCurveTo(-16, -50, -46, -30);
-  ctx.quadraticCurveTo(-30, -14, -8, -6);
+  ctx.moveTo(-26, -7);
+  ctx.quadraticCurveTo(-54, 0, -28, 7);
   ctx.closePath(); ctx.fill();
-  // wing bones
-  ctx.strokeStyle = "#1a0800"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(-40, -26); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(-32, -18); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(-24, -12); ctx.stroke();
-  ctx.restore();
-  // Right wing
-  ctx.save(); ctx.rotate(0.15 - flap * 0.6);
-  ctx.fillStyle = "#3a1408";
+  // Blue underside stripe
+  ctx.fillStyle = bluBright;
   ctx.beginPath();
-  ctx.moveTo(2, 8);
-  ctx.quadraticCurveTo(-16, 50, -46, 30);
-  ctx.quadraticCurveTo(-30, 14, -8, 6);
+  ctx.moveTo(-28, 2);
+  ctx.quadraticCurveTo(-48, 3, -28, 6);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "#1a0800"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-40, 26); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-32, 18); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-24, 12); ctx.stroke();
-  ctx.restore();
-  // Tail
-  ctx.fillStyle = bodyColor;
+  // Tail lightning vein
+  ctx.strokeStyle = bluCore; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+  ctx.globalAlpha = lightningPulse;
   ctx.beginPath();
-  ctx.moveTo(-24, -6);
-  ctx.quadraticCurveTo(-46, 0, -26, 6);
-  ctx.closePath(); ctx.fill();
-  // Tail spikes
-  ctx.fillStyle = "#180800";
-  for (let t = 0; t < 3; t++) {
+  ctx.moveTo(-28, 0); ctx.lineTo(-34, -1); ctx.lineTo(-42, 1); ctx.lineTo(-48, 0);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // Jagged blue fringe spikes rising off the tail (like flames)
+  for (let t = 0; t < 5; t++) {
+    const tx = -26 - t * 4;
+    ctx.fillStyle = bluBright;
     ctx.beginPath();
-    ctx.moveTo(-30 - t*3, -3); ctx.lineTo(-34 - t*3, -8); ctx.lineTo(-32 - t*3, -2); ctx.closePath(); ctx.fill();
+    ctx.moveTo(tx, -4); ctx.lineTo(tx - 3, -14); ctx.lineTo(tx + 2, -8); ctx.lineTo(tx + 4, -14); ctx.lineTo(tx + 6, -4);
+    ctx.closePath(); ctx.fill();
+    // Inner glow
+    ctx.fillStyle = bluGlow;
     ctx.beginPath();
-    ctx.moveTo(-30 - t*3, 3); ctx.lineTo(-34 - t*3, 8); ctx.lineTo(-32 - t*3, 2); ctx.closePath(); ctx.fill();
+    ctx.moveTo(tx + 1, -5); ctx.lineTo(tx, -11); ctx.lineTo(tx + 3, -8); ctx.lineTo(tx + 4, -11); ctx.lineTo(tx + 5, -5);
+    ctx.closePath(); ctx.fill();
   }
-  // Tail tip
+  // Tail-tip trident barb
+  ctx.fillStyle = bluBright;
   ctx.beginPath();
-  ctx.moveTo(-40, -3); ctx.lineTo(-50, 0); ctx.lineTo(-40, 3); ctx.closePath(); ctx.fill();
-  // Body (bigger)
-  ctx.fillStyle = bodyColor;
-  ctx.beginPath(); ctx.ellipse(0, 0, 28, 17, 0, 0, Math.PI * 2); ctx.fill();
-  // Belly
-  ctx.fillStyle = bellyColor;
-  ctx.beginPath(); ctx.ellipse(4, 0, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
-  // SCALE PATTERN — overlapping arcs across the body
+  ctx.moveTo(-46, -4); ctx.lineTo(-58, -3); ctx.lineTo(-52, 0); ctx.lineTo(-58, 3); ctx.lineTo(-46, 4);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = bluGlow;
+  ctx.beginPath(); ctx.arc(-54, 0, 2.2, 0, Math.PI * 2); ctx.fill();
+  // ===== BODY =====
+  ctx.fillStyle = bodyBlack;
+  ctx.beginPath(); ctx.ellipse(0, 0, 30, 18, 0, 0, Math.PI * 2); ctx.fill();
+  // Blue belly plate + chevron segments
   ctx.save();
-  ctx.beginPath(); ctx.ellipse(0, 0, 28, 17, 0, 0, Math.PI * 2); ctx.clip();
-  for (let row = -12; row <= 12; row += 5) {
-    const offset = (row / 5) % 2 === 0 ? 0 : 3;
-    for (let col = -24 + offset; col <= 20; col += 6) {
-      ctx.fillStyle = scaleLight;
-      ctx.beginPath(); ctx.arc(col, row, 3, Math.PI, 0); ctx.fill();
-      ctx.strokeStyle = scaleDark; ctx.lineWidth = 0.6;
-      ctx.beginPath(); ctx.arc(col, row, 3, Math.PI, 0); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, 0, 30, 18, 0, 0, Math.PI * 2); ctx.clip();
+  // Belly gradient
+  const bellyGrad = ctx.createLinearGradient(0, -4, 0, 8);
+  bellyGrad.addColorStop(0, bluDeep);
+  bellyGrad.addColorStop(0.5, bluBright);
+  bellyGrad.addColorStop(1, bluGlow);
+  ctx.fillStyle = bellyGrad;
+  ctx.beginPath(); ctx.ellipse(4, 2, 22, 9, 0, 0, Math.PI * 2); ctx.fill();
+  // Chevron plates
+  ctx.strokeStyle = bluDeep; ctx.lineWidth = 0.8;
+  for (let bx = -18; bx <= 20; bx += 5) {
+    ctx.fillStyle = bluGlow;
+    ctx.beginPath();
+    ctx.moveTo(bx - 2.5, -2); ctx.lineTo(bx + 2.5, -2);
+    ctx.lineTo(bx + 3.5, 5); ctx.lineTo(bx - 3.5, 5);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  // Diagonal black scale pattern
+  for (let row = -14; row <= 12; row += 4) {
+    const off = ((row + 14) / 4) % 2 === 0 ? 0 : 2.5;
+    for (let col = -26 + off; col <= 22; col += 5) {
+      if (Math.abs(row) < 7 && col > -18 && col < 20) continue;
+      ctx.fillStyle = bodyEdge;
+      ctx.beginPath(); ctx.arc(col, row, 2.6, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 0.5;
+      ctx.stroke();
     }
   }
+  // LIGHTNING VEINS across the body (pulsing)
+  ctx.strokeStyle = bluCore; ctx.lineWidth = 0.8; ctx.lineCap = "round";
+  ctx.globalAlpha = lightningPulse;
+  // vein 1
+  ctx.beginPath();
+  ctx.moveTo(-20, -10); ctx.lineTo(-14, -6); ctx.lineTo(-8, -10); ctx.lineTo(-2, -4);
+  ctx.stroke();
+  // vein 2
+  ctx.beginPath();
+  ctx.moveTo(6, -12); ctx.lineTo(12, -8); ctx.lineTo(18, -12); ctx.lineTo(22, -6);
+  ctx.stroke();
+  // vein 3 (shoulder)
+  ctx.beginPath();
+  ctx.moveTo(-12, -12); ctx.lineTo(-6, -14); ctx.lineTo(2, -10);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
   ctx.restore();
-  // Spine ridges along the back
-  ctx.fillStyle = "#180800";
-  for (let s = -20; s <= 16; s += 6) {
+  // Spine ridge — dramatic jagged fringe (flame-like) instead of simple spikes
+  for (let s = -22; s <= 18; s += 4) {
+    ctx.fillStyle = bluBright;
     ctx.beginPath();
-    ctx.moveTo(s, -14); ctx.lineTo(s + 2, -20); ctx.lineTo(s + 4, -14); ctx.closePath(); ctx.fill();
+    ctx.moveTo(s, -14); ctx.lineTo(s + 2, -24); ctx.lineTo(s + 4, -18); ctx.lineTo(s + 5, -14);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = bluGlow;
+    ctx.beginPath();
+    ctx.moveTo(s + 1, -14); ctx.lineTo(s + 2.5, -22); ctx.lineTo(s + 4, -14);
+    ctx.closePath(); ctx.fill();
   }
-  // Neck
-  ctx.fillStyle = bodyColor;
-  ctx.beginPath(); ctx.ellipse(20, 0, 12, 10, 0, 0, Math.PI * 2); ctx.fill();
-  // Head (bigger, more angular)
-  ctx.beginPath(); ctx.moveTo(24, -8); ctx.lineTo(38, -4); ctx.lineTo(40, 0); ctx.lineTo(38, 4); ctx.lineTo(24, 8); ctx.closePath(); ctx.fill();
-  // Head scales
-  ctx.fillStyle = scaleLight;
-  ctx.beginPath(); ctx.arc(28, -3, 2, Math.PI, 0); ctx.fill();
-  ctx.beginPath(); ctx.arc(32, -2, 2, Math.PI, 0); ctx.fill();
-  ctx.beginPath(); ctx.arc(28, 3, 2, 0, Math.PI); ctx.fill();
-  ctx.beginPath(); ctx.arc(32, 2, 2, 0, Math.PI); ctx.fill();
-  // Horns (bigger, swept back)
-  ctx.fillStyle = "#180800";
-  ctx.beginPath(); ctx.moveTo(24, -8); ctx.lineTo(14, -22); ctx.lineTo(22, -10); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(30, -8); ctx.lineTo(22, -24); ctx.lineTo(28, -10); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(24, 8);  ctx.lineTo(14, 22);  ctx.lineTo(22, 10);  ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(30, 8);  ctx.lineTo(22, 24);  ctx.lineTo(28, 10);  ctx.closePath(); ctx.fill();
-  // Fang
-  ctx.fillStyle = "#f0e6d0";
-  ctx.beginPath(); ctx.moveTo(37, 2); ctx.lineTo(36, 6); ctx.lineTo(38, 3); ctx.closePath(); ctx.fill();
-  // Eye (glowing gold)
-  ctx.fillStyle = "#fcd34d";
-  ctx.beginPath(); ctx.arc(32, -3, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#000";
-  ctx.beginPath(); ctx.ellipse(33, -3, 0.8, 2, 0, 0, Math.PI * 2); ctx.fill();
+  // ===== NECK & HEAD =====
+  ctx.fillStyle = bodyBlack;
+  ctx.beginPath(); ctx.ellipse(20, 0, 13, 11, 0, 0, Math.PI * 2); ctx.fill();
+  // Blue neck belly with chevrons
+  ctx.fillStyle = bluBright;
+  ctx.beginPath(); ctx.ellipse(22, 3, 9, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = bluGlow;
+  ctx.strokeStyle = bluDeep; ctx.lineWidth = 0.5;
+  for (let ny = 0; ny <= 4; ny += 2) {
+    ctx.beginPath();
+    ctx.moveTo(18, ny); ctx.lineTo(26, ny);
+    ctx.lineTo(26, ny + 1.5); ctx.lineTo(18, ny + 1.5);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  // Head (angular)
+  ctx.fillStyle = bodyBlack;
+  ctx.beginPath();
+  ctx.moveTo(24, -9); ctx.lineTo(42, -5); ctx.lineTo(44, 0); ctx.lineTo(42, 5); ctx.lineTo(24, 9);
+  ctx.closePath(); ctx.fill();
+  // Head lightning vein
+  ctx.strokeStyle = bluCore; ctx.lineWidth = 0.7;
+  ctx.globalAlpha = lightningPulse;
+  ctx.beginPath();
+  ctx.moveTo(25, -6); ctx.lineTo(30, -3); ctx.lineTo(36, -6); ctx.lineTo(40, -3);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // Blue jaw stripe
+  ctx.fillStyle = bluBright;
+  ctx.beginPath();
+  ctx.moveTo(28, 4); ctx.lineTo(42, 3); ctx.lineTo(40, 7); ctx.lineTo(28, 7);
+  ctx.closePath(); ctx.fill();
+  // ===== HORNS — fan of jagged blue spikes on top of head =====
+  const horns = [
+    { x1: 24, y1: -8, x2: 8,  y2: -28, x3: 22, y3: -12 },
+    { x1: 28, y1: -9, x2: 16, y2: -32, x3: 26, y3: -12 },
+    { x1: 32, y1: -8, x2: 24, y2: -30, x3: 30, y3: -11 },
+    { x1: 22, y1: -7, x2: 4,  y2: -22, x3: 20, y3: -10 },
+  ];
+  for (const h of horns) {
+    ctx.fillStyle = bodyBlack;
+    ctx.beginPath(); ctx.moveTo(h.x1, h.y1); ctx.lineTo(h.x2, h.y2); ctx.lineTo(h.x3, h.y3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = bluGlow;
+    ctx.beginPath();
+    ctx.moveTo(h.x2 - 1, h.y2 + 2); ctx.lineTo(h.x2, h.y2 - 3); ctx.lineTo(h.x2 + 3, h.y2 + 2);
+    ctx.closePath(); ctx.fill();
+  }
+  // Cheek jagged fringe
+  ctx.fillStyle = bluBright;
+  ctx.beginPath();
+  ctx.moveTo(22, 6); ctx.lineTo(14, 16); ctx.lineTo(18, 10); ctx.lineTo(12, 18); ctx.lineTo(22, 10);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = bluGlow;
+  ctx.beginPath(); ctx.moveTo(18, 8); ctx.lineTo(15, 14); ctx.lineTo(19, 10); ctx.closePath(); ctx.fill();
+  // ===== EYE — bright glowing blue with radial halo =====
+  const eyeGrad = ctx.createRadialGradient(35, -3, 0, 35, -3, 7);
+  eyeGrad.addColorStop(0, bluCore);
+  eyeGrad.addColorStop(0.35, bluGlow);
+  eyeGrad.addColorStop(0.7, bluBright);
+  eyeGrad.addColorStop(1, "rgba(32,80,255,0)");
+  ctx.fillStyle = eyeGrad;
+  ctx.beginPath(); ctx.arc(35, -3, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath(); ctx.arc(35, -3, 1.8, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
-// ---- SNAKE DRAGON (LV 80+): long serpentine body, no wings ----
+// Helper for scales-dragon wings with lightning cracks
+function drawScalesWing(side, angle, bodyBlack, bodyEdge, bluBright, bluGlow, bluCore, pulse) {
+  ctx.save(); ctx.rotate(angle);
+  const s = side;
+  // Dark leathery frame
+  ctx.fillStyle = bodyBlack;
+  ctx.beginPath();
+  ctx.moveTo(2, 8 * s);
+  ctx.quadraticCurveTo(-14, 54 * s, -52, 34 * s);
+  ctx.quadraticCurveTo(-30, 12 * s, -8, 6 * s);
+  ctx.closePath(); ctx.fill();
+  // Dark membrane inset
+  ctx.fillStyle = bodyEdge;
+  ctx.beginPath();
+  ctx.moveTo(-4, 10 * s);
+  ctx.quadraticCurveTo(-16, 48 * s, -44, 30 * s);
+  ctx.quadraticCurveTo(-24, 13 * s, -8, 8 * s);
+  ctx.closePath(); ctx.fill();
+  // ELECTRIC LIGHTNING VEINS across membrane (pulsing)
+  ctx.strokeStyle = bluCore; ctx.lineWidth = 1.5; ctx.lineCap = "round";
+  ctx.globalAlpha = pulse;
+  // main vein
+  ctx.beginPath();
+  ctx.moveTo(-4, 12 * s);
+  ctx.lineTo(-14, 22 * s); ctx.lineTo(-10, 28 * s); ctx.lineTo(-22, 32 * s); ctx.lineTo(-30, 26 * s); ctx.lineTo(-44, 30 * s);
+  ctx.stroke();
+  // branch 1
+  ctx.beginPath();
+  ctx.moveTo(-14, 22 * s); ctx.lineTo(-20, 18 * s); ctx.lineTo(-28, 22 * s);
+  ctx.stroke();
+  // branch 2
+  ctx.beginPath();
+  ctx.moveTo(-22, 32 * s); ctx.lineTo(-32, 38 * s); ctx.lineTo(-40, 32 * s);
+  ctx.stroke();
+  // branch 3
+  ctx.beginPath();
+  ctx.moveTo(-10, 28 * s); ctx.lineTo(-6, 34 * s);
+  ctx.stroke();
+  // Glow around veins
+  ctx.strokeStyle = bluGlow; ctx.lineWidth = 3;
+  ctx.globalAlpha = pulse * 0.4;
+  ctx.beginPath();
+  ctx.moveTo(-4, 12 * s);
+  ctx.lineTo(-14, 22 * s); ctx.lineTo(-10, 28 * s); ctx.lineTo(-22, 32 * s); ctx.lineTo(-30, 26 * s); ctx.lineTo(-44, 30 * s);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // Wing bones (dark)
+  ctx.strokeStyle = bodyBlack; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, 6 * s); ctx.lineTo(-46, 30 * s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 6 * s); ctx.lineTo(-36, 22 * s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 6 * s); ctx.lineTo(-26, 15 * s); ctx.stroke();
+  // Wing-tip claw spike (bright blue)
+  ctx.fillStyle = bluGlow;
+  ctx.beginPath();
+  ctx.moveTo(-52, 34 * s); ctx.lineTo(-60, 40 * s); ctx.lineTo(-48, 32 * s);
+  ctx.closePath(); ctx.fill();
+  // Extra edge spikes along wing bones
+  ctx.fillStyle = bluBright;
+  ctx.beginPath();
+  ctx.moveTo(-30, 20 * s); ctx.lineTo(-34, 12 * s); ctx.lineTo(-26, 18 * s);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ---- SNAKE DRAGON (LV 40+ if chosen): black serpent with electric lightning ----
+// Cobra-like with lightning veins along the body and jagged blue fringe spikes.
 function drawSnakeDragon(sx, sy, bellyColor) {
-  const bodyColor = "#3a5028";
-  const scaleLight = "#7ea658";
+  const bodyBlack = "#0a0a12";
+  const bodyEdge  = "#1c1c28";
+  const bluBright = "#2050ff";
+  const bluDeep   = "#0a1a5a";
+  const bluGlow   = "#70c0ff";
+  const bluCore   = "#e0f0ff";
+  const lightningPulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.008);
   ctx.save();
   ctx.translate(sx, sy);
   ctx.rotate(player.facing);
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.beginPath(); ctx.ellipse(6, 12, 50, 14, 0, 0, Math.PI * 2); ctx.fill();
-  // Undulating serpentine body — 8 segments trailing behind the head
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.beginPath(); ctx.ellipse(6, 12, 54, 16, 0, 0, Math.PI * 2); ctx.fill();
+  // Serpentine body — 10 segments trailing behind the head
   const wave = Date.now() * 0.008;
-  const segCount = 8;
+  const segCount = 10;
   const points = [];
   for (let i = 0; i < segCount; i++) {
     const x = -8 - i * 8;
-    const y = Math.sin(wave + i * 0.7) * 10 * (i / (segCount - 1) + 0.3);
-    const r = 12 - i * 1.1;
+    const y = Math.sin(wave + i * 0.6) * 11 * (i / (segCount - 1) + 0.35);
+    const r = 13 - i * 1.0;
     points.push({ x, y, r });
   }
-  // Draw segments back-to-front so they layer properly
+  // Draw segments back-to-front for proper layering
   for (let i = points.length - 1; i >= 0; i--) {
     const p = points[i];
-    // Body segment
-    ctx.fillStyle = bodyColor;
+    // Outer black scale ring
+    ctx.fillStyle = bodyBlack;
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-    // Belly stripe
-    ctx.fillStyle = bellyColor;
-    ctx.beginPath(); ctx.ellipse(p.x + 1, p.y, p.r * 0.6, p.r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
-    // Scale pattern
-    ctx.fillStyle = scaleLight;
-    for (let a = -1.2; a <= 1.2; a += 0.6) {
-      const px = p.x + Math.cos(a) * (p.r - 3);
-      const py = p.y + Math.sin(a) * (p.r - 3);
-      ctx.beginPath(); ctx.arc(px, py, 1.6, 0, Math.PI * 2); ctx.fill();
+    // Dark edge
+    ctx.strokeStyle = bodyEdge; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+    // BRIGHT BLUE belly stripe with gradient
+    const bg = ctx.createLinearGradient(p.x, p.y - p.r * 0.3, p.x, p.y + p.r * 0.4);
+    bg.addColorStop(0, bluDeep);
+    bg.addColorStop(0.5, bluBright);
+    bg.addColorStop(1, bluGlow);
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.ellipse(p.x + 1, p.y + 1, p.r * 0.7, p.r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+    // Segmented belly plates (blue chevron per segment)
+    ctx.fillStyle = bluGlow;
+    ctx.strokeStyle = bluDeep; ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(p.x - 2.5, p.y - 1);
+    ctx.lineTo(p.x + 2.5, p.y - 1);
+    ctx.lineTo(p.x + 3.5, p.y + 4);
+    ctx.lineTo(p.x - 3.5, p.y + 4);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // LIGHTNING VEIN across the top of the segment
+    ctx.strokeStyle = bluCore; ctx.lineWidth = 0.8; ctx.lineCap = "round";
+    ctx.globalAlpha = lightningPulse;
+    ctx.beginPath();
+    const vx = p.x, vy = p.y - p.r * 0.6;
+    ctx.moveTo(vx - p.r * 0.7, vy + 1);
+    ctx.lineTo(vx - 2, vy - 2);
+    ctx.lineTo(vx + 2, vy + 1);
+    ctx.lineTo(vx + p.r * 0.7, vy - 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    // Back scale highlights (dark dots along top)
+    ctx.fillStyle = bodyEdge;
+    for (let a = -1.4; a <= 1.4; a += 0.45) {
+      const px = p.x + Math.cos(a) * (p.r - 2);
+      const py = p.y - Math.abs(Math.sin(a)) * (p.r - 3) - 1;
+      ctx.beginPath(); ctx.arc(px, py, 1.3, 0, Math.PI * 2); ctx.fill();
+    }
+    // Jagged blue fringe spikes on outer curve (every other segment)
+    if (i % 2 === 0 && i < points.length - 2) {
+      const nx = points[i - 1] || points[i];
+      const dir = Math.atan2(nx.y - p.y, nx.x - p.x) + Math.PI / 2;
+      const sp = p.r + 1;
+      ctx.fillStyle = bluBright;
+      ctx.beginPath();
+      ctx.moveTo(p.x + Math.cos(dir) * sp, p.y + Math.sin(dir) * sp);
+      ctx.lineTo(p.x + Math.cos(dir) * (sp + 6), p.y + Math.sin(dir) * (sp + 6));
+      ctx.lineTo(p.x + Math.cos(dir + 0.2) * sp, p.y + Math.sin(dir + 0.2) * sp);
+      ctx.closePath(); ctx.fill();
     }
   }
-  // Tail tip
+  // Tail tip — pointed
   const tailTip = points[points.length - 1];
-  ctx.fillStyle = "#1a2a10";
+  ctx.fillStyle = bodyBlack;
   ctx.beginPath();
-  ctx.moveTo(tailTip.x - 3, tailTip.y - 2);
-  ctx.lineTo(tailTip.x - 12, tailTip.y);
-  ctx.lineTo(tailTip.x - 3, tailTip.y + 2);
+  ctx.moveTo(tailTip.x - 3, tailTip.y - 3);
+  ctx.lineTo(tailTip.x - 14, tailTip.y);
+  ctx.lineTo(tailTip.x - 3, tailTip.y + 3);
   ctx.closePath(); ctx.fill();
-  // Head (larger, snake-like)
-  ctx.fillStyle = bodyColor;
-  ctx.beginPath(); ctx.ellipse(20, 0, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
-  // Head scales
-  ctx.fillStyle = scaleLight;
-  for (let a = -1.2; a <= 1.2; a += 0.4) {
-    const px = 20 + Math.cos(a) * 14;
-    const py = Math.sin(a) * 8;
-    ctx.beginPath(); ctx.arc(px, py, 1.8, 0, Math.PI * 2); ctx.fill();
-  }
-  // Snout tip
-  ctx.fillStyle = bodyColor;
-  ctx.beginPath(); ctx.ellipse(34, 0, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
-  // Horns (curling back)
-  ctx.strokeStyle = "#1a2a10"; ctx.lineWidth = 3; ctx.fillStyle = "#1a2a10";
+  // Tail-tip blue glow
+  ctx.fillStyle = bluGlow;
+  ctx.beginPath(); ctx.arc(tailTip.x - 12, tailTip.y, 1.6, 0, Math.PI * 2); ctx.fill();
+  // ===== HEAD (cobra-like) =====
+  // Hood shape — flared with jagged fringe outline
+  ctx.fillStyle = bodyBlack;
   ctx.beginPath();
-  ctx.moveTo(18, -10);
-  ctx.quadraticCurveTo(10, -22, 22, -22);
+  ctx.moveTo(4, -14); ctx.quadraticCurveTo(22, -20, 34, -8);
+  ctx.lineTo(38, 0);
+  ctx.lineTo(34, 8); ctx.quadraticCurveTo(22, 20, 4, 14);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = bodyEdge; ctx.lineWidth = 0.8;
   ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(18, 10);
-  ctx.quadraticCurveTo(10, 22, 22, 22);
-  ctx.stroke();
-  // Forked tongue (flickering)
-  if ((Date.now() % 800) < 300) {
-    ctx.strokeStyle = "#ff2050"; ctx.lineWidth = 1.5;
+  // JAGGED BLUE FRINGE around back of hood (like flames)
+  const fringeSpikes = [
+    { x: 4,  y: -14, tx: -4, ty: -20 },
+    { x: 10, y: -18, tx: 6,  ty: -26 },
+    { x: 18, y: -19, tx: 16, ty: -28 },
+    { x: 26, y: -16, tx: 26, ty: -26 },
+    { x: 4,  y: 14,  tx: -4, ty: 20 },
+    { x: 10, y: 18,  tx: 6,  ty: 26 },
+    { x: 18, y: 19,  tx: 16, ty: 28 },
+    { x: 26, y: 16,  tx: 26, ty: 26 },
+  ];
+  for (const f of fringeSpikes) {
+    ctx.fillStyle = bluBright;
     ctx.beginPath();
-    ctx.moveTo(35, 0); ctx.lineTo(43, -2);
-    ctx.moveTo(35, 0); ctx.lineTo(43, 2);
-    ctx.stroke();
+    ctx.moveTo(f.x - 2, f.y);
+    ctx.lineTo(f.tx, f.ty);
+    ctx.lineTo(f.x + 2, f.y);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = bluGlow;
+    ctx.beginPath();
+    ctx.moveTo(f.x - 1, f.y);
+    ctx.lineTo(f.tx + (f.tx > 0 ? 0 : 1), f.ty + (f.ty > 0 ? -1 : 1));
+    ctx.lineTo(f.x + 1, f.y);
+    ctx.closePath(); ctx.fill();
   }
-  // Eyes (glowing slit)
-  ctx.fillStyle = "#fcd34d";
-  ctx.beginPath(); ctx.arc(28, -5, 2.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(28, 5, 2.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#000";
-  ctx.beginPath(); ctx.ellipse(29, -5, 0.6, 2, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(29, 5, 0.6, 2, 0, 0, Math.PI * 2); ctx.fill();
+  // Blue chin/throat stripe with chevrons
+  ctx.fillStyle = bluBright;
+  ctx.beginPath();
+  ctx.moveTo(10, 4); ctx.lineTo(34, 5); ctx.lineTo(32, 8); ctx.lineTo(10, 8);
+  ctx.closePath(); ctx.fill();
+  // LIGHTNING VEIN across the top of head
+  ctx.strokeStyle = bluCore; ctx.lineWidth = 1; ctx.lineCap = "round";
+  ctx.globalAlpha = lightningPulse;
+  ctx.beginPath();
+  ctx.moveTo(8, -8); ctx.lineTo(16, -12); ctx.lineTo(22, -8); ctx.lineTo(30, -10);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(8, 8); ctx.lineTo(16, 12); ctx.lineTo(22, 8); ctx.lineTo(30, 10);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  // Head scale highlights (bright blue dots on top of head)
+  ctx.fillStyle = bluGlow;
+  ctx.beginPath(); ctx.arc(18, -6, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(24, -8, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(18, 6, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(24, 8, 1.8, 0, Math.PI * 2); ctx.fill();
+  // Snout
+  ctx.fillStyle = bodyBlack;
+  ctx.beginPath(); ctx.ellipse(36, 0, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // FANGS (visible, bared)
+  ctx.fillStyle = "#f0f0ff";
+  ctx.beginPath(); ctx.moveTo(34, 3); ctx.lineTo(32, 9); ctx.lineTo(35, 3); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(37, 3); ctx.lineTo(36, 9); ctx.lineTo(38, 3); ctx.closePath(); ctx.fill();
+  // FORKED BLUE TONGUE (flickers)
+  if ((Date.now() % 800) < 350) {
+    ctx.strokeStyle = bluGlow; ctx.lineWidth = 2; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(38, 0); ctx.quadraticCurveTo(44, -2, 48, -3);
+    ctx.moveTo(38, 0); ctx.quadraticCurveTo(44, 2, 48, 3);
+    ctx.stroke();
+    // Fork barb tips
+    ctx.fillStyle = bluBright;
+    ctx.beginPath(); ctx.arc(48, -3, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(48, 3, 1.2, 0, Math.PI * 2); ctx.fill();
+  }
+  // EYES — glowing electric blue
+  for (const ey of [-6, 6]) {
+    const eGrad = ctx.createRadialGradient(28, ey, 0, 28, ey, 5);
+    eGrad.addColorStop(0, "#f0ffff");
+    eGrad.addColorStop(0.4, bluGlow);
+    eGrad.addColorStop(1, "rgba(60,160,255,0)");
+    ctx.fillStyle = eGrad;
+    ctx.beginPath(); ctx.arc(28, ey, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(28, ey, 1.5, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.restore();
 }
 
