@@ -1574,10 +1574,9 @@ function evoNodes() {
   const chosen = persistent.evolutionForm;
   const curr = currentDragonForm();
   return [
-    { form: "baby",   x: 410, y: 70,  r: 45, minLevel: 1,   label: "BABY",   labelSub: "LV 1",  unlocked: true,        current: curr === "baby" },
-    { form: "scales", x: 240, y: 240, r: 55, minLevel: 40,  label: "SCALES", labelSub: "LV 40", unlocked: lvl >= 40 && (chosen !== "snake"),  current: curr === "scales" },
-    { form: "snake",  x: 580, y: 240, r: 55, minLevel: 40,  label: "SNAKE",  labelSub: "LV 40", unlocked: lvl >= 40 && (chosen !== "scales"), current: curr === "snake" },
-    { form: "future", x: 410, y: 380, r: 40, minLevel: 80,  label: "???",    labelSub: "LV 80", unlocked: false, current: false },
+    { form: "baby",   x: 410, y: 100, r: 55, minLevel: 1,   label: "BABY",   labelSub: "LV 1",  unlocked: true,        current: curr === "baby" },
+    { form: "scales", x: 240, y: 300, r: 65, minLevel: 40,  label: "SCALES", labelSub: "LV 40", unlocked: lvl >= 40 && (chosen !== "snake"),  current: curr === "scales" },
+    { form: "snake",  x: 580, y: 300, r: 65, minLevel: 40,  label: "SNAKE",  labelSub: "LV 40", unlocked: lvl >= 40 && (chosen !== "scales"), current: curr === "snake" },
   ];
 }
 
@@ -1593,10 +1592,8 @@ function drawEvolutionTree() {
   // ===== Connections (animated pulse flowing from parent to children) =====
   const pulse = (Date.now() / 800) % 1;   // 0 → 1 over 800ms
   const connections = [
-    { from: byForm.baby,   to: byForm.scales, live: byForm.scales.unlocked || player.level >= 40 },
-    { from: byForm.baby,   to: byForm.snake,  live: byForm.snake.unlocked  || player.level >= 40 },
-    { from: byForm.scales, to: byForm.future, live: false },
-    { from: byForm.snake,  to: byForm.future, live: false },
+    { from: byForm.baby, to: byForm.scales, live: byForm.scales.unlocked || player.level >= 40 },
+    { from: byForm.baby, to: byForm.snake,  live: byForm.snake.unlocked  || player.level >= 40 },
   ];
   for (const conn of connections) {
     const { from, to, live } = conn;
