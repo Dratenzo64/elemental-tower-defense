@@ -882,8 +882,8 @@ const ABILITIES = {
     color: "#f070c0", core: "#ffc0e8",
   },
   vcreate: {
-    name: "V-CREATE", icon: "🔴", element: "fire", cost: 2200,
-    desc: "Victini's flame — huge AOE, all-out attack",
+    name: "SUPERNOVA", icon: "🔴", element: "fire", cost: 2200,
+    desc: "Detonate a searing star of flame — huge AOE burn",
     type: "aoe", dmg: 100, cooldown: 80, radius: 160,
     color: "#ff2020", core: "#ffb060",
   },
@@ -956,10 +956,10 @@ function defaultSave() {
     bestLevel: 0,
     bestKills: 0,
     totalRuns: 0,
-    // Per-slot keyboard keys. Slot 0 uses keyBindings[0], etc.
-    keyBindings: ["1", "2", "3", "4", "5"],
+    // Per-slot keyboard keys. Slot 0 uses keyBindings[0], etc. (6 slots)
+    keyBindings: ["1", "2", "3", "4", "5", "6"],
     // Persistent ability→slot bindings (kept across deaths).
-    slotBindings: [null, null, null, null, null],
+    slotBindings: [null, null, null, null, null, null],
   };
 }
 // Reserved keys that can't be bound (used by movement/UI)
@@ -993,8 +993,12 @@ function loadSave() {
   }
   persistent.ownedAbilities = (persistent.ownedAbilities || []).filter(id => ABILITIES[id]);
   // Sanitize slotBindings: drop any that reference abilities you don't own
-  if (!Array.isArray(persistent.slotBindings)) persistent.slotBindings = [null, null, null, null, null];
-  while (persistent.slotBindings.length < 5) persistent.slotBindings.push(null);
+  if (!Array.isArray(persistent.slotBindings)) persistent.slotBindings = [null, null, null, null, null, null];
+  while (persistent.slotBindings.length < 6) persistent.slotBindings.push(null);
+  // Ensure keyBindings has 6 entries (default the 6th to "6")
+  if (!Array.isArray(persistent.keyBindings)) persistent.keyBindings = ["1","2","3","4","5","6"];
+  const dflt = ["1","2","3","4","5","6"];
+  while (persistent.keyBindings.length < 6) persistent.keyBindings.push(dflt[persistent.keyBindings.length]);
   persistent.slotBindings = persistent.slotBindings.map(id => {
     if (!id || !ABILITIES[id]) return null;
     const isOwned = persistent.ownedAbilities.includes(id) || persistent.startingElement === id;
@@ -1118,7 +1122,7 @@ const player = {
   kills: 0,
   runCoins: 0,          // coins earned this run
   facing: 0,
-  slots: [null, null, null, null, null],   // ability id per key slot
+  slots: [null, null, null, null, null, null],   // ability id per key slot (6 total)
   unlockedSlots: 1,     // start with 1 slot unlocked
   cd: {},               // ability key → cooldown ticks remaining
   effects: { dashLeft: 0, dashDx: 0, dashDy: 0 },
@@ -1127,9 +1131,11 @@ const player = {
 
 function xpForLevel(lvl) { return 20 + (lvl - 1) * 12; }
 function slotsForLevel(lvl) {
-  // Start with 1 slot; unlock a new one at level 10, 20, 30, 40 → up to 5 slots
-  return 1 + Math.min(4, Math.floor(lvl / 10));
+  // Start with 1 slot; unlock a new one at LV 20, 40, 60, 80, 100 → up to 6 slots.
+  return 1 + Math.min(5, Math.floor(lvl / 20));
 }
+// Slot i is unlocked when player reaches this level (slot 0 = always, slot 1 = 20, ...).
+function unlockLevelForSlot(i) { return i * 20; }
 
 // ============================================================
 // WORLD (top-down)
@@ -1455,7 +1461,7 @@ function onLevelUp() {
   player.maxHp += 8;
   player.hp = Math.min(player.maxHp, player.hp + 20);
   // Every 10 levels: unlock a new slot + open the ability picker
-  if (player.level % 10 === 0) {
+  if (player.level % 20 === 0 && player.level <= 100) {
     const newSlots = slotsForLevel(player.level);
     if (newSlots > player.unlockedSlots) player.unlockedSlots = newSlots;
     openLevelUpPicker();
@@ -1546,7 +1552,7 @@ document.getElementById("inv-close").addEventListener("click", () => {
 function openRemapMenu() {
   const list = document.getElementById("remap-list");
   list.innerHTML = "";
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     const abId = player.slots[i];
     const ab = abId ? ABILITIES[abId] : null;
     const row = document.createElement("div");
@@ -1634,13 +1640,13 @@ function openBindPicker(abId) {
   const currentBoundSlot = player.slots.indexOf(abId);
   const subText = currentBoundSlot >= 0
     ? "This ability is currently on key " + (currentBoundSlot + 1) + ". Pick a new key, or click UNBIND to remove it."
-    : "Pick which keyboard key this ability should use. Locked slots unlock at LV 10 / 20 / 30 / 40.";
+    : "Pick which keyboard key this ability should use. Locked slots unlock at LV 20 / 40 / 60 / 80 / 100.";
   document.getElementById("bind-sub").textContent = subText;
   const list = document.getElementById("bind-slots");
   list.innerHTML = "";
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     const locked = i >= player.unlockedSlots;
-    const unlockLv = i * 10;   // slot 0 = LV 0, slot 1 = LV 10, ...
+    const unlockLv = unlockLevelForSlot(i);   // slot 0 = LV 0, slot 1 = LV 20, ...
     const currentId = player.slots[i];
     const currentAb = currentId ? ABILITIES[currentId] : null;
     const isCurrentBind = currentId === abId;
@@ -1663,7 +1669,7 @@ function openBindPicker(abId) {
         // Don't bind when clicking the REMAP button — that's for key rebinding
         if (e.target.classList.contains("remap-key")) return;
         // Remove ability from any other slot it was in
-        for (let j = 0; j < 5; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
+        for (let j = 0; j < 6; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
         player.slots[i] = bindingAbilityId;
         persistBindings();
         save();
@@ -1696,7 +1702,7 @@ document.getElementById("bind-cancel").addEventListener("click", () => {
   document.getElementById("bind-overlay").classList.remove("show");
 });
 document.getElementById("bind-unbind").addEventListener("click", () => {
-  for (let j = 0; j < 5; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
+  for (let j = 0; j < 6; j++) if (player.slots[j] === bindingAbilityId) player.slots[j] = null;
   persistBindings();
   save();
   document.getElementById("bind-overlay").classList.remove("show");
@@ -1818,7 +1824,7 @@ function restartRun() {
   player.kills = 0; player.runCoins = 0;
   // Load persistent bindings — but ONLY keep abilities you actually own.
   // Slot 0 defaults to your starting element if it's not already set.
-  const persisted = (persistent.slotBindings || [null, null, null, null, null]).slice();
+  const persisted = (persistent.slotBindings || [null, null, null, null, null, null]).slice();
   player.slots = persisted.map(id => {
     if (!id || !ABILITIES[id]) return null;
     const isOwned = persistent.ownedAbilities.includes(id) || persistent.startingElement === id;
@@ -1859,7 +1865,7 @@ function updateHud() {
 function updateSlotBar() {
   const bar = document.getElementById("slot-bar");
   bar.innerHTML = "";
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 6; i++) {
     const locked = i >= player.unlockedSlots;
     const abId = player.slots[i];
     const ab = abId ? ABILITIES[abId] : null;
@@ -1869,7 +1875,7 @@ function updateSlotBar() {
     slot.innerHTML =
       '<div class="s-key">' + keyLabel(persistent.keyBindings[i]) + '</div>' +
       (locked
-        ? '<div class="s-icon">🔒</div><div class="s-name">LV ' + ((i) * 10) + '</div>'
+        ? '<div class="s-icon">🔒</div><div class="s-name">LV ' + unlockLevelForSlot(i) + '</div>'
         : (ab
             ? '<div style="display:flex; justify-content:center; margin: 2px 0;">' + typeBadge(ab.element, 30) + '</div><div class="s-name">' + ab.name + '</div>'
             : '<div class="s-icon" style="opacity:0.35;">·</div><div class="s-name">EMPTY</div>'
@@ -2294,60 +2300,247 @@ function render() {
 
 function drawDragon() {
   const sx = W / 2, sy = H / 2;
-  const el = ABILITIES[player.slots[0] || persistent.startingElement || "flamethrower"];
-  const bodyColor = "#7a3820";
+  const el = ABILITIES[player.slots[0] || persistent.startingElement];
   const bellyColor = el ? el.color : "#c86040";
+  // Choose evolution form by level: baby → scales (LV 40) → snake (LV 80)
+  if (player.level >= 80) {
+    drawSnakeDragon(sx, sy, bellyColor);
+  } else if (player.level >= 40) {
+    drawScalesDragon(sx, sy, bellyColor);
+  } else {
+    drawBabyDragon(sx, sy, bellyColor);
+  }
+}
+
+// ---- BABY DRAGON (LV 1-39): small, gentle flap ----
+function drawBabyDragon(sx, sy, bellyColor) {
+  const bodyColor = "#7a3820";
   ctx.save();
   ctx.translate(sx, sy);
   ctx.rotate(player.facing);
-  // Shadow
   ctx.fillStyle = "rgba(0,0,0,0.5)";
   ctx.beginPath(); ctx.ellipse(4, 6, 28, 14, 0, 0, Math.PI * 2); ctx.fill();
-  // Wings (flap)
   const flap = Math.sin(Date.now() * 0.011) * 0.7;
   ctx.fillStyle = "#4a2010";
   ctx.save(); ctx.rotate(-0.2 + flap * 0.35);
-  ctx.beginPath();
-  ctx.moveTo(0, -6);
-  ctx.quadraticCurveTo(-10, -30, -30, -18);
-  ctx.quadraticCurveTo(-18, -4, 0, 0);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.quadraticCurveTo(-10, -30, -30, -18); ctx.quadraticCurveTo(-18, -4, 0, 0); ctx.closePath(); ctx.fill();
   ctx.restore();
   ctx.save(); ctx.rotate(0.2 - flap * 0.35);
-  ctx.beginPath();
-  ctx.moveTo(0, 6);
-  ctx.quadraticCurveTo(-10, 30, -30, 18);
-  ctx.quadraticCurveTo(-18, 4, 0, 0);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0, 6); ctx.quadraticCurveTo(-10, 30, -30, 18); ctx.quadraticCurveTo(-18, 4, 0, 0); ctx.closePath(); ctx.fill();
   ctx.restore();
-  // Tail
   ctx.fillStyle = bodyColor;
-  ctx.beginPath();
-  ctx.moveTo(-18, -4);
-  ctx.quadraticCurveTo(-34, 0, -20, 4);
-  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-18, -4); ctx.quadraticCurveTo(-34, 0, -20, 4); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#180800";
-  ctx.beginPath();
-  ctx.moveTo(-30, -2); ctx.lineTo(-38, 0); ctx.lineTo(-30, 2); ctx.closePath(); ctx.fill();
-  // Body
+  ctx.beginPath(); ctx.moveTo(-30, -2); ctx.lineTo(-38, 0); ctx.lineTo(-30, 2); ctx.closePath(); ctx.fill();
   ctx.fillStyle = bodyColor;
   ctx.beginPath(); ctx.ellipse(0, 0, 22, 13, 0, 0, Math.PI * 2); ctx.fill();
-  // Belly (colored by starting element)
   ctx.fillStyle = bellyColor;
   ctx.beginPath(); ctx.ellipse(3, 0, 15, 6, 0, 0, Math.PI * 2); ctx.fill();
-  // Neck + head
   ctx.fillStyle = bodyColor;
   ctx.beginPath(); ctx.arc(20, 0, 9, 0, Math.PI * 2); ctx.fill();
   ctx.fillRect(24, -3, 9, 6);
-  // Horns
   ctx.fillStyle = "#180800";
   ctx.beginPath(); ctx.moveTo(16, -7); ctx.lineTo(11, -15); ctx.lineTo(18, -8); ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.moveTo(21, -8); ctx.lineTo(18, -17); ctx.lineTo(23, -8); ctx.closePath(); ctx.fill();
-  // Eye
   ctx.fillStyle = "#fcd34d";
   ctx.beginPath(); ctx.arc(23, -3, 2, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = "#000";
   ctx.beginPath(); ctx.arc(23.5, -3, 1, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// ---- SCALES DRAGON (LV 40-79): bigger, detailed scales, dramatic always-flapping wings ----
+function drawScalesDragon(sx, sy, bellyColor) {
+  const bodyColor  = "#5a2410";
+  const scaleLight = "#a05030";
+  const scaleDark  = "#3a1808";
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(player.facing);
+  // Shadow (bigger)
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.beginPath(); ctx.ellipse(6, 10, 42, 20, 0, 0, Math.PI * 2); ctx.fill();
+  // Big always-flapping wings (dramatic amplitude, faster cycle)
+  const flap = Math.sin(Date.now() * 0.014);   // continuous, never stops
+  ctx.fillStyle = "#3a1408";
+  // Left wing
+  ctx.save(); ctx.rotate(-0.15 + flap * 0.6);
+  ctx.beginPath();
+  ctx.moveTo(2, -8);
+  ctx.quadraticCurveTo(-16, -50, -46, -30);
+  ctx.quadraticCurveTo(-30, -14, -8, -6);
+  ctx.closePath(); ctx.fill();
+  // wing bones
+  ctx.strokeStyle = "#1a0800"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(-40, -26); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(-32, -18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(-24, -12); ctx.stroke();
+  ctx.restore();
+  // Right wing
+  ctx.save(); ctx.rotate(0.15 - flap * 0.6);
+  ctx.fillStyle = "#3a1408";
+  ctx.beginPath();
+  ctx.moveTo(2, 8);
+  ctx.quadraticCurveTo(-16, 50, -46, 30);
+  ctx.quadraticCurveTo(-30, 14, -8, 6);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#1a0800"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-40, 26); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-32, 18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(-24, 12); ctx.stroke();
+  ctx.restore();
+  // Tail
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath();
+  ctx.moveTo(-24, -6);
+  ctx.quadraticCurveTo(-46, 0, -26, 6);
+  ctx.closePath(); ctx.fill();
+  // Tail spikes
+  ctx.fillStyle = "#180800";
+  for (let t = 0; t < 3; t++) {
+    ctx.beginPath();
+    ctx.moveTo(-30 - t*3, -3); ctx.lineTo(-34 - t*3, -8); ctx.lineTo(-32 - t*3, -2); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-30 - t*3, 3); ctx.lineTo(-34 - t*3, 8); ctx.lineTo(-32 - t*3, 2); ctx.closePath(); ctx.fill();
+  }
+  // Tail tip
+  ctx.beginPath();
+  ctx.moveTo(-40, -3); ctx.lineTo(-50, 0); ctx.lineTo(-40, 3); ctx.closePath(); ctx.fill();
+  // Body (bigger)
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(0, 0, 28, 17, 0, 0, Math.PI * 2); ctx.fill();
+  // Belly
+  ctx.fillStyle = bellyColor;
+  ctx.beginPath(); ctx.ellipse(4, 0, 20, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // SCALE PATTERN — overlapping arcs across the body
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(0, 0, 28, 17, 0, 0, Math.PI * 2); ctx.clip();
+  for (let row = -12; row <= 12; row += 5) {
+    const offset = (row / 5) % 2 === 0 ? 0 : 3;
+    for (let col = -24 + offset; col <= 20; col += 6) {
+      ctx.fillStyle = scaleLight;
+      ctx.beginPath(); ctx.arc(col, row, 3, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = scaleDark; ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.arc(col, row, 3, Math.PI, 0); ctx.stroke();
+    }
+  }
+  ctx.restore();
+  // Spine ridges along the back
+  ctx.fillStyle = "#180800";
+  for (let s = -20; s <= 16; s += 6) {
+    ctx.beginPath();
+    ctx.moveTo(s, -14); ctx.lineTo(s + 2, -20); ctx.lineTo(s + 4, -14); ctx.closePath(); ctx.fill();
+  }
+  // Neck
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(20, 0, 12, 10, 0, 0, Math.PI * 2); ctx.fill();
+  // Head (bigger, more angular)
+  ctx.beginPath(); ctx.moveTo(24, -8); ctx.lineTo(38, -4); ctx.lineTo(40, 0); ctx.lineTo(38, 4); ctx.lineTo(24, 8); ctx.closePath(); ctx.fill();
+  // Head scales
+  ctx.fillStyle = scaleLight;
+  ctx.beginPath(); ctx.arc(28, -3, 2, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.arc(32, -2, 2, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.arc(28, 3, 2, 0, Math.PI); ctx.fill();
+  ctx.beginPath(); ctx.arc(32, 2, 2, 0, Math.PI); ctx.fill();
+  // Horns (bigger, swept back)
+  ctx.fillStyle = "#180800";
+  ctx.beginPath(); ctx.moveTo(24, -8); ctx.lineTo(14, -22); ctx.lineTo(22, -10); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(30, -8); ctx.lineTo(22, -24); ctx.lineTo(28, -10); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(24, 8);  ctx.lineTo(14, 22);  ctx.lineTo(22, 10);  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(30, 8);  ctx.lineTo(22, 24);  ctx.lineTo(28, 10);  ctx.closePath(); ctx.fill();
+  // Fang
+  ctx.fillStyle = "#f0e6d0";
+  ctx.beginPath(); ctx.moveTo(37, 2); ctx.lineTo(36, 6); ctx.lineTo(38, 3); ctx.closePath(); ctx.fill();
+  // Eye (glowing gold)
+  ctx.fillStyle = "#fcd34d";
+  ctx.beginPath(); ctx.arc(32, -3, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.ellipse(33, -3, 0.8, 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+// ---- SNAKE DRAGON (LV 80+): long serpentine body, no wings ----
+function drawSnakeDragon(sx, sy, bellyColor) {
+  const bodyColor = "#3a5028";
+  const scaleLight = "#7ea658";
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(player.facing);
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.beginPath(); ctx.ellipse(6, 12, 50, 14, 0, 0, Math.PI * 2); ctx.fill();
+  // Undulating serpentine body — 8 segments trailing behind the head
+  const wave = Date.now() * 0.008;
+  const segCount = 8;
+  const points = [];
+  for (let i = 0; i < segCount; i++) {
+    const x = -8 - i * 8;
+    const y = Math.sin(wave + i * 0.7) * 10 * (i / (segCount - 1) + 0.3);
+    const r = 12 - i * 1.1;
+    points.push({ x, y, r });
+  }
+  // Draw segments back-to-front so they layer properly
+  for (let i = points.length - 1; i >= 0; i--) {
+    const p = points[i];
+    // Body segment
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+    // Belly stripe
+    ctx.fillStyle = bellyColor;
+    ctx.beginPath(); ctx.ellipse(p.x + 1, p.y, p.r * 0.6, p.r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+    // Scale pattern
+    ctx.fillStyle = scaleLight;
+    for (let a = -1.2; a <= 1.2; a += 0.6) {
+      const px = p.x + Math.cos(a) * (p.r - 3);
+      const py = p.y + Math.sin(a) * (p.r - 3);
+      ctx.beginPath(); ctx.arc(px, py, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  // Tail tip
+  const tailTip = points[points.length - 1];
+  ctx.fillStyle = "#1a2a10";
+  ctx.beginPath();
+  ctx.moveTo(tailTip.x - 3, tailTip.y - 2);
+  ctx.lineTo(tailTip.x - 12, tailTip.y);
+  ctx.lineTo(tailTip.x - 3, tailTip.y + 2);
+  ctx.closePath(); ctx.fill();
+  // Head (larger, snake-like)
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(20, 0, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
+  // Head scales
+  ctx.fillStyle = scaleLight;
+  for (let a = -1.2; a <= 1.2; a += 0.4) {
+    const px = 20 + Math.cos(a) * 14;
+    const py = Math.sin(a) * 8;
+    ctx.beginPath(); ctx.arc(px, py, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+  // Snout tip
+  ctx.fillStyle = bodyColor;
+  ctx.beginPath(); ctx.ellipse(34, 0, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // Horns (curling back)
+  ctx.strokeStyle = "#1a2a10"; ctx.lineWidth = 3; ctx.fillStyle = "#1a2a10";
+  ctx.beginPath();
+  ctx.moveTo(18, -10);
+  ctx.quadraticCurveTo(10, -22, 22, -22);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(18, 10);
+  ctx.quadraticCurveTo(10, 22, 22, 22);
+  ctx.stroke();
+  // Forked tongue (flickering)
+  if ((Date.now() % 800) < 300) {
+    ctx.strokeStyle = "#ff2050"; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(35, 0); ctx.lineTo(43, -2);
+    ctx.moveTo(35, 0); ctx.lineTo(43, 2);
+    ctx.stroke();
+  }
+  // Eyes (glowing slit)
+  ctx.fillStyle = "#fcd34d";
+  ctx.beginPath(); ctx.arc(28, -5, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(28, 5, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.ellipse(29, -5, 0.6, 2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(29, 5, 0.6, 2, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
 
