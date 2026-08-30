@@ -1124,7 +1124,7 @@ loadSave();
 // CANVAS
 // ============================================================
 const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+let ctx = canvas.getContext("2d");   // let (not const) so we can swap it for previews
 let W = 0, H = 0;
 function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
 window.addEventListener("resize", resize);
@@ -1534,13 +1534,13 @@ function drawEvolutionPreview(canvasId, form) {
   // Temporarily hijack ctx + player.facing to draw the mini dragon
   const origCtx = ctx;
   const origFacing = player.facing;
-  window.ctx = pctx;   // functions read the global "ctx"
+  ctx = pctx;   // reassign — the drawing functions will now use this canvas
   player.facing = 0;
   try {
     if (form === "scales") drawScalesDragon(c.width / 2, c.height / 2 + 5, "#3a80ff");
     else drawSnakeDragon(c.width / 2, c.height / 2 + 5, "#3a80ff");
   } catch (e) {}
-  window.ctx = origCtx;
+  ctx = origCtx;
   player.facing = origFacing;
 }
 // ============================================================
@@ -1653,7 +1653,7 @@ function drawEvolutionTree() {
     } else {
       // Draw the actual dragon inside the node
       const origCtx = ctx; const origFacing = player.facing;
-      window.ctx = tctx; player.facing = 0;
+      ctx = tctx; player.facing = 0;
       // Clip to circle so dragon can't spill out
       tctx.save();
       tctx.beginPath(); tctx.arc(n.x, n.y, n.r - 3, 0, Math.PI * 2); tctx.clip();
@@ -1667,7 +1667,7 @@ function drawEvolutionTree() {
         else if (n.form === "snake") drawSnakeDragon(0, 0, "#3a80ff");
       } catch (e) {}
       tctx.restore();
-      window.ctx = origCtx; player.facing = origFacing;
+      ctx = origCtx; player.facing = origFacing;
     }
     // Label
     tctx.fillStyle = n.current ? "#e0f0ff" : (n.unlocked ? "#fcd34d" : "rgba(240,230,216,0.5)");
