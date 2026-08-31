@@ -986,6 +986,7 @@ function dpsLabel(ab) {
 // SAVE / LOAD
 // ============================================================
 const SAVE_KEY = "drazelect-save-v1";
+const SAVE_KEY_BACKUP = "drazelect-save-v1-backup";  // redundant backup
 const HASH_PREFIX = "#dz=";
 function defaultSave() {
   return {
@@ -1018,8 +1019,11 @@ function keyLabel(k) {
 let persistent = defaultSave();
 function loadSave() {
   let raw = null;
+  // Priority: URL hash > primary localStorage > backup localStorage > sessionStorage
   if (location.hash.startsWith(HASH_PREFIX)) raw = location.hash.slice(HASH_PREFIX.length);
   if (!raw) { try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {} }
+  if (!raw) { try { raw = localStorage.getItem(SAVE_KEY_BACKUP); } catch (e) {} }
+  if (!raw) { try { raw = sessionStorage.getItem(SAVE_KEY); } catch (e) {} }
   if (!raw) return;
   try {
     const b = raw.replace(/-/g,"+").replace(/_/g,"/");
@@ -1056,10 +1060,16 @@ function save() {
   let ok = false;
   try {
     const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    localStorage.setItem(SAVE_KEY, enc);
-    // Verify by reading back — some browsers silently discard writes
-    const readback = localStorage.getItem(SAVE_KEY);
-    if (readback !== enc) throw new Error("localStorage readback mismatch");
+    // Write to ALL storage locations for redundancy — if the browser wipes one
+    // (Safari ITP, quota reset, private mode weirdness), the others survive.
+    let wroteAny = false;
+    try { localStorage.setItem(SAVE_KEY, enc); wroteAny = true; } catch (e) {}
+    try { localStorage.setItem(SAVE_KEY_BACKUP, enc); } catch (e) {}
+    try { sessionStorage.setItem(SAVE_KEY, enc); } catch (e) {}
+    // Verify the primary write survived
+    let readback = null;
+    try { readback = localStorage.getItem(SAVE_KEY); } catch (e) {}
+    if (readback !== enc && !wroteAny) throw new Error("all storage rejected the write");
     history.replaceState(null, "", HASH_PREFIX + enc);
     ok = true;
     lastSaveError = "";
