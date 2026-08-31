@@ -988,6 +988,10 @@ function dpsLabel(ab) {
 const SAVE_KEY = "drazelect-save-v1";
 const SAVE_KEY_BACKUP = "drazelect-save-v1-backup";  // redundant backup
 const HASH_PREFIX = "#dz=";
+// Legacy keys from older versions of the game (Wyrmfire era, previous prefix, etc.)
+// loadSave() falls back to these so a code update never wipes your progress.
+const LEGACY_SAVE_KEYS = ["wyrmfire-save-v1"];
+const LEGACY_HASH_PREFIXES = ["#wf="];
 function defaultSave() {
   return {
     coins: 0,
@@ -1019,11 +1023,27 @@ function keyLabel(k) {
 let persistent = defaultSave();
 function loadSave() {
   let raw = null;
-  // Priority: URL hash > primary localStorage > backup localStorage > sessionStorage
+  // Priority: current URL hash > current localStorage > current backup > sessionStorage
+  //          > legacy URL hashes > legacy localStorage keys
   if (location.hash.startsWith(HASH_PREFIX)) raw = location.hash.slice(HASH_PREFIX.length);
   if (!raw) { try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {} }
   if (!raw) { try { raw = localStorage.getItem(SAVE_KEY_BACKUP); } catch (e) {} }
   if (!raw) { try { raw = sessionStorage.getItem(SAVE_KEY); } catch (e) {} }
+  // Fall back to legacy hash prefixes (e.g. "#wf=" from Wyrmfire era)
+  if (!raw) {
+    for (const lp of LEGACY_HASH_PREFIXES) {
+      if (location.hash.startsWith(lp)) { raw = location.hash.slice(lp.length); break; }
+    }
+  }
+  // Fall back to legacy localStorage keys
+  if (!raw) {
+    for (const lk of LEGACY_SAVE_KEYS) {
+      try {
+        const v = localStorage.getItem(lk);
+        if (v) { raw = v; break; }
+      } catch (e) {}
+    }
+  }
   if (!raw) return;
   try {
     const b = raw.replace(/-/g,"+").replace(/_/g,"/");
@@ -1031,12 +1051,19 @@ function loadSave() {
     const data = JSON.parse(atob(padded));
     if (data && typeof data === "object") Object.assign(persistent, defaultSave(), data);
   } catch (e) {}
-  // Migration: old save may have starter ability IDs that no longer exist
-  // (or are no longer starters). Clear stale references so the UI works.
-  if (persistent.startingElement && (!ABILITIES[persistent.startingElement] || !ABILITIES[persistent.startingElement].starter)) {
+  // Migration: only clear references to abilities that truly no longer exist.
+  // If a starter got moved to shop or renamed, keep it — the player owns it.
+  if (persistent.startingElement && !ABILITIES[persistent.startingElement]) {
     persistent.startingElement = null;
   }
   persistent.ownedAbilities = (persistent.ownedAbilities || []).filter(id => ABILITIES[id]);
+  // If the saved starter is no longer a starter (e.g. moved to shop tier), it
+  // stays as their permanent owned ability but they can pick a fresh starter.
+  if (persistent.startingElement && !ABILITIES[persistent.startingElement].starter) {
+    if (!persistent.ownedAbilities.includes(persistent.startingElement)) {
+      persistent.ownedAbilities.push(persistent.startingElement);
+    }
+  }
   // Sanitize slotBindings: drop any that reference abilities you don't own
   if (!Array.isArray(persistent.slotBindings)) persistent.slotBindings = [null, null, null, null, null, null];
   while (persistent.slotBindings.length < 6) persistent.slotBindings.push(null);
