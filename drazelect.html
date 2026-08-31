@@ -1110,6 +1110,20 @@ function save() {
 document.getElementById("save-button").addEventListener("click", () => {
   save();
 });
+// Live save-status readout — updates twice per second so you always see the truth
+setInterval(() => {
+  const el = document.getElementById("save-indicator");
+  if (!el || el.classList.contains("show")) return;   // don't overwrite the flash
+  let lsBytes = 0, lsOk = false;
+  try {
+    const v = localStorage.getItem(SAVE_KEY);
+    if (v) { lsBytes = v.length; lsOk = true; }
+  } catch (e) {}
+  el.textContent = lsOk ? ("LS: " + lsBytes + "b · c" + persistent.coins) : "LS: EMPTY";
+  el.style.background = lsOk ? "rgba(52,211,153,0.14)" : "rgba(239,68,68,0.14)";
+  el.style.borderColor = lsOk ? "#34d399" : "#ef4444";
+  el.style.color = lsOk ? "#6ee7b7" : "#fca5a5";
+}, 500);
 // Diagnostic — long-press save button (right click) to see raw save state
 document.getElementById("save-button").addEventListener("contextmenu", (e) => {
   e.preventDefault();
