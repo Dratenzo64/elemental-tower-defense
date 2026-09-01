@@ -986,12 +986,7 @@ function dpsLabel(ab) {
 // SAVE / LOAD
 // ============================================================
 const SAVE_KEY = "drazelect-save-v1";
-const SAVE_KEY_BACKUP = "drazelect-save-v1-backup";  // redundant backup
 const HASH_PREFIX = "#dz=";
-// Legacy keys from older versions of the game (Wyrmfire era, previous prefix, etc.)
-// loadSave() falls back to these so a code update never wipes your progress.
-const LEGACY_SAVE_KEYS = ["wyrmfire-save-v1"];
-const LEGACY_HASH_PREFIXES = ["#wf="];
 function defaultSave() {
   return {
     coins: 0,
@@ -1022,40 +1017,16 @@ function keyLabel(k) {
 }
 let persistent = defaultSave();
 function loadSave() {
-  // Compare all sources and pick the one with the MOST progress (highest coins
-  // + level). This way a stale URL hash from a bookmark can never overwrite a
-  // newer localStorage save, and vice versa.
-  const candidates = [];
-  function tryDecode(raw, src) {
-    if (!raw) return;
-    try {
-      const b = raw.replace(/-/g,"+").replace(/_/g,"/");
-      const padded = b + "===".slice((b.length % 4));
-      const data = JSON.parse(atob(padded));
-      if (data && typeof data === "object") {
-        // Score by cumulative progress — coins + bestLevel*100 + kills
-        const score = (data.coins || 0) + (data.bestLevel || 0) * 100 + (data.bestKills || 0);
-        candidates.push({ raw, data, src, score });
-      }
-    } catch (e) {}
-  }
-  // Try all sources
-  if (location.hash.startsWith(HASH_PREFIX)) tryDecode(location.hash.slice(HASH_PREFIX.length), "hash");
-  try { tryDecode(localStorage.getItem(SAVE_KEY), "ls"); } catch (e) {}
-  try { tryDecode(localStorage.getItem(SAVE_KEY_BACKUP), "ls-backup"); } catch (e) {}
-  try { tryDecode(sessionStorage.getItem(SAVE_KEY), "ss"); } catch (e) {}
-  for (const lp of LEGACY_HASH_PREFIXES) {
-    if (location.hash.startsWith(lp)) tryDecode(location.hash.slice(lp.length), "legacy-hash");
-  }
-  for (const lk of LEGACY_SAVE_KEYS) {
-    try { tryDecode(localStorage.getItem(lk), "legacy-ls"); } catch (e) {}
-  }
-  if (!candidates.length) return;
-  // Pick the winner: highest score wins. That's the most-progressed save.
-  candidates.sort((a, b) => b.score - a.score);
-  const winner = candidates[0];
-  console.log("[loadSave] restored from " + winner.src + " with score=" + winner.score);
-  Object.assign(persistent, defaultSave(), winner.data);
+  let raw = null;
+  if (location.hash.startsWith(HASH_PREFIX)) raw = location.hash.slice(HASH_PREFIX.length);
+  if (!raw) { try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {} }
+  if (!raw) return;
+  try {
+    const b = raw.replace(/-/g,"+").replace(/_/g,"/");
+    const padded = b + "===".slice((b.length % 4));
+    const data = JSON.parse(atob(padded));
+    if (data && typeof data === "object") Object.assign(persistent, defaultSave(), data);
+  } catch (e) {}
   // Migration: only clear references to abilities that truly no longer exist.
   // If a starter got moved to shop or renamed, keep it — the player owns it.
   if (persistent.startingElement && !ABILITIES[persistent.startingElement]) {
@@ -1089,27 +1060,12 @@ function persistBindings() {
 let saveTimer = null;
 let lastSaveError = "";
 function save() {
-  let ok = false;
   try {
     const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    // Write to ALL storage locations for redundancy — if the browser wipes one
-    // (Safari ITP, quota reset, private mode weirdness), the others survive.
-    let wroteAny = false;
-    try { localStorage.setItem(SAVE_KEY, enc); wroteAny = true; } catch (e) {}
-    try { localStorage.setItem(SAVE_KEY_BACKUP, enc); } catch (e) {}
-    try { sessionStorage.setItem(SAVE_KEY, enc); } catch (e) {}
-    // Verify the primary write survived
-    let readback = null;
-    try { readback = localStorage.getItem(SAVE_KEY); } catch (e) {}
-    if (readback !== enc && !wroteAny) throw new Error("all storage rejected the write");
+    localStorage.setItem(SAVE_KEY, enc);
     history.replaceState(null, "", HASH_PREFIX + enc);
-    ok = true;
-    lastSaveError = "";
-  } catch (e) {
-    lastSaveError = String(e && e.message || e);
-    console.error("SAVE FAILED:", lastSaveError);
-  }
-  flashSave(ok);
+  } catch (e) {}
+  flashSave();
 }
 // Manual save button — always available, top-right corner
 document.getElementById("save-button").addEventListener("click", () => {
@@ -1155,24 +1111,16 @@ document.getElementById("save-button").addEventListener("contextmenu", (e) => {
     "  startingElement: " + persistent.startingElement
   );
 });
-function flashSave(ok) {
+function flashSave() {
   const el = document.getElementById("save-indicator");
   if (!el) return;
-  if (ok === false) {
-    el.textContent = "⚠ SAVE FAILED";
-    el.style.background = "rgba(239,68,68,0.22)";
-    el.style.borderColor = "#ef4444";
-    el.style.color = "#fca5a5";
-  } else {
-    el.textContent = "SAVED ✓ (" + ((localStorage.getItem(SAVE_KEY) || "").length) + "b)";
-    el.style.background = "rgba(52,211,153,0.22)";
-    el.style.borderColor = "#34d399";
-    el.style.color = "#6ee7b7";
-  }
-  // Flash bright, then fall back to the always-visible dim state (still shows text).
+  el.textContent = "SAVED ✓";
+  el.style.background = "rgba(52,211,153,0.22)";
+  el.style.borderColor = "#34d399";
+  el.style.color = "#6ee7b7";
   el.classList.add("show");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => el.classList.remove("show"), 2000);
+  saveTimer = setTimeout(() => el.classList.remove("show"), 1000);
 }
 loadSave();
 
