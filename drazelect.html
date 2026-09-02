@@ -2155,8 +2155,11 @@ function updateSlotBar() {
 // MAIN UPDATE / RENDER LOOP
 // ============================================================
 function anyOverlayOpen() {
-  return ["start-overlay","levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay"]
-    .some(id => document.getElementById(id).classList.contains("show"));
+  return ["start-overlay","levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay","remap-overlay","evo-overlay","evo-tree-overlay"]
+    .some(id => {
+      const el = document.getElementById(id);
+      return el && el.classList.contains("show");
+    });
 }
 function update() {
   const paused = anyOverlayOpen() || !player.alive;
