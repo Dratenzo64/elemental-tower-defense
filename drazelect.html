@@ -550,6 +550,7 @@
       <button class="btn secondary" id="start-shop">SHOP</button>
       <button class="btn" id="start-remap" style="background:linear-gradient(180deg,#60a5fa,#1e40af); border-color:#93c5fd;">⌨ REMAP KEYS</button>
       <button class="btn" id="start-tree" style="background:linear-gradient(180deg,#3a80ff,#0a1a5a); border-color:#70c0ff;">🌳 EVOLUTION TREE</button>
+      <button class="btn" id="start-platform" style="background:linear-gradient(180deg,#a855f7,#581c87); border-color:#d8b4fe;">🎮 CHANGE PLATFORM</button>
     </div>
   </div>
 </div>
@@ -1175,15 +1176,24 @@ function choosePlatform(p) {
   applyPlatform();
 }
 function applyPlatform() {
+  const jb = document.getElementById("joystick-base");
+  const hint = document.getElementById("hint");
   if (persistent.platform === "mobile") {
-    document.getElementById("joystick-base").style.display = "block";
-    setupJoystick();
-    setupMobileTap();
-    // Hide the WASD/mouse hint on mobile
-    const hint = document.getElementById("hint");
-    if (hint) hint.textContent = "Joystick to move · Tap a move at the bottom, then tap the world to fire";
+    jb.style.display = "block";
+    if (!jb.dataset.wired) { setupJoystick(); setupMobileTap(); jb.dataset.wired = "1"; }
+    if (hint) hint.innerHTML = "Joystick to move · Tap a move at the bottom, then tap the world to fire";
+    mobileSelectedSlot = -1;
+  } else {
+    jb.style.display = "none";
+    if (hint) hint.innerHTML = '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>MOUSE</kbd> aim · use slot keys (default <kbd>1</kbd>-<kbd>5</kbd>, remap in bind menu) · <kbd>Tab</kbd> inventory';
   }
 }
+// "Change Platform" button — reopens the picker so you can swap any time.
+// Save fires the moment you pick, so the switch persists across both platforms.
+document.getElementById("start-platform").addEventListener("click", () => {
+  document.getElementById("start-overlay").classList.remove("show");
+  document.getElementById("platform-overlay").classList.add("show");
+});
 
 // -------- Joystick (touch-drag anywhere within the base to steer) --------
 function setupJoystick() {
@@ -1224,27 +1234,42 @@ function setupJoystick() {
 }
 
 // -------- Mobile tap-to-fire on the game canvas --------
+// Uses changedTouches (only the new touches from THIS event) so left-thumb
+// holding the joystick doesn't block right-thumb fire taps.
 function setupMobileTap() {
-  canvas.addEventListener("touchstart", (e) => {
+  const fireOnTouch = (e) => {
     if (persistent.platform !== "mobile") return;
-    // Ignore taps inside the joystick pad — those steer, not fire
-    const jbase = document.getElementById("joystick-base");
-    const jr = jbase.getBoundingClientRect();
-    for (const t of e.touches) {
-      if (t.clientX >= jr.left && t.clientX <= jr.right &&
-          t.clientY >= jr.top  && t.clientY <= jr.bottom) return;
-    }
-    // Only fire if an ability is selected AND its slot is unlocked
+    if (!player.alive || anyOverlayOpen()) return;
     if (mobileSelectedSlot < 0) return;
     if (mobileSelectedSlot >= player.unlockedSlots) return;
-    if (!player.alive || anyOverlayOpen()) return;
-    const t = e.touches[0] || e.changedTouches[0];
+    const jbase = document.getElementById("joystick-base");
+    const jr = jbase.getBoundingClientRect();
+    // Look for a NEW touch (changedTouches) that isn't on the joystick pad.
+    const list = e.changedTouches || e.touches || [];
+    let fireTouch = null;
+    for (const t of list) {
+      const inJoy = t.clientX >= jr.left && t.clientX <= jr.right &&
+                    t.clientY >= jr.top  && t.clientY <= jr.bottom;
+      if (!inJoy) { fireTouch = t; break; }
+    }
+    if (!fireTouch) return;
     const r = canvas.getBoundingClientRect();
-    mouseX = t.clientX - r.left;
-    mouseY = t.clientY - r.top;
+    mouseX = fireTouch.clientX - r.left;
+    mouseY = fireTouch.clientY - r.top;
     useSlot(mobileSelectedSlot);
     e.preventDefault();
-  }, { passive: false });
+  };
+  canvas.addEventListener("touchstart", fireOnTouch, { passive: false });
+  // Also accept plain click for tablets / touchscreen laptops that emulate mouse
+  canvas.addEventListener("click", (e) => {
+    if (persistent.platform !== "mobile") return;
+    if (!player.alive || anyOverlayOpen()) return;
+    if (mobileSelectedSlot < 0 || mobileSelectedSlot >= player.unlockedSlots) return;
+    const r = canvas.getBoundingClientRect();
+    mouseX = e.clientX - r.left;
+    mouseY = e.clientY - r.top;
+    useSlot(mobileSelectedSlot);
+  });
 }
 
 // ============================================================
