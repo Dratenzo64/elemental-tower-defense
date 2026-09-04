@@ -509,8 +509,33 @@
   <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>MOUSE</kbd> aim · use slot keys (default <kbd>1</kbd>-<kbd>5</kbd>, remap in bind menu) · <kbd>Tab</kbd> inventory
 </div>
 
+<!-- ========== PLATFORM PICKER (first time only) ========== -->
+<div id="platform-overlay" class="overlay show">
+  <div class="panel">
+    <div class="panel-title">🎮 CHOOSE PLATFORM</div>
+    <div class="panel-sub">How are you playing?</div>
+    <div class="ab-grid" style="max-width: 500px; margin: 16px auto;">
+      <div class="ab-card" id="plat-computer" style="cursor: pointer;">
+        <div style="font-size: 72px; margin: 8px 0; line-height: 1;">🖥️</div>
+        <div class="ab-name">COMPUTER</div>
+        <div class="ab-desc">WASD / arrows to move. Mouse to aim. Number keys to fire abilities.</div>
+      </div>
+      <div class="ab-card" id="plat-mobile" style="cursor: pointer;">
+        <div style="font-size: 72px; margin: 8px 0; line-height: 1;">📱</div>
+        <div class="ab-name">MOBILE / TOUCH</div>
+        <div class="ab-desc">Joystick to move. Tap a move at the bottom, then tap the world to fire it.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== JOYSTICK (mobile only) ========== -->
+<div id="joystick-base" style="display: none; position: fixed; bottom: 110px; left: 30px; width: 130px; height: 130px; background: rgba(0,0,0,0.4); border: 3px solid rgba(96,176,255,0.6); border-radius: 50%; z-index: 30; touch-action: none; user-select: none;">
+  <div id="joystick-knob" style="position: absolute; top: 32px; left: 32px; width: 60px; height: 60px; background: linear-gradient(180deg, rgba(96,176,255,0.7), rgba(32,80,255,0.7)); border: 3px solid #70c0ff; border-radius: 50%; box-shadow: 0 0 12px rgba(96,176,255,0.6);"></div>
+</div>
+
 <!-- ========== START / ELEMENT PICKER ========== -->
-<div id="start-overlay" class="overlay show">
+<div id="start-overlay" class="overlay">
   <div class="panel">
     <div class="panel-title">DRAZELECT</div>
     <div class="panel-sub">// A DRAGON'S HUNT //</div>
@@ -1001,6 +1026,8 @@ function defaultSave() {
     slotBindings: [null, null, null, null, null, null],
     // Chosen evolution form at LV 40: "scales" | "snake" | null (not chosen yet)
     evolutionForm: null,
+    // Chosen input platform: "computer" | "mobile" | null (not chosen yet)
+    platform: null,
   };
 }
 // Reserved keys that can't be bound (used by movement/UI)
@@ -1123,6 +1150,102 @@ function flashSave() {
   saveTimer = setTimeout(() => el.classList.remove("show"), 1000);
 }
 loadSave();
+
+// ============================================================
+// PLATFORM PICKER + MOBILE CONTROLS
+// ============================================================
+// Joystick state — driven by touch on the joystick pad on mobile
+const joystick = { active: false, x: 0, y: 0 };  // x, y in [-1, 1]
+// The slot the mobile player has "armed" for tap-to-fire (-1 = none)
+let mobileSelectedSlot = -1;
+
+// Show platform picker if not chosen; otherwise skip straight to start screen
+if (persistent.platform) {
+  document.getElementById("platform-overlay").classList.remove("show");
+  document.getElementById("start-overlay").classList.add("show");
+  applyPlatform();
+}
+document.getElementById("plat-computer").addEventListener("click", () => choosePlatform("computer"));
+document.getElementById("plat-mobile").addEventListener("click", () => choosePlatform("mobile"));
+function choosePlatform(p) {
+  persistent.platform = p;
+  save();
+  document.getElementById("platform-overlay").classList.remove("show");
+  document.getElementById("start-overlay").classList.add("show");
+  applyPlatform();
+}
+function applyPlatform() {
+  if (persistent.platform === "mobile") {
+    document.getElementById("joystick-base").style.display = "block";
+    setupJoystick();
+    setupMobileTap();
+    // Hide the WASD/mouse hint on mobile
+    const hint = document.getElementById("hint");
+    if (hint) hint.textContent = "Joystick to move · Tap a move at the bottom, then tap the world to fire";
+  }
+}
+
+// -------- Joystick (touch-drag anywhere within the base to steer) --------
+function setupJoystick() {
+  const base = document.getElementById("joystick-base");
+  const knob = document.getElementById("joystick-knob");
+  const MAX = 40;   // max knob offset in px
+  function update(clientX, clientY) {
+    const r = base.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let dx = clientX - cx, dy = clientY - cy;
+    const d = Math.hypot(dx, dy);
+    if (d > MAX) { dx = (dx / d) * MAX; dy = (dy / d) * MAX; }
+    joystick.x = dx / MAX;
+    joystick.y = dy / MAX;
+    knob.style.left = (32 + dx) + "px";
+    knob.style.top  = (32 + dy) + "px";
+  }
+  function reset() {
+    joystick.active = false;
+    joystick.x = 0; joystick.y = 0;
+    knob.style.left = "32px";
+    knob.style.top  = "32px";
+  }
+  base.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    joystick.active = true;
+    const t = e.touches[0];
+    update(t.clientX, t.clientY);
+  }, { passive: false });
+  base.addEventListener("touchmove", (e) => {
+    if (!joystick.active) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    update(t.clientX, t.clientY);
+  }, { passive: false });
+  base.addEventListener("touchend",    reset);
+  base.addEventListener("touchcancel", reset);
+}
+
+// -------- Mobile tap-to-fire on the game canvas --------
+function setupMobileTap() {
+  canvas.addEventListener("touchstart", (e) => {
+    if (persistent.platform !== "mobile") return;
+    // Ignore taps inside the joystick pad — those steer, not fire
+    const jbase = document.getElementById("joystick-base");
+    const jr = jbase.getBoundingClientRect();
+    for (const t of e.touches) {
+      if (t.clientX >= jr.left && t.clientX <= jr.right &&
+          t.clientY >= jr.top  && t.clientY <= jr.bottom) return;
+    }
+    // Only fire if an ability is selected AND its slot is unlocked
+    if (mobileSelectedSlot < 0) return;
+    if (mobileSelectedSlot >= player.unlockedSlots) return;
+    if (!player.alive || anyOverlayOpen()) return;
+    const t = e.touches[0] || e.changedTouches[0];
+    const r = canvas.getBoundingClientRect();
+    mouseX = t.clientX - r.left;
+    mouseY = t.clientY - r.top;
+    useSlot(mobileSelectedSlot);
+    e.preventDefault();
+  }, { passive: false });
+}
 
 // ============================================================
 // CANVAS
@@ -2137,7 +2260,21 @@ function updateSlotBar() {
             ? '<div style="display:flex; justify-content:center; margin: 2px 0;">' + typeBadge(ab.element, 30) + '</div><div class="s-name">' + ab.name + '</div>'
             : '<div class="s-icon" style="opacity:0.35;">·</div><div class="s-name">EMPTY</div>'
           ));
-    slot.addEventListener("click", () => { if (!locked) useSlot(i); });
+    slot.addEventListener("click", () => {
+      if (locked) return;
+      if (persistent.platform === "mobile") {
+        // Toggle-select for tap-to-fire (tap slot, then tap world)
+        mobileSelectedSlot = (mobileSelectedSlot === i) ? -1 : i;
+        updateSlotBar();
+      } else {
+        useSlot(i);
+      }
+    });
+    // Highlight the armed slot on mobile
+    if (persistent.platform === "mobile" && mobileSelectedSlot === i) {
+      slot.style.borderColor = "#fcd34d";
+      slot.style.boxShadow = "0 0 18px rgba(252,211,77,0.65), 3px 3px 0 rgba(0,0,0,0.5)";
+    }
     // Right-click OR double-click a slot to open the inventory + bind picker
     slot.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -2164,12 +2301,17 @@ function anyOverlayOpen() {
 function update() {
   const paused = anyOverlayOpen() || !player.alive;
   if (!paused) {
-    // Movement
+    // Movement — joystick on mobile, WASD/arrows on computer
     let mvx = 0, mvy = 0;
-    if (keys.w || keys.arrowup)    mvy -= 1;
-    if (keys.s || keys.arrowdown)  mvy += 1;
-    if (keys.a || keys.arrowleft)  mvx -= 1;
-    if (keys.d || keys.arrowright) mvx += 1;
+    if (persistent.platform === "mobile" && joystick.active) {
+      mvx = joystick.x;
+      mvy = joystick.y;
+    } else {
+      if (keys.w || keys.arrowup)    mvy -= 1;
+      if (keys.s || keys.arrowdown)  mvy += 1;
+      if (keys.a || keys.arrowleft)  mvx -= 1;
+      if (keys.d || keys.arrowright) mvx += 1;
+    }
     if (mvx || mvy) {
       const l = Math.hypot(mvx, mvy);
       mvx /= l; mvy /= l;
