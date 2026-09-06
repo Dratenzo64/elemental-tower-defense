@@ -32,7 +32,7 @@
   }
   .home-link:hover { background: rgba(0,0,0,0.9); }
   #save-indicator {
-    position: fixed; top: 12px; right: 240px;
+    position: fixed; top: 46px; right: 12px;
     background: rgba(52, 211, 153, 0.18);
     border: 2px solid #34d399;
     padding: 5px 12px;
@@ -1063,10 +1063,27 @@ function keyLabel(k) {
   return k.toUpperCase();
 }
 let persistent = defaultSave();
+// Cookie helpers — cookies survive some browser modes where localStorage is
+// wiped on tab close (Safari private mode, aggressive ITP settings, etc.)
+function setCookie(name, value, days) {
+  try {
+    const d = new Date();
+    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = name + "=" + encodeURIComponent(value) +
+      ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
+  } catch (e) {}
+}
+function getCookie(name) {
+  try {
+    const m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (e) { return null; }
+}
 function loadSave() {
   let raw = null;
   if (location.hash.startsWith(HASH_PREFIX)) raw = location.hash.slice(HASH_PREFIX.length);
   if (!raw) { try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {} }
+  if (!raw) raw = getCookie(SAVE_KEY);   // cookie fallback (survives ITP)
   if (!raw) return;
   try {
     const b = raw.replace(/-/g,"+").replace(/_/g,"/");
@@ -1109,11 +1126,19 @@ let lastSaveError = "";
 function save() {
   try {
     const enc = btoa(JSON.stringify(persistent)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    localStorage.setItem(SAVE_KEY, enc);
-    history.replaceState(null, "", HASH_PREFIX + enc);
+    try { localStorage.setItem(SAVE_KEY, enc); } catch (e) {}
+    setCookie(SAVE_KEY, enc, 365);   // cookie survives more browser modes
+    try { history.replaceState(null, "", HASH_PREFIX + enc); } catch (e) {}
   } catch (e) {}
   flashSave();
 }
+// Save right before the tab closes — last-ditch attempt to persist state
+window.addEventListener("pagehide", () => save());
+window.addEventListener("beforeunload", () => save());
+// On mobile, tab-switch can also freeze the tab — save when visibility changes
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") save();
+});
 // Manual save button — always available, top-right corner
 document.getElementById("save-button").addEventListener("click", () => {
   save();
