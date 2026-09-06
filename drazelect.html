@@ -32,7 +32,7 @@
   }
   .home-link:hover { background: rgba(0,0,0,0.9); }
   #save-indicator {
-    position: fixed; top: 12px; right: 118px;
+    position: fixed; top: 12px; right: 240px;
     background: rgba(52, 211, 153, 0.18);
     border: 2px solid #34d399;
     padding: 5px 12px;
@@ -65,6 +65,24 @@
   }
   #save-button:hover { filter: brightness(1.15); transform: translate(-1px, -1px); }
   #save-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
+  #restart-run-button {
+    position: fixed; top: 12px; right: 108px;
+    background: linear-gradient(180deg, #f59e0b 0%, #78350f 100%);
+    border: 2px solid #fcd34d;
+    padding: 5px 12px;
+    color: #fff;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    z-index: 100;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+    transition: transform 0.1s, filter 0.1s;
+    border-radius: 4px;
+  }
+  #restart-run-button:hover { filter: brightness(1.15); transform: translate(-1px, -1px); }
+  #restart-run-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
 
   /* HUD */
   #hud-top {
@@ -476,6 +494,7 @@
 <a href="index.html" class="home-link">‹ BACK</a>
 <div id="save-indicator" class="show">AUTO-SAVE</div>
 <button id="save-button" title="Save your progress now (right-click for diagnostic)">💾 SAVE</button>
+<button id="restart-run-button" title="Give up the current run and start again from LV 1 (keeps coins, abilities, and bindings)">🔄 RESTART RUN</button>
 
 <canvas id="game"></canvas>
 <div id="damage-flash"></div>
@@ -1098,6 +1117,17 @@ function save() {
 // Manual save button — always available, top-right corner
 document.getElementById("save-button").addEventListener("click", () => {
   save();
+});
+// Restart-run button — abandons current run, keeps coins/abilities/bindings.
+// Puts you back at LV 1 with full HP so you can start over from the beginning.
+document.getElementById("restart-run-button").addEventListener("click", () => {
+  if (player.alive && (player.kills > 0 || player.level > 1)) {
+    if (!confirm("Give up this run and restart from LV 1?\n\nYou'll keep your coins, owned abilities, bindings, and best-level record.")) return;
+  }
+  // Close any open overlay so we don't leave stale UI on screen
+  ["levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay","remap-overlay","evo-overlay","evo-tree-overlay"]
+    .forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove("show"); });
+  restartRun();
 });
 // Live save-status readout — updates twice per second so you always see the truth
 setInterval(() => {
