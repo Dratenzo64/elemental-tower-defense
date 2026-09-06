@@ -1119,13 +1119,23 @@ document.getElementById("save-button").addEventListener("click", () => {
   save();
 });
 // Restart-run button — works ANY time (alive, dead, mid-overlay, start screen).
-// No confirmation prompt. Puts you at LV 1 with full HP, keeps everything
-// permanent (coins, owned abilities, bindings, keymaps, evolution choice).
+// Banks any current run's coins/best-stats (as if you died), saves persistent
+// state, then drops you into a fresh LV 1 run. Keeps everything permanent.
 document.getElementById("restart-run-button").addEventListener("click", () => {
-  // Close every overlay including start-overlay so we drop straight into a run
+  // If mid-run, bank the run's earnings so they aren't thrown away
+  if (player.alive && player.kills > 0) {
+    const bonus = (player.level * 30) + (player.kills * 4);
+    persistent.coins += (player.runCoins + bonus);
+    persistent.totalRuns++;
+    if (player.level > persistent.bestLevel) persistent.bestLevel = player.level;
+    if (player.kills > persistent.bestKills) persistent.bestKills = player.kills;
+  }
+  save();  // always write to storage before we reset player state
+  // Close every overlay so we drop straight into a run
   ["start-overlay","levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay","remap-overlay","evo-overlay","evo-tree-overlay","platform-overlay"]
     .forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove("show"); });
   restartRun();
+  save();  // save again after restart so slotBindings updates land
 });
 // Live save-status readout — updates twice per second so you always see the truth
 setInterval(() => {
