@@ -57,7 +57,7 @@
     font-size: 12px;
     font-weight: bold;
     letter-spacing: 1.5px;
-    z-index: 100;
+    z-index: 250;  /* above all overlays so you can save from any screen */
     cursor: pointer;
     box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
     transition: transform 0.1s, filter 0.1s;
@@ -75,7 +75,7 @@
     font-size: 12px;
     font-weight: bold;
     letter-spacing: 1.5px;
-    z-index: 100;
+    z-index: 250;  /* above all overlays (which are z-index 100/200) */
     cursor: pointer;
     box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
     transition: transform 0.1s, filter 0.1s;
@@ -1118,14 +1118,12 @@ function save() {
 document.getElementById("save-button").addEventListener("click", () => {
   save();
 });
-// Restart-run button — abandons current run, keeps coins/abilities/bindings.
-// Puts you back at LV 1 with full HP so you can start over from the beginning.
+// Restart-run button — works ANY time (alive, dead, mid-overlay, start screen).
+// No confirmation prompt. Puts you at LV 1 with full HP, keeps everything
+// permanent (coins, owned abilities, bindings, keymaps, evolution choice).
 document.getElementById("restart-run-button").addEventListener("click", () => {
-  if (player.alive && (player.kills > 0 || player.level > 1)) {
-    if (!confirm("Give up this run and restart from LV 1?\n\nYou'll keep your coins, owned abilities, bindings, and best-level record.")) return;
-  }
-  // Close any open overlay so we don't leave stale UI on screen
-  ["levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay","remap-overlay","evo-overlay","evo-tree-overlay"]
+  // Close every overlay including start-overlay so we drop straight into a run
+  ["start-overlay","levelup-overlay","bind-overlay","inv-overlay","death-overlay","shop-overlay","remap-overlay","evo-overlay","evo-tree-overlay","platform-overlay"]
     .forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove("show"); });
   restartRun();
 });
