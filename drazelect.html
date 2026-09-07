@@ -528,23 +528,13 @@
   <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>MOUSE</kbd> aim · use slot keys (default <kbd>1</kbd>-<kbd>5</kbd>, remap in bind menu) · <kbd>Tab</kbd> inventory
 </div>
 
-<!-- ========== PLATFORM PICKER (first time only) ========== -->
-<div id="platform-overlay" class="overlay show">
+<!-- Platform picker removed — game auto-detects touch and shows joystick.
+     Keyboard/mouse always work; touch controls activate automatically on touch
+     devices. Play carries between devices via the save URL (hash). -->
+<div id="platform-overlay" class="overlay" style="display:none;">
   <div class="panel">
-    <div class="panel-title">🎮 CHOOSE PLATFORM</div>
-    <div class="panel-sub">How are you playing?</div>
-    <div class="ab-grid" style="max-width: 500px; margin: 16px auto;">
-      <div class="ab-card" id="plat-computer" style="cursor: pointer;">
-        <div style="font-size: 72px; margin: 8px 0; line-height: 1;">🖥️</div>
-        <div class="ab-name">COMPUTER</div>
-        <div class="ab-desc">WASD / arrows to move. Mouse to aim. Number keys to fire abilities.</div>
-      </div>
-      <div class="ab-card" id="plat-mobile" style="cursor: pointer;">
-        <div style="font-size: 72px; margin: 8px 0; line-height: 1;">📱</div>
-        <div class="ab-name">MOBILE / TOUCH</div>
-        <div class="ab-desc">Joystick to move. Tap a move at the bottom, then tap the world to fire it.</div>
-      </div>
-    </div>
+    <span id="plat-computer" style="display:none;"></span>
+    <span id="plat-mobile" style="display:none;"></span>
   </div>
 </div>
 
@@ -569,7 +559,6 @@
       <button class="btn secondary" id="start-shop">SHOP</button>
       <button class="btn" id="start-remap" style="background:linear-gradient(180deg,#60a5fa,#1e40af); border-color:#93c5fd;">⌨ REMAP KEYS</button>
       <button class="btn" id="start-tree" style="background:linear-gradient(180deg,#3a80ff,#0a1a5a); border-color:#70c0ff;">🌳 EVOLUTION TREE</button>
-      <button class="btn" id="start-platform" style="background:linear-gradient(180deg,#a855f7,#581c87); border-color:#d8b4fe;">🎮 CHANGE PLATFORM</button>
     </div>
   </div>
 </div>
@@ -1223,21 +1212,15 @@ const joystick = { active: false, x: 0, y: 0 };  // x, y in [-1, 1]
 // The slot the mobile player has "armed" for tap-to-fire (-1 = none)
 let mobileSelectedSlot = -1;
 
-// Show platform picker if not chosen; otherwise skip straight to start screen
-if (persistent.platform) {
-  document.getElementById("platform-overlay").classList.remove("show");
-  document.getElementById("start-overlay").classList.add("show");
-  applyPlatform();
-}
-document.getElementById("plat-computer").addEventListener("click", () => choosePlatform("computer"));
-document.getElementById("plat-mobile").addEventListener("click", () => choosePlatform("mobile"));
-function choosePlatform(p) {
-  persistent.platform = p;
-  save();
-  document.getElementById("platform-overlay").classList.remove("show");
-  document.getElementById("start-overlay").classList.add("show");
-  applyPlatform();
-}
+// Auto-detect touch device — no picker, no choice, no save-tied platform.
+// Both control schemes always work: keyboard/mouse everywhere; joystick and
+// tap-to-fire appear only if the device supports touch. Play carries between
+// devices via the save URL (hash).
+persistent.platform = ("ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0)
+  ? "mobile" : "computer";
+document.getElementById("start-overlay").classList.add("show");
+applyPlatform();
+
 function applyPlatform() {
   const jb = document.getElementById("joystick-base");
   const hint = document.getElementById("hint");
@@ -1251,12 +1234,13 @@ function applyPlatform() {
     if (hint) hint.innerHTML = '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>MOUSE</kbd> aim · use slot keys (default <kbd>1</kbd>-<kbd>5</kbd>, remap in bind menu) · <kbd>Tab</kbd> inventory';
   }
 }
-// "Change Platform" button — reopens the picker so you can swap any time.
-// Save fires the moment you pick, so the switch persists across both platforms.
-document.getElementById("start-platform").addEventListener("click", () => {
-  document.getElementById("start-overlay").classList.remove("show");
-  document.getElementById("platform-overlay").classList.add("show");
-});
+// Legacy stubs for removed platform-choice UI (kept so old listeners still bind harmlessly)
+function choosePlatform() {}
+document.getElementById("plat-computer").addEventListener("click", () => {});
+document.getElementById("plat-mobile").addEventListener("click", () => {});
+// "Change Platform" button — removed, but keep listener stub if the button exists in cached HTML
+const platBtn = document.getElementById("start-platform");
+if (platBtn) platBtn.style.display = "none";
 
 // -------- Joystick (touch-drag anywhere within the base to steer) --------
 function setupJoystick() {
