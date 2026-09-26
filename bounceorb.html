@@ -94,6 +94,48 @@
   .icon-btn:active { transform: translateY(0); }
   #music-btn { right: 16px; }
   #restart-btn { right: 68px; }
+  #skin-btn { right: 120px; }
+
+  /* ---------- Skin picker ---------- */
+  .skin-panel { max-width: 420px; }
+  .skin-grid {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    margin: 20px 0 26px;
+  }
+  .skin-option {
+    background: rgba(255,255,255,0.06);
+    border: 2px solid rgba(255,255,255,0.18);
+    border-radius: 16px;
+    padding: 14px 10px 10px;
+    width: 110px;
+    color: #fff;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s, background 0.15s;
+  }
+  .skin-option:hover { transform: translateY(-2px); background: rgba(255,255,255,0.1); }
+  .skin-option.selected { border-color: #7fe0ff; background: rgba(127,224,255,0.12); box-shadow: 0 0 16px rgba(127,224,255,0.35); }
+  .skin-preview {
+    width: 64px; height: 64px;
+    margin: 0 auto 10px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.2);
+    border: 1.5px solid rgba(255,255,255,0.25);
+  }
+  .skin-preview-default {
+    background: radial-gradient(circle at 35% 30%, #ffe9a8, #ff9a3d 55%, #d9591a 100%);
+  }
+  .skin-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .skin-preview-upload { font-size: 26px; color: rgba(255,255,255,0.5); }
+  #skin-close-btn { margin-top: 4px; }
 
   /* ---------- Overlays ---------- */
   .overlay {
@@ -179,6 +221,7 @@
 
 <button class="icon-btn" id="music-btn" title="Toggle music">🎵</button>
 <button class="icon-btn" id="restart-btn" title="Restart level">🔄</button>
+<button class="icon-btn" id="skin-btn" title="Choose your ball">🎨</button>
 
 <div class="overlay show" id="start-overlay">
   <div class="panel">
@@ -189,10 +232,35 @@
       <div class="key">← / →</div><div class="desc">Roll left / right</div>
       <div class="key">W / ↑ / SPACE</div><div class="desc">Jump (with a nice bounce)</div>
       <div class="key">S / ↓</div><div class="desc">Flatten — squish low, <b>never jumps</b>, slips under gaps</div>
-      <div class="key">🟠 orb</div><div class="desc"><b>Dash orb</b> — touch it for an instant speed burst</div>
-      <div class="key">🟣 orb</div><div class="desc"><b>Ghost orb</b> — 5 seconds of passing through obstacles (not ladders)</div>
+      <div class="key">🟠 orb</div><div class="desc"><b>Dash orb</b> — hold W/Space/Up as you touch it to fire an instant burst (rolling over it while not holding does nothing). Its arrow shows exactly where it'll send you: &gt;&gt; straight ahead, ^ straight up, or a diagonal arrow for a 45° burst up and forward.</div>
+      <div class="key">🟣 orb</div><div class="desc"><b>Ghost orb</b> — hold W/Space/Up as you touch it for 5 seconds of passing through obstacles (not ladders)</div>
+      <div class="key">🏝️ islands</div><div class="desc">Floating platforms with nothing underneath — you have to actually jump to reach them</div>
+      <div class="key">🎨 Icons</div><div class="desc">Pick your ball's look — default, hotdog 🌭, or your own photo</div>
     </div>
     <button class="big-btn" id="play-btn">▶ PLAY</button>
+  </div>
+</div>
+
+<div class="overlay" id="skin-overlay">
+  <div class="panel skin-panel">
+    <h1>CHOOSE YOUR BALL</h1>
+    <div class="sub">// FREE SKINS, PICK ONE //</div>
+    <div class="skin-grid">
+      <button class="skin-option" id="skin-default" type="button">
+        <div class="skin-preview skin-preview-default"></div>
+        Default
+      </button>
+      <button class="skin-option" id="skin-hotdog" type="button">
+        <div class="skin-preview">🌭</div>
+        Hotdog
+      </button>
+      <button class="skin-option" id="skin-custom" type="button">
+        <div class="skin-preview skin-preview-upload" id="skin-custom-preview">+</div>
+        Your Photo
+      </button>
+    </div>
+    <input type="file" id="skin-file-input" accept="image/*" style="display:none">
+    <button class="big-btn" id="skin-close-btn">DONE</button>
   </div>
 </div>
 
@@ -368,6 +436,7 @@ const LADDER_COLOR = "#c98a3e";
 const EXIT_COLOR = "#ffe066";
 const DASH_COLOR = "#ff9f1c";
 const GHOST_COLOR = "#9b5de5";
+const FLOAT_COLOR = "#5eb1a8"; // floating islands — distinct from solid ground
 
 const LEVELS = [
   {
@@ -376,25 +445,16 @@ const LEVELS = [
     width: VIRTUAL_W, height: VIRTUAL_H,
     start: { x: 60, y: 460 },
     platforms: [
-      { x: 0,    y: 560, w: 280, h: 160 },                       // ground A
-      { x: 540,  y: 560, w: 680, h: 160 },                       // ground B — has the wall & the ladder base
-      { x: 1010, y: 280, w: 220, h: 30, oneWay: true },          // landing reached by the ladder
+      { x: 0,   y: 560, w: 300, h: 160 },                        // ground A
+      { x: 360, y: 500, w: 920, h: 220 },                        // ground B — one small step up, then flat to the exit
     ],
-    obstacles: [
-      { x: 780, y: 374, w: 50, h: 186 },                         // wall — needs ghost to pass
-    ],
-    ladders: [
-      { x: 1080, y: 280, w: 36, h: 280 },                        // climbs from ground B up to the landing
-    ],
-    dashOrbs: [
-      { x: 210, y: 540, r: 16 },                                 // touch before the edge — crosses the gap
-    ],
-    ghostOrbs: [
-      { x: 710, y: 540, r: 16 },                                 // right before the wall
-    ],
-    exitArrows: [ { x: 1050, y: 250 }, { x: 1085, y: 250 }, { x: 1120, y: 250 } ],
-    exit: { x: 1120, y: 180, w: 60, h: 100 },
-    hint: "A/D to roll, W to jump. Touch the orange orb to dash across the gap!",
+    obstacles: [],
+    ladders: [],
+    dashOrbs: [],
+    ghostOrbs: [],
+    exitArrows: [ { x: 1090, y: 450 }, { x: 1125, y: 450 }, { x: 1160, y: 450 } ],
+    exit: { x: 1180, y: 400, w: 60, h: 100 },
+    hint: "A/D to roll, W/Space to jump. Hop up the little ledge and stroll to the exit!",
   },
   {
     name: "HIGHLANDS",
@@ -402,77 +462,52 @@ const LEVELS = [
     width: VIRTUAL_W, height: VIRTUAL_H,
     start: { x: 60, y: 460 },
     platforms: [
-      { x: 0,    y: 560, w: 530, h: 160 },                       // ground A — has the wall
-      { x: 790,  y: 560, w: 490, h: 160 },                       // ground B — has the ladder base
-      { x: 1010, y: 280, w: 270, h: 30, oneWay: true },          // landing reached by the ladder
+      { x: 0,   y: 560, w: 260, h: 160 },                        // ground A
+      { x: 520, y: 560, w: 760, h: 160 },                        // ground B — flat to the exit
     ],
-    obstacles: [
-      { x: 210, y: 374, w: 44, h: 186 },                         // wall — needs ghost to pass
-    ],
-    ladders: [
-      { x: 1080, y: 280, w: 32, h: 280 },                        // climbs from ground B up to the landing
-    ],
+    obstacles: [],
+    ladders: [],
     dashOrbs: [
-      { x: 460, y: 540, r: 16 },                                 // touch before the edge — crosses the gap
+      { x: 190, y: 540, r: 16 },                                 // touch before the edge — crosses the gap
     ],
-    ghostOrbs: [
-      { x: 150, y: 540, r: 16 },                                 // right before the wall
-    ],
-    exitArrows: [ { x: 1100, y: 250 }, { x: 1135, y: 250 }, { x: 1170, y: 250 } ],
-    exit: { x: 1180, y: 180, w: 60, h: 100 },
-    hint: "Purple orbs make you ghost for 5s — pass through obstacles, but not ladders!",
+    ghostOrbs: [],
+    exitArrows: [ { x: 1080, y: 510 }, { x: 1115, y: 510 }, { x: 1150, y: 510 } ],
+    exit: { x: 1180, y: 460, w: 60, h: 100 },
+    hint: "Hold W/Space/Up as you touch the orange orb for an instant dash — it's the only way across a gap this wide!",
   },
   {
     name: "SKYPATH",
     sky: "#8b7fd6",
     width: VIRTUAL_W, height: VIRTUAL_H,
     start: { x: 60, y: 460 },
-    platforms: [
-      { x: 0,    y: 560, w: 350, h: 160 },                       // ground A — has the low overhang
-      { x: 610,  y: 560, w: 500, h: 160 },                       // ground B — has the wall & the ladder base
-      { x: 930,  y: 280, w: 270, h: 30, oneWay: true },          // landing reached by the ladder
-    ],
+    platforms: [ { x: 0, y: 560, w: 1280, h: 160 } ],
     obstacles: [
-      { x: 150, y: 492, w: 140, h: 40 },                         // low overhang — flatten to slip under
-      { x: 820, y: 374, w: 44, h: 186 },                         // wall — needs ghost to pass
+      { x: 560, y: 374, w: 50, h: 186 },                         // wall — needs ghost to pass
     ],
-    ladders: [
-      { x: 1000, y: 280, w: 32, h: 280 },                        // climbs from ground B up to the landing
-    ],
-    dashOrbs: [
-      { x: 280, y: 540, r: 16 },                                 // touch before the edge — crosses the gap
-    ],
+    ladders: [],
+    dashOrbs: [],
     ghostOrbs: [
-      { x: 750, y: 540, r: 16 },                                 // right before the wall
+      { x: 480, y: 540, r: 16 },                                 // right before the wall
     ],
-    exitArrows: [ { x: 1050, y: 250 }, { x: 1085, y: 250 }, { x: 1120, y: 250 } ],
-    exit: { x: 1130, y: 180, w: 60, h: 100 },
-    hint: "Low ceiling ahead — hold S to flatten and slip underneath!",
+    exitArrows: [ { x: 1080, y: 510 }, { x: 1115, y: 510 }, { x: 1150, y: 510 } ],
+    exit: { x: 1180, y: 460, w: 60, h: 100 },
+    hint: "Hold W/Space/Up as you touch the purple orb to ghost for 5s — walk right through the wall!",
   },
   {
     name: "CANYON",
     sky: "#ef8354",
     width: VIRTUAL_W, height: VIRTUAL_H,
     start: { x: 60, y: 460 },
-    platforms: [
-      { x: 0,    y: 560, w: 220, h: 160 },                       // ground A
-      { x: 480,  y: 560, w: 220, h: 160 },                       // ground B — has the wall
-      { x: 960,  y: 560, w: 320, h: 160 },                       // ground C — exit, flat all the way (no ladder here)
-    ],
+    platforms: [ { x: 0, y: 560, w: 1280, h: 160 } ],
     obstacles: [
-      { x: 560, y: 374, w: 40, h: 186 },                         // wall — needs ghost to pass
+      { x: 500, y: 492, w: 200, h: 40 },                         // low overhang — flatten to slip under
     ],
     ladders: [],
-    dashOrbs: [
-      { x: 130, y: 540, r: 16 },                                 // crosses the first gap
-      { x: 630, y: 540, r: 16 },                                 // crosses the second gap
-    ],
-    ghostOrbs: [
-      { x: 500, y: 540, r: 16 },                                 // right before the wall
-    ],
-    exitArrows: [ { x: 1090, y: 510 }, { x: 1125, y: 510 }, { x: 1160, y: 510 } ],
-    exit: { x: 1190, y: 460, w: 60, h: 100 },
-    hint: "Two gaps back to back — keep your dash timing tight!",
+    dashOrbs: [],
+    ghostOrbs: [],
+    exitArrows: [ { x: 1080, y: 510 }, { x: 1115, y: 510 }, { x: 1150, y: 510 } ],
+    exit: { x: 1180, y: 460, w: 60, h: 100 },
+    hint: "Hold S to flatten and slip under the low ceiling!",
   },
   {
     name: "SPIRE",
@@ -480,24 +515,21 @@ const LEVELS = [
     width: VIRTUAL_W, height: VIRTUAL_H,
     start: { x: 60, y: 460 },
     platforms: [
-      { x: 0,   y: 560, w: 1280, h: 160 },                       // ground floor — has the wall
-      { x: 430, y: 340, w: 520,  h: 30, oneWay: true },          // mid landing reached by ladder 1
-      { x: 780, y: 140, w: 300,  h: 30, oneWay: true },          // top landing reached by ladder 2
+      { x: 0,   y: 560, w: 300, h: 160 },                        // ground A
+      { x: 560, y: 560, w: 340, h: 160 },                        // ground B — has the ladder base
+      { x: 700, y: 280, w: 280, h: 30, oneWay: true },           // landing reached by the ladder
     ],
-    obstacles: [
-      { x: 300, y: 374, w: 44, h: 186 },                         // wall — needs ghost to pass
-    ],
+    obstacles: [],
     ladders: [
-      { x: 500, y: 340, w: 32, h: 220 },                         // climbs from the floor to the mid landing
-      { x: 850, y: 140, w: 32, h: 200 },                         // climbs from the mid landing to the top landing
+      { x: 730, y: 280, w: 32, h: 280 },                         // climbs from ground B up to the landing
     ],
-    dashOrbs: [],
-    ghostOrbs: [
-      { x: 230, y: 540, r: 16 },                                 // right before the wall
+    dashOrbs: [
+      { x: 230, y: 540, r: 16 },                                 // crosses the gap
     ],
-    exitArrows: [ { x: 900, y: 110 }, { x: 935, y: 110 }, { x: 970, y: 110 } ],
-    exit: { x: 980, y: 40, w: 60, h: 100 },
-    hint: "Straight up — two ladders in a row to reach the top.",
+    ghostOrbs: [],
+    exitArrows: [ { x: 900, y: 250 }, { x: 935, y: 250 }, { x: 970, y: 250 } ],
+    exit: { x: 980, y: 180, w: 60, h: 100 },
+    hint: "Dash across the gap, then climb the ladder to reach the exit!",
   },
   {
     name: "OVERHANG ALLEY",
@@ -682,26 +714,28 @@ const LEVELS = [
     hint: "Three gaps back to back — keep dashing!",
   },
   {
-    name: "TRIPLE WALL",
+    name: "QUAD WALL",
     sky: "#e63946",
     width: VIRTUAL_W, height: VIRTUAL_H,
     start: { x: 60, y: 460 },
     platforms: [ { x: 0, y: 560, w: 1280, h: 160 } ],
     obstacles: [
       { x: 200, y: 374, w: 36, h: 186 },
-      { x: 500, y: 374, w: 36, h: 186 },
-      { x: 800, y: 374, w: 36, h: 186 },
+      { x: 450, y: 374, w: 36, h: 186 },
+      { x: 700, y: 374, w: 36, h: 186 },
+      { x: 950, y: 374, w: 36, h: 186 },
     ],
     ladders: [],
     dashOrbs: [],
     ghostOrbs: [
       { x: 140, y: 540, r: 16 },
-      { x: 440, y: 540, r: 16 },
-      { x: 740, y: 540, r: 16 },
+      { x: 390, y: 540, r: 16 },
+      { x: 640, y: 540, r: 16 },
+      { x: 890, y: 540, r: 16 },
     ],
     exitArrows: [ { x: 1080, y: 510 }, { x: 1115, y: 510 }, { x: 1150, y: 510 } ],
     exit: { x: 1180, y: 460, w: 60, h: 100 },
-    hint: "Three walls in a row — ghost through each one.",
+    hint: "Four walls now, back to back — ghost through each one.",
   },
   {
     name: "TWO DUCKS AND MORE",
@@ -829,21 +863,23 @@ const LEVELS = [
     platforms: [ { x: 0, y: 560, w: 1280, h: 160 } ],
     obstacles: [
       { x: 150, y: 374, w: 36, h: 186 },
-      { x: 400, y: 374, w: 36, h: 186 },
-      { x: 650, y: 374, w: 36, h: 186 },
-      { x: 900, y: 374, w: 36, h: 186 },
+      { x: 360, y: 374, w: 36, h: 186 },
+      { x: 570, y: 374, w: 36, h: 186 },
+      { x: 780, y: 374, w: 36, h: 186 },
+      { x: 990, y: 374, w: 36, h: 186 },
     ],
     ladders: [],
     dashOrbs: [],
     ghostOrbs: [
-      { x: 100, y: 540, r: 16 },
-      { x: 350, y: 540, r: 16 },
-      { x: 600, y: 540, r: 16 },
-      { x: 850, y: 540, r: 16 },
+      { x: 90,  y: 540, r: 16 },
+      { x: 300, y: 540, r: 16 },
+      { x: 510, y: 540, r: 16 },
+      { x: 720, y: 540, r: 16 },
+      { x: 930, y: 540, r: 16 },
     ],
     exitArrows: [ { x: 1080, y: 510 }, { x: 1115, y: 510 }, { x: 1150, y: 510 } ],
     exit: { x: 1180, y: 460, w: 60, h: 100 },
-    hint: "Four walls in a row — ghost through each.",
+    hint: "Five walls in a row now — ghost through each, back to back.",
   },
   {
     name: "SPIRAL",
@@ -899,7 +935,7 @@ const LEVELS = [
     hint: "Duck, dash, ghost, climb, ghost again — reach the top.",
   },
   {
-    name: "GRAND FINALE",
+    name: "INFERNO SPIRE",
     sky: "#ff4d6d",
     width: VIRTUAL_W, height: VIRTUAL_H,
     start: { x: 60, y: 460 },
@@ -929,6 +965,337 @@ const LEVELS = [
     exit: { x: 1210, y: 40, w: 60, h: 100 },
     hint: "The big one — duck, dash, ghost, climb, ghost, climb to the exit!",
   },
+  // ============================================================
+  // NIGHTMARE TIER. Way harder than anything above.
+  // ============================================================
+  {
+    name: "DOUBLE TROUBLE",
+    sky: "#c9184a",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,    y: 560, w: 950, h: 160 },
+      { x: 1180, y: 560, w: 100, h: 160 },
+    ],
+    obstacles: [
+      { x: 150, y: 492, w: 100, h: 40 },
+      { x: 330, y: 492, w: 100, h: 40 },
+      { x: 600, y: 374, w: 40,  h: 186 },
+      { x: 760, y: 374, w: 40,  h: 186 },
+    ],
+    ladders: [],
+    dashOrbs: [ { x: 880, y: 540, r: 16 } ],
+    ghostOrbs: [ { x: 520, y: 540, r: 16 } ],
+    exitArrows: [ { x: 1140, y: 510 }, { x: 1170, y: 510 }, { x: 1200, y: 510 } ],
+    exit: { x: 1220, y: 460, w: 60, h: 100 },
+    hint: "⚔ NIGHTMARE — Duck-duck, ghost through both walls, then dash to finish. No room to relax.",
+  },
+  {
+    name: "THE LONG CLIMB",
+    sky: "#3d5a80",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 650, h: 160 },
+      { x: 550, y: 280, w: 650, h: 30, oneWay: true },
+      { x: 950, y: 140, w: 330, h: 30, oneWay: true },
+    ],
+    obstacles: [
+      { x: 150,  y: 492, w: 120, h: 40 },
+      { x: 750,  y: 94,  w: 40,  h: 186 },
+    ],
+    ladders: [
+      { x: 620,  y: 280, w: 32, h: 280 },
+      { x: 1000, y: 140, w: 32, h: 140 },
+    ],
+    dashOrbs: [],
+    ghostOrbs: [ { x: 680, y: 260, r: 16 } ],
+    exitArrows: [ { x: 1180, y: 110 }, { x: 1215, y: 110 }, { x: 1250, y: 110 } ],
+    exit: { x: 1220, y: 40, w: 60, h: 100 },
+    hint: "⚔ NIGHTMARE — Duck under, climb, ghost through, climb again. The long way to the top.",
+  },
+  {
+    name: "NO ROOM FOR ERROR",
+    sky: "#5a189a",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 260, h: 160 },
+      { x: 560, y: 560, w: 450, h: 160 },
+      { x: 890, y: 340, w: 390, h: 30, oneWay: true },
+    ],
+    obstacles: [
+      { x: 100, y: 492, w: 120, h: 40 },
+      { x: 650, y: 492, w: 120, h: 40 },
+      { x: 880, y: 374, w: 40,  h: 186 },
+      { x: 1050, y: 154, w: 40, h: 186 },
+    ],
+    ladders: [ { x: 960, y: 340, w: 32, h: 220 } ],
+    dashOrbs: [ { x: 240, y: 540, r: 16 } ],
+    ghostOrbs: [
+      { x: 820, y: 540, r: 16 },
+      { x: 1000, y: 320, r: 16 },
+    ],
+    exitArrows: [ { x: 1140, y: 270 }, { x: 1170, y: 270 }, { x: 1200, y: 270 } ],
+    exit: { x: 1200, y: 240, w: 60, h: 100 },
+    hint: "⚔ NIGHTMARE — Duck, dash, duck again, ghost, climb, ghost once more. Precision only.",
+  },
+  {
+    name: "GHOST RUSH",
+    sky: "#480ca8",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [ { x: 0, y: 560, w: 1280, h: 160 } ],
+    obstacles: [
+      { x: 150, y: 374, w: 40, h: 186 },
+      { x: 450, y: 374, w: 40, h: 186 },
+      { x: 750, y: 374, w: 40, h: 186 },
+    ],
+    ladders: [],
+    dashOrbs: [],
+    ghostOrbs: [ { x: 90, y: 540, r: 16 } ],
+    exitArrows: [ { x: 1140, y: 510 }, { x: 1170, y: 510 }, { x: 1200, y: 510 } ],
+    exit: { x: 1220, y: 460, w: 60, h: 100 },
+    hint: "⚔ NIGHTMARE — Only ONE ghost orb for all three walls. Don't waste time.",
+  },
+  {
+    name: "THE SUMMIT",
+    sky: "#03071e",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,    y: 560, w: 260, h: 160 },
+      { x: 560,  y: 560, w: 450, h: 160 },
+      { x: 890,  y: 340, w: 390, h: 30, oneWay: true },
+      { x: 1080, y: 140, w: 200, h: 30, oneWay: true },
+    ],
+    obstacles: [
+      { x: 100,  y: 492, w: 120, h: 40 },
+      { x: 650,  y: 492, w: 120, h: 40 },
+      { x: 880,  y: 374, w: 40,  h: 186 },
+      { x: 1050, y: 154, w: 40,  h: 186 },
+    ],
+    ladders: [
+      { x: 960,  y: 340, w: 32, h: 220 },
+      { x: 1150, y: 140, w: 32, h: 200 },
+    ],
+    dashOrbs: [ { x: 240, y: 540, r: 16 } ],
+    ghostOrbs: [
+      { x: 820,  y: 540, r: 16 },
+      { x: 1000, y: 320, r: 16 },
+    ],
+    exitArrows: [ { x: 1160, y: 110 }, { x: 1195, y: 110 }, { x: 1230, y: 110 } ],
+    exit: { x: 1200, y: 40, w: 60, h: 100 },
+    hint: "⚔ NIGHTMARE — The final ascent. Duck, dash, duck, ghost, climb, ghost, climb once more to the summit.",
+  },
+  // ============================================================
+  // SKY TIER — floating islands, upward-launching orbs, ceiling exits.
+  // ============================================================
+  {
+    name: "ISLAND HOP",
+    sky: "#0a9396",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,    y: 560, w: 220, h: 160 },
+      { x: 380,  y: 560, w: 100, h: 40,  floating: true },
+      { x: 650,  y: 560, w: 90,  h: 40,  floating: true },
+      { x: 900,  y: 520, w: 90,  h: 40,  floating: true },
+      { x: 1150, y: 560, w: 130, h: 160 },
+    ],
+    obstacles: [],
+    ladders: [],
+    dashOrbs: [],
+    ghostOrbs: [],
+    exitArrows: [ { x: 1100, y: 510 }, { x: 1130, y: 510 }, { x: 1160, y: 510 } ],
+    exit: { x: 1180, y: 460, w: 60, h: 100 },
+    hint: "☁ SKY TIER — No orbs this time: floating islands, nothing underneath. Real jumps only.",
+  },
+  {
+    name: "SKY DASH",
+    sky: "#023047",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 320, h: 160 },
+      { x: 550, y: 250, w: 370, h: 40, floating: true },
+      { x: 1100, y: 250, w: 180, h: 40, floating: true },
+    ],
+    obstacles: [],
+    ladders: [],
+    dashOrbs: [ { x: 260, y: 540, r: 16, steer: "diagonal" } ],
+    ghostOrbs: [],
+    exitArrows: [ { x: 1180, y: 200 }, { x: 1210, y: 200 }, { x: 1240, y: 200 } ],
+    exit: { x: 1200, y: 130, w: 60, h: 100 },
+    hint: "☁ SKY TIER — This orb's arrow points up — hold W/Space/Up as you touch it to launch onto the island above.",
+  },
+  {
+    name: "CEILING BREAK",
+    sky: "#7209b7",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 260, h: 160 },
+      { x: 450, y: 560, w: 830, h: 160 },
+    ],
+    obstacles: [],
+    ladders: [],
+    dashOrbs: [],
+    ghostOrbs: [],
+    exitArrows: [ { x: 350, y: 380 }, { x: 380, y: 380 }, { x: 410, y: 380 } ].map(a => ({ ...a, dir: "up" })),
+    exit: { x: 330, y: 300, w: 100, h: 150 },
+    hint: "☁ SKY TIER — The exit is on the ceiling this time — jump straight up into it.",
+  },
+  {
+    name: "SKY GAUNTLET",
+    sky: "#3a0ca3",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 300, h: 160 },
+      { x: 470, y: 560, w: 110, h: 40,  floating: true },
+      { x: 850, y: 250, w: 400, h: 40,  floating: true },
+    ],
+    obstacles: [ { x: 180, y: 374, w: 40, h: 186 } ],
+    ladders: [],
+    dashOrbs: [ { x: 520, y: 540, r: 16, steer: "diagonal" } ],
+    ghostOrbs: [ { x: 120, y: 540, r: 16 } ],
+    exitArrows: [ { x: 1080, y: 180 }, { x: 1110, y: 180 }, { x: 1140, y: 180 } ],
+    exit: { x: 1100, y: 130, w: 60, h: 100 },
+    hint: "☁ SKY TIER — Ghost the wall, jump to the narrow island, then hold jump on the upward orb to launch to the next one.",
+  },
+  {
+    name: "ASCENSION",
+    sky: "#03071e",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 240, h: 160 },
+      { x: 410, y: 560, w: 230, h: 40,  floating: true },
+      { x: 650, y: 150, w: 300, h: 30,  oneWay: true },
+    ],
+    obstacles: [ { x: 170, y: 374, w: 36, h: 186 } ],
+    ladders: [],
+    dashOrbs: [ { x: 500, y: 540, r: 16, steer: "up" } ],
+    ghostOrbs: [ { x: 110, y: 540, r: 16 } ],
+    exitArrows: [ { x: 780, y: 50 }, { x: 810, y: 50 }, { x: 840, y: 50 } ].map(a => ({ ...a, dir: "up" })),
+    exit: { x: 850, y: 100, w: 80, h: 100 },
+    hint: "☁ SKY TIER — Ghost the wall, jump the gap, then hold jump on the orb for a straight-up rocket to the platform above.",
+  },
+  // ============================================================
+  // IMPOSSIBLE TIER — every mechanic, minimal margin. The hardest
+  // content in the game.
+  // ============================================================
+  {
+    name: "PURGATORY ROW",
+    sky: "#1a0521",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [ { x: 0, y: 560, w: 1280, h: 160 } ],
+    obstacles: [
+      { x: 220, y: 492, w: 80, h: 40 },
+      { x: 420, y: 374, w: 36, h: 186 },
+      { x: 650, y: 492, w: 80, h: 40 },
+      { x: 900, y: 374, w: 36, h: 186 },
+    ],
+    ladders: [],
+    dashOrbs: [],
+    ghostOrbs: [ { x: 90, y: 540, r: 16 } ],
+    exitArrows: [ { x: 1140, y: 510 }, { x: 1170, y: 510 }, { x: 1200, y: 510 } ],
+    exit: { x: 1220, y: 460, w: 60, h: 100 },
+    hint: "💀 IMPOSSIBLE — One ghost charge, two walls, two ducks woven in between. Don't break stride.",
+  },
+  {
+    name: "THE NEEDLE'S EYE",
+    sky: "#240046",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 220, h: 160 },
+      { x: 450, y: 560, w: 280, h: 160 },
+      { x: 850, y: 560, w: 430, h: 160 },
+    ],
+    obstacles: [
+      { x: 580, y: 492, w: 60, h: 40 },
+    ],
+    ladders: [],
+    dashOrbs: [
+      { x: 190, y: 540, r: 16 },
+      { x: 700, y: 540, r: 16 },
+    ],
+    ghostOrbs: [],
+    exitArrows: [ { x: 1140, y: 510 }, { x: 1170, y: 510 }, { x: 1200, y: 510 } ],
+    exit: { x: 1200, y: 460, w: 60, h: 100 },
+    hint: "💀 IMPOSSIBLE — Dash, duck the instant you land, dash again.",
+  },
+  {
+    name: "SKYFALL",
+    sky: "#101935",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,    y: 560, w: 240, h: 160 },
+      { x: 420,  y: 560, w: 90,  h: 40,  floating: true },
+      { x: 660,  y: 560, w: 90,  h: 40,  floating: true },
+      { x: 900,  y: 560, w: 90,  h: 40,  floating: true },
+      { x: 1130, y: 560, w: 150, h: 160 },
+    ],
+    obstacles: [],
+    ladders: [],
+    dashOrbs: [],
+    ghostOrbs: [],
+    exitArrows: [ { x: 1130, y: 510 }, { x: 1160, y: 510 }, { x: 1190, y: 510 } ],
+    exit: { x: 1220, y: 460, w: 60, h: 100 },
+    hint: "💀 IMPOSSIBLE — Three floating islands, nothing underneath. Real jumps only.",
+  },
+  {
+    name: "MAELSTROM",
+    sky: "#0d0221",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,    y: 560, w: 300, h: 160 },
+      { x: 520,  y: 560, w: 400, h: 160 },
+      { x: 850,  y: 340, w: 360, h: 30, oneWay: true },
+      { x: 1040, y: 140, w: 190, h: 30, oneWay: true },
+    ],
+    obstacles: [
+      { x: 90,   y: 492, w: 120, h: 40 },
+      { x: 610,  y: 492, w: 120, h: 40 },
+      { x: 840,  y: 374, w: 40,  h: 186 },
+      { x: 1010, y: 154, w: 40,  h: 186 },
+    ],
+    ladders: [
+      { x: 920,  y: 340, w: 32, h: 220 },
+      { x: 1110, y: 140, w: 32, h: 200 },
+    ],
+    dashOrbs: [ { x: 260, y: 540, r: 16 } ],
+    ghostOrbs: [
+      { x: 780, y: 540, r: 16 },
+      { x: 960, y: 320, r: 16 },
+    ],
+    exitArrows: [ { x: 1120, y: 110 }, { x: 1150, y: 110 }, { x: 1180, y: 110 } ],
+    exit: { x: 1160, y: 40, w: 60, h: 100 },
+    hint: "💀 IMPOSSIBLE — Everything at once: duck, dash, duck, ghost, climb, ghost, climb once more.",
+  },
+  {
+    name: "THE VOID",
+    sky: "#000000",
+    width: VIRTUAL_W, height: VIRTUAL_H,
+    start: { x: 60, y: 460 },
+    platforms: [
+      { x: 0,   y: 560, w: 220, h: 160 },
+      { x: 400, y: 560, w: 220, h: 40, floating: true },
+      { x: 610, y: 150, w: 300, h: 30, oneWay: true },
+    ],
+    obstacles: [ { x: 150, y: 374, w: 36, h: 186 } ],
+    ladders: [],
+    dashOrbs: [ { x: 460, y: 540, r: 16, steer: "up" } ],
+    ghostOrbs: [ { x: 90, y: 540, r: 16 } ],
+    exitArrows: [ { x: 740, y: 50 }, { x: 770, y: 50 }, { x: 800, y: 50 } ].map(a => ({ ...a, dir: "up" })),
+    exit: { x: 810, y: 100, w: 80, h: 100 },
+    hint: "💀 IMPOSSIBLE — The true final challenge: ghost the wall, jump to the island, then hold jump on the orb for a straight-up rocket to oblivion.",
+  },
 ];
 
 // ============================================================
@@ -942,6 +1309,77 @@ let startTime = 0;
 let orbsCollected = 0;
 let running = false;
 let hintTimer = 0;
+
+// ============================================================
+// SKINS — default gradient ball, hotdog emoji, or a player-uploaded
+// photo. Purely visual: hooks into the same translate+scale(squash)
+// pipeline drawPlayer() already uses, so every skin squishes/settles
+// onto the ground exactly like the default ball (never rotated, never
+// squashes sideways). Persisted with localStorage when available; if
+// not (or it's full), the choice still works for the current session.
+// ============================================================
+let currentSkin = "default"; // "default" | "hotdog" | "custom"
+let customSkinImg = null;
+let skinWasRunning = false;
+try {
+  const savedSkin = localStorage.getItem("bounceorb_skin");
+  if (savedSkin === "hotdog") {
+    currentSkin = "hotdog";
+  } else if (savedSkin === "custom") {
+    const savedImg = localStorage.getItem("bounceorb_custom_img");
+    if (savedImg) {
+      const img = new Image();
+      img.onload = () => { customSkinImg = img; };
+      img.src = savedImg;
+      currentSkin = "custom";
+    }
+  }
+} catch (e) { /* localStorage unavailable — stay on default for this session */ }
+
+function setSkin(skin) {
+  currentSkin = skin;
+  updateSkinSelectionUI();
+  try { localStorage.setItem("bounceorb_skin", skin); } catch (e) { /* ignore */ }
+}
+
+function updateSkinSelectionUI() {
+  ["default", "hotdog", "custom"].forEach((s) => {
+    const el = document.getElementById("skin-" + s);
+    if (el) el.classList.toggle("selected", currentSkin === s);
+  });
+}
+
+function loadCustomSkinFile(file) {
+  if (!file || !file.type || !file.type.startsWith("image/")) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      // Crop to a square (cover-fit) and shrink so it's cheap to draw
+      // and safe to store in localStorage.
+      const size = 200;
+      const off = document.createElement("canvas");
+      off.width = size; off.height = size;
+      const octx = off.getContext("2d");
+      const s = Math.min(img.width, img.height);
+      const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+      octx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
+      let dataUrl;
+      try { dataUrl = off.toDataURL("image/jpeg", 0.85); } catch (err) { return; }
+      const finalImg = new Image();
+      finalImg.onload = () => {
+        customSkinImg = finalImg;
+        const preview = document.getElementById("skin-custom-preview");
+        if (preview) preview.innerHTML = `<img src="${dataUrl}" alt="your photo">`;
+        setSkin("custom");
+        try { localStorage.setItem("bounceorb_custom_img", dataUrl); } catch (err) { /* storage full/unavailable — still works this session */ }
+      };
+      finalImg.src = dataUrl;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 
 function freshPlayer(lvl) {
   return {
@@ -1105,20 +1543,46 @@ function update(dt) {
   // otherwise the jump fires first (before grounded even updates) and
   // cancels the climb, and since a jump doesn't kill horizontal speed,
   // walking into a ladder while holding D would just hop you past it.
-  if (jumpHeld() && player.grounded && !player.flat && !player.climbing) {
+  // Also guarded against an orb directly in touch range: since orbs now
+  // require holding jump to fire, pressing jump right as you reach one
+  // would otherwise ALSO trigger a plain hop in the same frame — and
+  // because a straight (unsteered) dash freezes vy at whatever it was the
+  // instant it starts, that stray hop would lock the whole dash in at the
+  // hop's height instead of ground level, throwing off everything after
+  // it. Touching an orb should fire only the orb's effect, not a hop too.
+  const onUnclaimedOrb = [...player.dashOrbs, ...player.ghostOrbs].some((o) => {
+    if (o.taken) return false;
+    const dx = player.x - o.x, dy = player.y - o.y;
+    return dx * dx + dy * dy < (BALL_R + o.r) * (BALL_R + o.r);
+  });
+  if (jumpHeld() && player.grounded && !player.flat && !player.climbing && !onUnclaimedOrb) {
     player.vy = JUMP_VEL;
     player.grounded = false;
     player.landingPulse = -1; // stretch
   }
 
   // --- dash ---
-  // A dash holds altitude (ignores gravity) for its duration so it's a
-  // clean horizontal burst across a gap rather than an arc that sinks
-  // into the far ledge before it gets there.
+  // The dash always fires exactly what the orb's arrow shows — no live
+  // steering, no mismatch between what you see and what you get:
+  //   >>  (no `dir`, or "right") — straight horizontal burst
+  //   ^   ("up")                 — straight vertical burst, no forward drift
+  //   diagonal arrow ("diagonal")— a clean 45° burst, up and forward
+  // Locked in as `player.dashDir` the moment the orb is grabbed (see orb
+  // pickups below). Ignores gravity for the dash's duration either way, so
+  // it's a clean burst, not an arc.
   if (player.dashTimer > 0) {
     player.dashTimer -= dt;
-    player.vx = DASH_SPEED * player.facing;
-    player.vy = 0;
+    if (player.dashDir === "up") {
+      player.vx = 0;
+      player.vy = -DASH_SPEED;
+    } else if (player.dashDir === "diagonal") {
+      const diag = DASH_SPEED * 0.7071; // 45°, keeps total speed = DASH_SPEED
+      player.vx = diag * player.facing;
+      player.vy = -diag;
+    } else {
+      player.vx = DASH_SPEED * player.facing;
+      player.vy = 0;
+    }
   }
 
   // --- ghost timer ---
@@ -1160,23 +1624,30 @@ function update(dt) {
   }
 
   // --- orb pickups ---
-  for (const o of player.dashOrbs) {
-    if (!o.taken) {
-      const dx = player.x - o.x, dy = player.y - o.y;
-      if (dx * dx + dy * dy < (BALL_R + o.r) * (BALL_R + o.r)) {
-        o.taken = true;
-        player.dashTimer = DASH_TIME;
-        orbsCollected++;
+  // Orbs no longer fire just by rolling into them — you have to be
+  // holding jump (W/Space/Up) at the moment you touch one, same as
+  // holding down a Geometry Dash orb. Walk over one without holding jump
+  // and nothing happens; it's still there to try again.
+  if (jumpHeld()) {
+    for (const o of player.dashOrbs) {
+      if (!o.taken) {
+        const dx = player.x - o.x, dy = player.y - o.y;
+        if (dx * dx + dy * dy < (BALL_R + o.r) * (BALL_R + o.r)) {
+          o.taken = true;
+          player.dashTimer = DASH_TIME;
+          player.dashDir = o.steer || "right";
+          orbsCollected++;
+        }
       }
     }
-  }
-  for (const o of player.ghostOrbs) {
-    if (!o.taken) {
-      const dx = player.x - o.x, dy = player.y - o.y;
-      if (dx * dx + dy * dy < (BALL_R + o.r) * (BALL_R + o.r)) {
-        o.taken = true;
-        player.ghostTimer = GHOST_TIME;
-        orbsCollected++;
+    for (const o of player.ghostOrbs) {
+      if (!o.taken) {
+        const dx = player.x - o.x, dy = player.y - o.y;
+        if (dx * dx + dy * dy < (BALL_R + o.r) * (BALL_R + o.r)) {
+          o.taken = true;
+          player.ghostTimer = GHOST_TIME;
+          orbsCollected++;
+        }
       }
     }
   }
@@ -1270,8 +1741,22 @@ function drawObstacle(o) {
 }
 
 function drawGround(p) {
-  // Flat single color, no gradient/grass-strip shading.
-  ctx.fillStyle = GROUND_COLOR;
+  // Flat single color, no gradient/grass-strip shading. Floating islands
+  // (nothing solid underneath — reachable only by an actual jump) get a
+  // distinct color plus a soft drop-shadow so it's visually obvious
+  // there's open air below, not just a color swap.
+  if (p.floating) {
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.ellipse(p.x + p.w / 2, p.y + p.h + 14, p.w * 0.4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = FLOAT_COLOR;
+  } else {
+    ctx.fillStyle = GROUND_COLOR;
+  }
   ctx.fillRect(p.x, p.y, p.w, p.h);
   ctx.strokeStyle = "rgba(0,0,0,0.2)";
   ctx.lineWidth = 1;
@@ -1309,11 +1794,19 @@ function drawOrb(o, kind, t) {
   ctx.stroke();
 
   if (kind === "dash") {
-    // little speed chevrons
+    // Speed chevrons point exactly the way this orb fires — >> straight
+    // right, ^ straight up, or a diagonal arrow for a 45° up-and-forward
+    // burst — matching its `steer` field one-to-one with the real dash
+    // direction, so there's never a mismatch between what you see and
+    // what you get.
+    ctx.save();
+    if (o.steer === "up") ctx.rotate(-Math.PI / 2);
+    else if (o.steer === "diagonal") ctx.rotate(-Math.PI / 4);
     ctx.beginPath();
     ctx.moveTo(-6, -6); ctx.lineTo(0, 0); ctx.lineTo(-6, 6);
     ctx.moveTo(0, -6); ctx.lineTo(6, 0); ctx.lineTo(0, 6);
     ctx.lineWidth = 2.5; ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.stroke();
+    ctx.restore();
   } else {
     // tiny ghost face
     ctx.fillStyle = "rgba(255,255,255,0.9)";
@@ -1333,9 +1826,16 @@ function drawExitArrows(t) {
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(sx - 10, sy - 14);
-    ctx.lineTo(sx + 6, sy);
-    ctx.lineTo(sx - 10, sy + 14);
+    if (a.dir === "up") {
+      // ceiling exit — chevron points up instead of sideways
+      ctx.moveTo(sx - 14, sy + 10);
+      ctx.lineTo(sx, sy - 6);
+      ctx.lineTo(sx + 14, sy + 10);
+    } else {
+      ctx.moveTo(sx - 10, sy - 14);
+      ctx.lineTo(sx + 6, sy);
+      ctx.lineTo(sx - 10, sy + 14);
+    }
     ctx.stroke();
   }
   ctx.restore();
@@ -1381,23 +1881,52 @@ function drawPlayer() {
 
   if (player.ghost) ctx.globalAlpha = 0.55;
 
-  const grad = ctx.createRadialGradient(-BALL_R * 0.35, -BALL_R * 1.4, 2, 0, -BALL_R, BALL_R * 1.15);
-  if (player.ghost) {
-    grad.addColorStop(0, "#e6d8ff");
-    grad.addColorStop(0.6, "#a970ff");
-    grad.addColorStop(1, "#6a3fb0");
+  // Skin selection — same translate+scale (squash) pipeline for all three,
+  // so every skin settles onto the ground and never rotates, exactly like
+  // the default ball.
+  if (currentSkin === "hotdog") {
+    ctx.font = `${Math.round(BALL_R * 2.3)}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🌭", 0, -BALL_R + 2);
+    if (player.ghost) {
+      ctx.strokeStyle = "rgba(180,140,255,0.9)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, -BALL_R, BALL_R, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  } else if (currentSkin === "custom" && customSkinImg) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, -BALL_R, BALL_R, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(customSkinImg, -BALL_R, -BALL_R * 2, BALL_R * 2, BALL_R * 2);
+    ctx.restore();
+    ctx.strokeStyle = player.ghost ? "rgba(180,140,255,0.9)" : "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, -BALL_R, BALL_R, 0, Math.PI * 2);
+    ctx.stroke();
   } else {
-    grad.addColorStop(0, "#ffe9a8");
-    grad.addColorStop(0.55, "#ff9a3d");
-    grad.addColorStop(1, "#d9591a");
+    const grad = ctx.createRadialGradient(-BALL_R * 0.35, -BALL_R * 1.4, 2, 0, -BALL_R, BALL_R * 1.15);
+    if (player.ghost) {
+      grad.addColorStop(0, "#e6d8ff");
+      grad.addColorStop(0.6, "#a970ff");
+      grad.addColorStop(1, "#6a3fb0");
+    } else {
+      grad.addColorStop(0, "#ffe9a8");
+      grad.addColorStop(0.55, "#ff9a3d");
+      grad.addColorStop(1, "#d9591a");
+    }
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, -BALL_R, BALL_R, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = player.ghost ? "rgba(180,140,255,0.9)" : "rgba(150,70,10,0.4)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(0, -BALL_R, BALL_R, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = player.ghost ? "rgba(180,140,255,0.9)" : "rgba(150,70,10,0.4)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
 
   ctx.restore();
   if (player.ghost) ctx.globalAlpha = 1;
@@ -1454,6 +1983,26 @@ document.getElementById("music-btn").addEventListener("click", () => Music.toggl
 document.getElementById("restart-btn").addEventListener("click", () => {
   if (level) loadLevel(levelIndex);
 });
+document.getElementById("skin-btn").addEventListener("click", () => {
+  skinWasRunning = running;
+  running = false;
+  updateSkinSelectionUI();
+  document.getElementById("skin-overlay").classList.add("show");
+});
+document.getElementById("skin-close-btn").addEventListener("click", () => {
+  document.getElementById("skin-overlay").classList.remove("show");
+  running = skinWasRunning;
+});
+document.getElementById("skin-default").addEventListener("click", () => setSkin("default"));
+document.getElementById("skin-hotdog").addEventListener("click", () => setSkin("hotdog"));
+document.getElementById("skin-custom").addEventListener("click", () => {
+  document.getElementById("skin-file-input").click();
+});
+document.getElementById("skin-file-input").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (file) loadCustomSkinFile(file);
+});
+updateSkinSelectionUI();
 
 // initial idle draw behind the start overlay
 level = LEVELS[0];
