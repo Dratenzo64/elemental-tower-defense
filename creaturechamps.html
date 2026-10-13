@@ -272,9 +272,19 @@ function load() {
   } catch (e) { return false; }
 }
 
-function movePool(el, el2) {
+// some creatures can learn moves from elements that aren't their own ("off-type" moves)
+function extraEls(c) {
+  if (!c.xel) {
+    c.xel = [];
+    const r = Math.random(), others = EL_IDS.filter(e => e !== c.el && e !== c.el2);
+    const n = r < 0.45 ? 0 : r < 0.85 ? 1 : 2;
+    while (c.xel.length < n) { const e = pick(others); if (!c.xel.includes(e)) c.xel.push(e); }
+  }
+  return c.xel;
+}
+function movePool(el, el2, extra) {
   const out = [];
-  for (const e of [el, el2]) if (e) for (const m of MOVES[e]) out.push({ n: m[0], d: m[1], a: m[2], el: e });
+  for (const e of [el, el2, ...(extra || [])]) if (e) for (const m of MOVES[e]) out.push({ n: m[0], d: m[1], a: m[2], el: e });
   for (const m of MOVES.normal) out.push({ n: m[0], d: m[1], a: m[2], el: "normal" });
   return out;
 }
@@ -297,7 +307,9 @@ function newCreature(species, el, tier = 1, fuse = 0, lead = null) {
   const moves = shuffled.slice(0, 4).map(m => ({ ...m }));
   // always give at least one dependable move
   if (!moves.some(m => m.a >= 95)) moves[0] = { ...pool[0] };
-  return { id: uid(), species, el, tier, fuse, moves };
+  const nc = { id: uid(), species, el, tier, fuse, moves };
+  extraEls(nc);
+  return nc;
 }
 function weightedSpecies(w, el) {
   // species whose "home" is this element are far more likely to show up with it
@@ -577,14 +589,14 @@ function renderHub() {
       <div class="row"><button class="btn" data-act="applyEl" ${ui.selEgg && ui.selEl ? "" : "disabled"}>Put selected element on selected egg</button>
       <span class="muted">Eggs without an element hatch into a random one.</span></div>`;
   } else if (ui.tab === "combine") {
-    const crs = S.creatures.map(c => crCard(c, { act: "selCr", sel: ui.selCr === c.id })).join("");
+    const eggs = S.eggs.map(e => `<div class="card cr ${ui.selEgg === e.id ? "sel" : ""}" data-act="selEgg" data-id="${e.id}"><b>${EGGS[e.kind].name}</b><br>${e.el ? tag(e.el.el) : '<span class="muted">random element</span>'}${e.el2 ? "<br>+ " + tag(e.el2) : ""}</div>`).join("");
     const els = S.elements.map(x => `<div class="card cr ${ui.selEl === x.id ? "sel" : ""}" data-act="selEl" data-id="${x.id}">${tag(x.el)} Tier ${x.tier}</div>`).join("");
-    const cr = findCr(ui.selCr), el = S.elements.find(e => e.id === ui.selEl);
-    const bad = cr && el && (el.el === cr.el || el.el === cr.el2);
-    body = `<h2>Combine an animal with an element</h2><p class="muted">Add a second element to a creature (dual typing): it learns that element's moves, hits with both, and takes damage from both types, and shows both effects. Uses up the element. A creature holds one extra element — combining again replaces it.</p>
-      <h2 style="margin-top:10px">1. Pick an animal</h2><div class="grid">${crs}</div>
+    const egg = S.eggs.find(e => e.id === ui.selEgg), el = S.elements.find(e => e.id === ui.selEl);
+    const bad = egg && el && ((egg.el && egg.el.el === el.el) || egg.el2 === el.el);
+    body = `<h2>Combine an egg with an element</h2><p class="muted">Add a second element to an egg (dual typing): the creature that hatches knows that element's moves, hits with both, and takes damage from both types. Uses up the element. An egg holds one extra element — combining again replaces it.</p>
+      <h2 style="margin-top:10px">1. Pick an egg</h2><div class="grid">${eggs || '<span class="muted">No eggs — buy some in the shop</span>'}</div>
       <h2 style="margin-top:14px">2. Pick an element</h2><div class="grid">${els || '<span class="muted">No elements — buy some in the shop</span>'}</div>
-      <div class="row"><button class="btn big" data-act="combine" ${cr && el && !bad ? "" : "disabled"}>${cr && el ? (bad ? "Already that element" : `Combine → ${nm({ ...cr, el2: el.el })}`) : "Combine"}</button></div>`;
+      <div class="row"><button class="btn big" data-act="combine" ${egg && el && !bad ? "" : "disabled"}>${egg && el ? (bad ? "Already that element" : "Combine") : "Combine"}</button></div>`;
   } else if (ui.tab === "fuse") {
     const crs = S.creatures.map(c => crCard(c, { act: "selCr", sel: ui.selCr === c.id || ui.selB === c.id })).join("");
     const els = S.elements.map(x => `<div class="card cr ${ui.selEl === x.id || ui.selEl2 === x.id ? "sel" : ""}" data-act="selElF" data-id="${x.id}">${tag(x.el)} Tier ${x.tier}</div>`).join("");
@@ -601,8 +613,8 @@ function renderHub() {
     if (c) {
       body += `<h2 style="margin-top:14px">${nm(c)}'s moves</h2><div class="row">${c.moves.map((m, i) => `<button class="btn ${ui.trainSlot === i ? "tab on" : ""}" data-act="slot" data-i="${i}">${i + 1}: ${mv(m)}</button>`).join("")}</div>`;
       if (ui.trainSlot != null) {
-        const pool = movePool(c.el, c.el2).filter(m => !c.moves.some(x => x.n === m.n));
-        body += `<div class="row">${pool.map((m, i) => `<button class="btn" data-act="learn" data-n="${m.n}" ${S.coins < TRAIN_PRICE ? "disabled" : ""} style="border-color:${ELEMENTS[m.el].color}">${mv(m)}</button>`).join("")}</div>`;
+        const pool = movePool(c.el, c.el2, extraEls(c)).filter(m => !c.moves.some(x => x.n === m.n));
+        body += `<p class="muted">${nm(c)} can learn moves of: ${[c.el, c.el2, ...extraEls(c)].filter(Boolean).join(", ")}, normal</p><div class="row">${pool.map((m, i) => `<button class="btn" data-act="learn" data-n="${m.n}" ${S.coins < TRAIN_PRICE ? "disabled" : ""} style="border-color:${ELEMENTS[m.el].color}">${mv(m)}</button>`).join("")}</div>`;
       }
     }
   }
@@ -669,8 +681,9 @@ app.addEventListener("click", (ev) => {
       const el = egg.el ? egg.el.el : pick(EL_IDS);
       const sp = weightedSpecies(EGGS[egg.kind].w, el);
       const c = newCreature(sp, el, egg.el ? egg.el.tier : 1);
+      if (egg.el2 && egg.el2 !== el) giveSecond(c, egg.el2, egg.el2t || 1);
       S.creatures.push(c); S.eggs.splice(i, 1);
-      save(`Hatched a ${el} ${sp}!`);
+      save(`Hatched a ${nm(c)}!`);
       break;
     }
     case "selCr":
@@ -712,12 +725,12 @@ app.addEventListener("click", (ev) => {
       break;
     }
     case "combine": {
-      const c = findCr(ui.selCr), el = S.elements.find(e => e.id === ui.selEl);
-      if (c && el && el.el !== c.el && el.el !== c.el2) {
-        giveSecond(c, el.el, el.tier);
+      const egg = S.eggs.find(e => e.id === ui.selEgg), el = S.elements.find(e => e.id === ui.selEl);
+      if (egg && el && !(egg.el && egg.el.el === el.el) && egg.el2 !== el.el) {
+        egg.el2 = el.el; egg.el2t = el.tier;
         S.elements = S.elements.filter(e => e.id !== el.id);
         ui.selEl = null;
-        save(`${nm(c)} is now ${c.el} + ${c.el2}!`);
+        save(`Egg is now + ${egg.el2}!`);
       }
       break;
     }
@@ -725,7 +738,7 @@ app.addEventListener("click", (ev) => {
     case "learn": {
       const c = findCr(ui.selCr);
       if (c && ui.trainSlot != null && S.coins >= TRAIN_PRICE) {
-        const m = movePool(c.el, c.el2).find(x => x.n === t.dataset.n);
+        const m = movePool(c.el, c.el2, extraEls(c)).find(x => x.n === t.dataset.n);
         if (m) { c.moves[ui.trainSlot] = { ...m }; S.coins -= TRAIN_PRICE; ui.trainSlot = null; save(`Learned ${m.n}!`); }
       }
       break;
