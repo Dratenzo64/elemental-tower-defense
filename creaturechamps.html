@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Creature Champs</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0b1020; color: #e8ecff; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100vh; }
+  #app { max-width: 980px; margin: 0 auto; padding: 14px; }
+  h1 { font-size: 26px; letter-spacing: 2px; }
+  h2 { font-size: 18px; margin-bottom: 8px; }
+  .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .pill { background: #1a2347; border: 1px solid #2c3a73; border-radius: 999px; padding: 5px 12px; font-size: 14px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .tab, .btn { background: #1d2a5c; border: 1px solid #3a4c9a; border-radius: 10px; padding: 8px 14px; }
+  .tab.on { background: #3a56d6; }
+  .btn:hover:not(:disabled), .tab:hover { filter: brightness(1.2); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.big { font-size: 18px; padding: 12px 22px; background: #2f7a3e; border-color: #4bc060; }
+  .btn.red { background: #7a2f3a; border-color: #c04b5e; }
+  .card { background: #131b3a; border: 1px solid #27346b; border-radius: 12px; padding: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .cr { cursor: pointer; position: relative; }
+  .cr.sel { outline: 3px solid #ffd54a; }
+  .cr .em { font-size: 44px; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #111; margin-right: 4px; }
+  .mv { font-size: 13px; color: #cfd6ff; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  .muted { color: #8f9bd0; font-size: 13px; }
+  /* battle */
+  .arena { background: linear-gradient(#1b2a63, #0f1738); border: 2px solid #3a4c9a; border-radius: 14px; padding: 14px; }
+  .side { display: flex; align-items: center; gap: 14px; margin: 10px 0; }
+  .side.foe { flex-direction: row-reverse; }
+  .side .big { font-size: 72px; }
+  .info { flex: 1; background: #0c1330cc; border-radius: 10px; padding: 8px 12px; }
+  .bar { height: 14px; background: #301820; border-radius: 8px; overflow: hidden; margin-top: 4px; }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, #4ee06a, #b6f05a); transition: width .4s; }
+  .log { background: #0a0f24; border-radius: 10px; padding: 10px; height: 110px; overflow-y: auto; font-size: 14px; line-height: 1.5; margin: 10px 0; }
+  .moves { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .move { text-align: left; padding: 10px 12px; border-radius: 10px; border: 2px solid; background: #101a42; font-weight: 600; }
+  .move small { display: block; font-weight: 400; color: #b8c2f5; }
+  .pic { position: relative; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
+  .pic .fx { position: absolute; pointer-events: none; animation: fl 1.4s ease-in-out infinite; text-shadow: 0 0 6px #fff8; }
+  @keyframes fl { 0%,100% { transform: translateY(0) scale(1); opacity: .85; } 50% { transform: translateY(-6px) scale(1.25); opacity: 1; } }
+  .pic .body { display: inline-block; transform: scaleX(var(--f, 1)) rotate(var(--t, 0deg)); }
+  .pic .body.bob { animation: bob 1.6s ease-in-out infinite; }
+  .pic .body.sway { animation: sway 2.2s ease-in-out infinite; }
+  .pic .body.hover { animation: hov 2.8s ease-in-out infinite; }
+  .pic .body.pulse { animation: pls 1.8s ease-in-out infinite; }
+  @keyframes bob { 0%,100% { transform: scaleX(var(--f)) rotate(var(--t)) translateY(0); } 50% { transform: scaleX(var(--f)) rotate(var(--t)) translateY(-5%); } }
+  @keyframes sway { 0%,100% { transform: scaleX(var(--f)) rotate(calc(var(--t) - 5deg)); } 50% { transform: scaleX(var(--f)) rotate(calc(var(--t) + 5deg)); } }
+  @keyframes hov { 0%,100% { transform: scaleX(var(--f)) rotate(var(--t)) translateY(-3%); } 50% { transform: scaleX(var(--f)) rotate(var(--t)) translateY(4%); } }
+  @keyframes pls { 0%,100% { transform: scaleX(var(--f)) rotate(var(--t)) scale(1); } 50% { transform: scaleX(var(--f)) rotate(var(--t)) scale(1.1); } }
+  .pic .cw { position: absolute; top: -14%; left: 50%; transform: translateX(-50%); }
+  .pic .fz { position: absolute; right: -2%; bottom: -2%; background: #ffd54a; color: #111; font-weight: 800; border-radius: 6px; padding: 0 4px; }
+  .side .pic { flex-shrink: 0; }
+  #toast { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); background: #000d; border: 1px solid #6fd8ff; padding: 8px 16px; border-radius: 8px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 9; }
+  #toast.show { opacity: 1; }
+  .center { text-align: center; }
+  select { font: inherit; background: #1d2a5c; color: #fff; border: 1px solid #3a4c9a; border-radius: 8px; padding: 6px; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="app"></div>
+<script>
+(() => {
+// ============================================================
+// DATA
+// ============================================================
+const ELEMENTS = {
+  fire:      { icon: "", color: "#ff7a45", beats: ["grass", "ice"] },
+  water:     { icon: "", color: "#4aa8ff", beats: ["fire", "earth"] },
+  grass:     { icon: "", color: "#5fd06a", beats: ["water", "lightning"] },
+  lightning: { icon: "", color: "#ffd93d", beats: ["water", "ice"] },
+  earth:     { icon: "", color: "#c49a5a", beats: ["fire", "lightning"] },
+  ice:       { icon: "", color: "#9fe6ff", beats: ["grass", "earth"] },
+  shadow:    { icon: "", color: "#a47bff", beats: ["light"] },
+  light:     { icon: "", color: "#fff1a8", beats: ["shadow"] },
+  normal:    { icon: "", color: "#c9cfe8", beats: [] },
+};
+const EL_IDS = Object.keys(ELEMENTS).filter(e => e !== "normal");
+
+// [name, damage, accuracy] — the move name says nothing, the numbers say it all
+const MOVES = {
+  fire:      [["Ember", 40, 100], ["Flame Burst", 70, 95], ["Fire Blast", 110, 80], ["Inferno", 150, 65]],
+  water:     [["Splash Jet", 40, 100], ["Bubble Beam", 65, 95], ["Hydro Pump", 110, 80], ["Tidal Crash", 150, 65]],
+  grass:     [["Vine Whip", 40, 100], ["Razor Leaf", 70, 95], ["Solar Beam", 110, 80], ["Jungle Wrath", 150, 65]],
+  lightning: [["Spark", 40, 100], ["Thunder Shock", 70, 95], ["Zap Cannon", 100, 90], ["Thunder God", 160, 60]],
+  earth:     [["Rock Toss", 45, 100], ["Mud Slam", 70, 95], ["Quake", 105, 85], ["Meteor Fall", 155, 62]],
+  ice:       [["Frost Bite", 40, 100], ["Ice Shard", 70, 95], ["Blizzard", 110, 80], ["Absolute Zero", 150, 66]],
+  shadow:    [["Shade Claw", 45, 100], ["Night Slash", 75, 95], ["Dark Pulse", 105, 85], ["Void Collapse", 160, 60]],
+  light:     [["Glint", 40, 100], ["Radiant Beam", 70, 95], ["Holy Lance", 105, 85], ["Supernova", 155, 62]],
+  normal:    [["Tackle", 35, 100], ["Slam", 70, 92], ["Giga Impact", 120, 75]],
+};
+
+// base: hp, atk, spd (all ~100 = average), tier 1-3 (rarity)
+const SPECIES = {
+  Whelp:    { e: "🐲", hp: 100, atk: 100, spd: 100, tier: 1 },
+  Wolf:     { e: "🐺", hp: 100, atk: 105, spd: 115, tier: 1, home: "ice" },
+  Snake:    { e: "🐍", hp: 90,  atk: 110, spd: 110, tier: 1, home: "grass" },
+  Fox:      { e: "🦊", hp: 90,  atk: 100, spd: 120, tier: 1, home: "fire" },
+  Bear:     { e: "🐻", hp: 130, atk: 105, spd: 80,  tier: 1, home: "grass" },
+  Eagle:    { e: "🦅", hp: 90,  atk: 110, spd: 125, tier: 1, home: "lightning" },
+  Turtle:   { e: "🐢", hp: 140, atk: 85,  spd: 70,  tier: 1, home: "lightning" },
+  Bat:      { e: "🦇", hp: 85,  atk: 100, spd: 130, tier: 1, home: "shadow" },
+  Tiger:    { e: "🐯", hp: 105, atk: 120, spd: 110, tier: 2, home: "fire" },
+  Lion:     { e: "🦁", hp: 115, atk: 118, spd: 100, tier: 2, home: "fire" },
+  Shark:    { e: "🦈", hp: 110, atk: 125, spd: 105, tier: 2, home: "water" },
+  Gorilla:  { e: "🦍", hp: 135, atk: 122, spd: 85,  tier: 2, home: "grass" },
+  Scorpion: { e: "🦂", hp: 95,  atk: 125, spd: 115, tier: 2, home: "fire" },
+  Octopus:  { e: "🐙", hp: 115, atk: 115, spd: 100, tier: 2, home: "water" },
+  Dragon:   { e: "🐉", hp: 125, atk: 140, spd: 105, tier: 3, home: "lightning" },
+  Phoenix:  { e: "🦚", hp: 110, atk: 135, spd: 125, tier: 3, home: "fire" },
+  Kraken:   { e: "🦑", hp: 140, atk: 135, spd: 95,  tier: 3, home: "water" },
+  Lizard: { e: "🦎", hp: 90, atk: 105, spd: 110, tier: 1, home: "fire" },
+  Boar: { e: "🐗", hp: 115, atk: 108, spd: 90, tier: 1, home: "fire" },
+  Hound: { e: "🐕", hp: 95, atk: 108, spd: 115, tier: 1, home: "fire" },
+  Rooster: { e: "🐓", hp: 100, atk: 120, spd: 115, tier: 2, home: "fire" },
+  Ram: { e: "🐏", hp: 120, atk: 122, spd: 90, tier: 2, home: "fire" },
+  Crab: { e: "🦀", hp: 110, atk: 100, spd: 85, tier: 1, home: "water" },
+  Fish: { e: "🐟", hp: 85, atk: 100, spd: 120, tier: 1, home: "water" },
+  Frog: { e: "🐸", hp: 95, atk: 98, spd: 115, tier: 1, home: "water" },
+  Seal: { e: "🦭", hp: 120, atk: 95, spd: 90, tier: 1, home: "water" },
+  Dolphin: { e: "🐬", hp: 105, atk: 118, spd: 125, tier: 2, home: "water" },
+  Otter: { e: "🦦", hp: 105, atk: 115, spd: 120, tier: 2, home: "water" },
+  Whale: { e: "🐋", hp: 160, atk: 132, spd: 80, tier: 3, home: "water" },
+  Deer: { e: "🦌", hp: 100, atk: 98, spd: 115, tier: 1, home: "grass" },
+  Rabbit: { e: "🐇", hp: 85, atk: 100, spd: 130, tier: 1, home: "grass" },
+  Beetle: { e: "🪲", hp: 100, atk: 108, spd: 95, tier: 1, home: "grass" },
+  Snail: { e: "🐌", hp: 130, atk: 85, spd: 60, tier: 1, home: "grass" },
+  Cricket: { e: "🦗", hp: 85, atk: 102, spd: 125, tier: 1, home: "grass" },
+  Panda: { e: "🐼", hp: 135, atk: 115, spd: 80, tier: 2, home: "grass" },
+  Butterfly: { e: "🦋", hp: 90, atk: 125, spd: 125, tier: 2, home: "grass" },
+  Bee: { e: "🐝", hp: 80, atk: 108, spd: 130, tier: 1, home: "lightning" },
+  Horse: { e: "🐎", hp: 110, atk: 115, spd: 130, tier: 2, home: "lightning" },
+  Zebra: { e: "🦓", hp: 110, atk: 118, spd: 120, tier: 2, home: "lightning" },
+  Cheetah: { e: "🐆", hp: 95, atk: 125, spd: 140, tier: 2, home: "lightning" },
+  Ox: { e: "🐂", hp: 125, atk: 108, spd: 75, tier: 1, home: "earth" },
+  Badger: { e: "🦡", hp: 110, atk: 105, spd: 90, tier: 1, home: "earth" },
+  Camel: { e: "🐪", hp: 125, atk: 95, spd: 80, tier: 1, home: "earth" },
+  Rhino: { e: "🦏", hp: 135, atk: 125, spd: 80, tier: 2, home: "earth" },
+  Elephant: { e: "🐘", hp: 150, atk: 118, spd: 70, tier: 2, home: "earth" },
+  Hippo: { e: "🦛", hp: 145, atk: 120, spd: 70, tier: 2, home: "earth" },
+  Mammoth: { e: "🦣", hp: 160, atk: 135, spd: 70, tier: 3, home: "earth" },
+  Penguin: { e: "🐧", hp: 100, atk: 98, spd: 100, tier: 1, home: "ice" },
+  Owl: { e: "🦉", hp: 90, atk: 105, spd: 115, tier: 1, home: "ice" },
+  Goat: { e: "🐐", hp: 105, atk: 105, spd: 100, tier: 1, home: "ice" },
+  Swan: { e: "🦢", hp: 100, atk: 118, spd: 115, tier: 2, home: "ice" },
+  Rat: { e: "🐀", hp: 80, atk: 105, spd: 125, tier: 1, home: "shadow" },
+  Cat: { e: "🐈", hp: 85, atk: 108, spd: 125, tier: 1, home: "shadow" },
+  Crow: { e: "🐦", hp: 85, atk: 108, spd: 120, tier: 1, home: "shadow" },
+  Mosquito: { e: "🦟", hp: 75, atk: 110, spd: 135, tier: 1, home: "shadow" },
+  Spider: { e: "🕷️", hp: 95, atk: 125, spd: 115, tier: 2, home: "shadow" },
+  Dove: { e: "🕊️", hp: 90, atk: 100, spd: 115, tier: 1, home: "light" },
+  Sheep: { e: "🐑", hp: 115, atk: 92, spd: 85, tier: 1, home: "light" },
+  Parrot: { e: "🦜", hp: 90, atk: 105, spd: 115, tier: 1, home: "light" },
+  Flamingo: { e: "🦩", hp: 100, atk: 115, spd: 115, tier: 2, home: "light" },
+  Giraffe: { e: "🦒", hp: 125, atk: 118, spd: 95, tier: 2, home: "light" },
+  Unicorn: { e: "🦄", hp: 120, atk: 138, spd: 125, tier: 3, home: "light" },
+  Kangaroo: { e: "🦘", hp: 105, atk: 118, spd: 125, tier: 2, home: "lightning" },
+  Leopard: { e: "🐅", hp: 95, atk: 122, spd: 135, tier: 2, home: "lightning" },
+  Raptor: { e: "🦖", hp: 120, atk: 135, spd: 120, tier: 3, home: "lightning" },
+  Brontosaurus: { e: "🦕", hp: 165, atk: 128, spd: 60, tier: 3, home: "earth" },
+  Pig: { e: "🐖", hp: 115, atk: 100, spd: 85, tier: 1, home: "earth" },
+  Buffalo: { e: "🐃", hp: 125, atk: 108, spd: 80, tier: 1, home: "earth" },
+  Hare: { e: "🐰", hp: 85, atk: 100, spd: 130, tier: 1, home: "ice" },
+  Duck: { e: "🦆", hp: 90, atk: 98, spd: 110, tier: 1, home: "ice" },
+  Bison: { e: "🦬", hp: 140, atk: 118, spd: 75, tier: 2, home: "ice" },
+  Hamster: { e: "🐹", hp: 80, atk: 102, spd: 125, tier: 1, home: "ice" },
+  Mouse: { e: "🐭", hp: 75, atk: 105, spd: 130, tier: 1, home: "ice" },
+  Cockroach: { e: "🪳", hp: 80, atk: 105, spd: 120, tier: 1, home: "shadow" },
+  Crocodile: { e: "🐊", hp: 120, atk: 125, spd: 85, tier: 2, home: "shadow" },
+  Skunk: { e: "🦨", hp: 95, atk: 102, spd: 100, tier: 1, home: "shadow" },
+  Caterpillar: { e: "🐛", hp: 85, atk: 100, spd: 95, tier: 1, home: "shadow" },
+  Chick: { e: "🐤", hp: 80, atk: 100, spd: 115, tier: 1, home: "light" },
+  Ladybug: { e: "🐞", hp: 90, atk: 102, spd: 115, tier: 1, home: "light" },
+  Koala: { e: "🐨", hp: 120, atk: 110, spd: 85, tier: 2, home: "light" },
+  Llama: { e: "🦙", hp: 115, atk: 115, spd: 105, tier: 2, home: "light" },
+};
+const SP_IDS = Object.keys(SPECIES);
+
+// Cool names: element prefix + species suffix (a lightning turtle is a "Voltshell")
+const PREFIX = { fire: "Pyro", water: "Aqua", grass: "Verdi", lightning: "Volt", earth: "Terra", ice: "Frost", shadow: "Umbra", light: "Lumi" };
+const SUFFIX = { Whelp: "whelp", Wolf: "fang", Snake: "coil", Fox: "tail", Bear: "maul", Eagle: "talon", Turtle: "shell", Bat: "wing", Tiger: "claw", Lion: "mane", Shark: "jaw", Gorilla: "fist", Scorpion: "sting", Octopus: "squid", Dragon: "drake", Phoenix: "phoenix", Kraken: "leviathan", Kangaroo: "leaper", Leopard: "spark", Raptor: "raptor", Brontosaurus: "colossus", Pig: "hog", Buffalo: "buffalo", Hare: "hare", Duck: "duck", Bison: "bison", Hamster: "nibbler", Mouse: "mouse", Cockroach: "roach", Crocodile: "croc", Skunk: "skunk", Caterpillar: "crawler", Chick: "chick", Ladybug: "ladybug", Koala: "koala", Llama: "llama", Lizard: "scale", Boar: "tusk", Hound: "hound", Rooster: "crest", Ram: "horn", Crab: "claw", Fish: "fin", Frog: "hopper", Seal: "seal", Dolphin: "leap", Otter: "otter", Whale: "whale", Deer: "antler", Rabbit: "bunny", Beetle: "beetle", Snail: "snail", Cricket: "chirp", Panda: "panda", Butterfly: "wings", Bee: "stinger", Horse: "stallion", Zebra: "stripe", Cheetah: "dash", Ox: "bull", Badger: "digger", Camel: "dune", Rhino: "horn", Elephant: "trunk", Hippo: "maw", Mammoth: "titan", Penguin: "glide", Owl: "hoot", Goat: "horn", Swan: "swan", Rat: "scurry", Cat: "prowl", Crow: "caw", Mosquito: "sting", Spider: "widow", Dove: "dove", Sheep: "fleece", Parrot: "plume", Flamingo: "flamingo", Giraffe: "neck", Unicorn: "unicorn" };
+function body(c) {
+  if (!c.species2) return SUFFIX[c.species];
+  const a = SUFFIX[c.species], b = SUFFIX[c.species2];
+  return a.slice(0, Math.max(3, Math.ceil(a.length / 2))) + b;
+}
+function nm(c) { return PREFIX[c.el] + (c.el2 ? PREFIX[c.el2].toLowerCase() : "") + body(c); }
+
+// Pictures: the animal is tinted to its element's color, wrapped in a glow,
+// with that element's effect (lightning bolts, flames, droplets...) coming off it.
+const TINT = {
+  fire:      "saturate(1.6) sepia(.55) hue-rotate(-30deg) saturate(2) brightness(1.05)",
+  water:     "saturate(1.3) sepia(.55) hue-rotate(160deg) saturate(2) brightness(1)",
+  grass:     "saturate(1.3) sepia(.55) hue-rotate(70deg) saturate(1.8)",
+  lightning: "saturate(1.4) sepia(.55) hue-rotate(10deg) saturate(2.2) brightness(1.25)",
+  earth:     "saturate(1.1) sepia(.7) hue-rotate(-10deg) saturate(1.2) brightness(.85)",
+  ice:       "saturate(.9) sepia(.5) hue-rotate(150deg) saturate(1.5) brightness(1.3)",
+  shadow:    "sepia(.5) hue-rotate(235deg) saturate(1.6) brightness(.7) contrast(1.15)",
+  light:     "saturate(1.3) sepia(.45) hue-rotate(10deg) saturate(1.8) brightness(1.5)",
+};
+// per-animal look: size from its HP, which way it faces, how it idles
+const IDLE = ["bob", "sway", "hover", "pulse"];
+function look(species, key) {
+  const sp = SPECIES[species];
+  let hsh = 0; for (const ch of (key || species)) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+  return {
+    scale: Math.max(.82, Math.min(1.28, .55 + sp.hp / 215)),
+    flip: hsh % 2 ? -1 : 1,
+    tilt: ((hsh >> 3) % 9) - 4,
+    idle: IDLE[(hsh >> 5) % IDLE.length],
+    tx: (hsh >> 8) % 3, // which corner effects cluster toward
+  };
+}
+const FX_POS = [[-6, -4, 1], [70, 6, 1.1], [62, 62, .9], [-2, 58, .8]];
+function pic(c, size) { return c.fuse > 0 ? `<b>+${c.fuse}</b>` : ""; } // pictures removed
+
+const EGGS = {
+  basic:     { name: "Basic Egg",     icon: "", price: 1500, w: { 1: 70, 2: 27, 3: 3 } },
+  rare:      { name: "Rare Egg",      icon: "", price: 6000, w: { 1: 25, 2: 55, 3: 20 } },
+  legendary: { name: "Legendary Egg", icon: "", price: 20000, w: { 1: 5, 2: 40, 3: 55 } },
+};
+const ELEMENT_PRICE = 150;
+const TRAIN_PRICE = 50;
+const RANK_START = 1000, RANK_STEP = 40, LADDER_TOP = 25;
+const tierOf = r => Math.max(1, Math.min(LADDER_TOP, Math.ceil(r / RANK_STEP))); // 1000 ranks -> 25 difficulty tiers
+const startRank = () => Math.max(2, RANK_START - 20 * (S.creatures ? S.creatures.length : 0)); // rank you start at; reach #1 to become champion
+const MAX_TIER = 5;
+const TEAM_MAX = 5;
+
+const NAMES = ["James","Maria","Liam","Sofia","Noah","Emma","Oliver","Ava","Elijah","Mia","Lucas","Zoe","Mason","Lily","Ethan","Chloe","Aiden","Nora","Jack","Ruby","Leo","Ivy","Owen","Hana","Kai","Priya","Diego","Yuki","Omar","Grace"];
+
+// ============================================================
+// STATE + SAVE (same SAVE_KEY / JSON blob / try-catch pattern as the other games)
+// ============================================================
+const SAVE_KEY = "creaturechamps-save-v1";
+let S = null;      // game state
+let ui = { tab: "battle", selCr: null, selB: null, selEgg: null, selEl: null, trainSlot: null };
+let battle = null;
+let nextId = 1;
+
+function rnd(n) { return Math.floor(Math.random() * n); }
+function pick(a) { return a[rnd(a.length)]; }
+function uid() { return nextId++; }
+
+let toastTimer = null;
+function toast(t) {
+  const el = document.getElementById("toast");
+  el.textContent = t; el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+function save(msg) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ S, nextId }));
+    if (msg) toast(msg);
+  } catch (e) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d.S || !Array.isArray(d.S.creatures)) return false;
+    S = d.S; nextId = d.nextId || 1000;
+    return true;
+  } catch (e) { return false; }
+}
+
+function movePool(el, el2) {
+  const out = [];
+  for (const e of [el, el2]) if (e) for (const m of MOVES[e]) out.push({ n: m[0], d: m[1], a: m[2], el: e });
+  for (const m of MOVES.normal) out.push({ n: m[0], d: m[1], a: m[2], el: "normal" });
+  return out;
+}
+// give a creature a second element (dual typing): it learns that element's mid-tier move,
+// replacing its weakest move, and can train that element's other moves too
+function giveSecond(c, el2, tier = 1) {
+  c.el2 = el2; c.el2t = tier;
+  if (c.moves.some(m => m.el === el2)) return;
+  const mid = { n: MOVES[el2][1][0], d: MOVES[el2][1][1], a: MOVES[el2][1][2], el: el2 };
+  let w = 0; c.moves.forEach((m, i) => { if (m.d * m.a < c.moves[w].d * c.moves[w].a) w = i; });
+  c.moves[w] = mid;
+}
+function mv(m) { return `${m.n} ${m.d} D ${m.a} A`; }
+
+function newCreature(species, el, tier = 1, fuse = 0, lead = null) {
+  const pool = movePool(el);
+  const shuffled = pool.slice().sort(() => Math.random() - 0.5);
+  // a `lead` move is forced into the set (used so starters never share a move set)
+  if (lead) shuffled.splice(0, 0, ...shuffled.splice(shuffled.findIndex(m => m.n === lead.n), 1));
+  const moves = shuffled.slice(0, 4).map(m => ({ ...m }));
+  // always give at least one dependable move
+  if (!moves.some(m => m.a >= 95)) moves[0] = { ...pool[0] };
+  return { id: uid(), species, el, tier, fuse, moves };
+}
+function weightedSpecies(w, el) {
+  // species whose "home" is this element are far more likely to show up with it
+  const bag = [];
+  for (const s of SP_IDS) {
+    const n = (w[SPECIES[s].tier] || 0) * (el && SPECIES[s].home === el ? 5 : 1);
+    for (let i = 0; i < n; i++) bag.push(s);
+  }
+  return pick(bag);
+}
+
+// a hybrid (species2) blends both animals' stats, plus a small bonus for being a chimera
+function base(c) {
+  const a = SPECIES[c.species];
+  if (!c.species2) return a;
+  const b = SPECIES[c.species2];
+  const m = (x, y) => Math.round((x + y) / 2 * 1.1);
+  return { hp: m(a.hp, b.hp), atk: m(a.atk, b.atk), spd: m(a.spd, b.spd), e: a.e, tier: Math.max(a.tier, b.tier) };
+}
+function stats(c, scale = 1, isPlayer = true) {
+  const sp = base(c);
+  const f = 1 + 0.25 * c.fuse;
+  const t = 1 + 0.15 * (c.tier - 1);
+  const pres = isPlayer ? 1 + 0.05 * (S.prestige || 0) : 1;
+  return {
+    maxHp: Math.round(sp.hp * 3.5 * f * scale),
+    atk: (sp.atk / 100) * f * t * pres * Math.pow(scale, 0.85),
+    spd: sp.spd,
+  };
+}
+
+function typeMult(atkEl, def) {
+  // defender may be dual-typed — each of its types multiplies the result
+  const types = typeof def === "string" ? [def] : [def.el, def.el2].filter(Boolean);
+  let m = 1;
+  for (const d of types) {
+    if (ELEMENTS[atkEl].beats.includes(d)) m *= 2;
+    else if (ELEMENTS[d].beats.includes(atkEl)) m *= 0.5;
+  }
+  return m;
+}
+
+function tags(c) { return tag(c.el) + (c.el2 ? tag(c.el2) : ""); }
+function tag(el) { return `<span class="tag" style="background:${ELEMENTS[el].color}">${ELEMENTS[el].icon} ${el}</span>`; }
+
+// ============================================================
+// NEW GAME
+// ============================================================
+function startGame(el) {
+    // five DIFFERENT starters: a beginner dragon plus four different animals of your
+  // element, each built around its own lead move so no two share a move set
+  const pool = movePool(el);
+  const leads = pool.slice().sort(() => Math.random() - 0.5).slice(0, 5);
+  const natives = SP_IDS.filter(s => SPECIES[s].home === el && SPECIES[s].tier <= 2).sort(() => Math.random() - 0.5).slice(0, 4);
+  const cs = ["Whelp", ...natives].map((sp, i) => newCreature(sp, el, 1, 0, leads[i]));
+  S = { coins: 150, rank: RANK_START, prestige: 0, creatures: cs, elements: [], eggs: [], team: cs.map(c => c.id), wins: 0 };
+  save("Game started!");
+  render();
+}
+
+function prestigeReset() {
+  S.prestige++;
+  S.coins = 150;
+  S.rank = startRank(); // more creatures kept = higher starting rank
+  for (let i = 0; i < S.prestige; i++) S.eggs.push({ id: uid(), kind: "basic", el: null }); // restart #n gives n eggs
+  S.wins = 0;
+  // creatures, elements, eggs are kept
+  save("Restarted — +5% attack permanently!");
+  battle = null;
+  ui.tab = "battle";
+  render();
+}
+
+// ============================================================
+// BATTLE
+// ============================================================
+function makeFoe(rank) {
+  rank = tierOf(rank);
+  const scale = 0.7 + (LADDER_TOP - rank) * 0.085;
+  const n = TEAM_MAX; // every rival fields a full team of five
+  const team = [];
+  // five DIFFERENT primary elements, so you face a mixed team
+  const els = EL_IDS.slice().sort(() => Math.random() - 0.5).slice(0, n);
+  for (let i = 0; i < n; i++) {
+    const tierW = rank <= 8 ? { 1: 15, 2: 45, 3: 40 } : rank <= 17 ? { 1: 40, 2: 45, 3: 15 } : { 1: 75, 2: 22, 3: 3 };
+    const fel = els[i];
+    const c = newCreature(weightedSpecies(tierW, fel), fel, 1 + (rank <= 8 ? 1 : 0), 0);
+    if (rank <= 17 && Math.random() < (rank <= 8 ? 0.6 : 0.3)) giveSecond(c, pick(EL_IDS.filter(e => e !== fel)));
+    if (rank <= 17 && Math.random() < (rank <= 8 ? 0.5 : 0.25)) c.species2 = pick(SP_IDS.filter(s => s !== c.species));
+    team.push(c);
+  }
+  return {
+    name: pick(NAMES) + (1 + rnd(999)),
+    scale,
+    team: team.map(c => ({ c, st: stats(c, scale, false), hp: stats(c, scale, false).maxHp })),
+  };
+}
+
+function startBattle() {
+  if (!S.team.length) { toast("Pick at least one creature for your team"); return; }
+  const mine = S.team.map(id => S.creatures.find(c => c.id === id)).filter(Boolean).slice(0, TEAM_MAX);
+  const foe = makeFoe(S.rank);
+  battle = {
+    foeName: foe.name,
+    me: mine.map(c => { const st = stats(c); return { c, st, hp: st.maxHp }; }),
+    foe: foe.team,
+    mi: 0, fi: 0, log: [], over: false, won: false, busy: false, switching: false,
+    isChamp: S.rank === 1,
+  };
+  battle.log.push(`${battle.foeName} (Rank #${S.rank}) wants to battle!`);
+  battle.log.push(`${nm(battle.foe[0].c)} appears!`);
+  ui.tab = "battle-live";
+  render();
+}
+
+function hit(att, def, m, isPlayer) {
+  const name = `${isPlayer ? "" : "Foe "}${nm(att.c)}`;
+  if (Math.random() * 100 >= m.a) { battle.log.push(`${name} used ${m.n} — missed!`); return; }
+  const tm = typeMult(m.el, def.c);
+  const el2b = m.el === att.c.el2 ? 1 + 0.15 * ((att.c.el2t || 1) - 1) : 1;
+  const dmg = Math.max(1, Math.round(m.d * att.st.atk * el2b * tm * (0.9 + Math.random() * 0.2)));
+  def.hp = Math.max(0, def.hp - dmg);
+  let note = tm > 1 ? " Super effective!" : tm < 1 ? " Not very effective..." : "";
+  battle.log.push(`${name} used ${m.n} for ${dmg}!${note}`);
+}
+
+function foeChoose(f, me) {
+  if (Math.random() < 0.2) return pick(f.c.moves);
+  let best = f.c.moves[0], bv = -1;
+  for (const m of f.c.moves) {
+    const v = m.d * (m.a / 100) * typeMult(m.el, me.c);
+    if (v > bv) { bv = v; best = m; }
+  }
+  return best;
+}
+
+function checkFaints() {
+  const me = battle.me[battle.mi], foe = battle.foe[battle.fi];
+  if (foe.hp <= 0) {
+    battle.log.push(`Foe ${nm(foe.c)} fainted!`);
+    if (battle.fi + 1 < battle.foe.length) {
+      battle.fi++;
+      battle.log.push(`${battle.foeName} sends out ${nm(battle.foe[battle.fi].c)}!`);
+    } else { endBattle(true); return true; }
+  }
+  if (me.hp <= 0) {
+    battle.log.push(`${nm(me.c)} fainted!`);
+    const next = battle.me.findIndex(x => x.hp > 0);
+    if (next < 0) { endBattle(false); return true; }
+    battle.mi = next;
+    battle.log.push(`Go, ${nm(battle.me[next].c)}!`);
+  }
+  return false;
+}
+
+function endBattle(won) {
+  battle.over = true; battle.won = won;
+  if (won) {
+    const reward = Math.round((30 + 12 * (LADDER_TOP - tierOf(S.rank))) * 1.25);
+    S.coins += reward;
+    S.wins++;
+    battle.reward = reward;
+    battle.log.push(`You beat ${battle.foeName}! +${reward} coins.`);
+    if (S.rank > 1) { const left = battle.me.filter(x => x.hp > 0).length, gain = 20 + 20 * left; S.rank = Math.max(1, S.rank - gain); battle.log.push(`Rank up +${gain} (${left} creature${left === 1 ? "" : "s"} left)! You are now #${S.rank}.`); }
+    else battle.champion = true;
+  } else {
+    battle.log.push(`You lost to ${battle.foeName}. Train up and try again!`);
+  }
+  save();
+}
+
+function doTurn(moveIdx, switchTo) {
+  if (battle.over || battle.busy) return;
+  const me = battle.me[battle.mi];
+  let foe = battle.foe[battle.fi];
+  if (switchTo != null) {
+    if (battle.me[switchTo].hp <= 0 || switchTo === battle.mi) return;
+    battle.mi = switchTo;
+    battle.log.push(`Go, ${nm(battle.me[switchTo].c)}!`);
+    const fm = foeChoose(foe, battle.me[battle.mi]);
+    hit(foe, battle.me[battle.mi], fm, false);
+    checkFaints();
+    render(); return;
+  }
+  const pm = me.c.moves[moveIdx];
+  const fm = foeChoose(foe, me);
+  const meFirst = me.st.spd > foe.st.spd || (me.st.spd === foe.st.spd && Math.random() < 0.5);
+  const order = meFirst ? ["me", "foe"] : ["foe", "me"];
+  for (const who of order) {
+    const a = battle.me[battle.mi], d = battle.foe[battle.fi];
+    if (who === "me") { if (a.hp > 0 && d.hp > 0) hit(a, d, pm, true); }
+    else { if (d.hp > 0 && a.hp > 0) hit(d, a, fm, false); }
+    if (battle.foe[battle.fi].hp <= 0 || battle.me[battle.mi].hp <= 0) break;
+  }
+  checkFaints();
+  render();
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+const app = document.getElementById("app");
+
+function crCard(c, opts = {}) {
+  const st = stats(c);
+  const inTeam = S.team.includes(c.id);
+  return `<div class="card cr ${opts.sel ? "sel" : ""}" data-act="${opts.act || ""}" data-id="${c.id}">
+    <div class="em">${pic(c, 64)}</div>
+    <b>${nm(c)}</b> ${tags(c)}<span class="muted">T${c.tier}</span><br>
+    <span class="muted">Fuse +${c.fuse} · HP ${st.maxHp} · Atk ${st.atk.toFixed(2)}x${inTeam ? " · ✅ team" : ""}</span>
+    <div class="mv">${c.moves.map(m => `<div>${mv(m)}</div>`).join("")}</div>
+  </div>`;
+}
+
+function renderStart() {
+  app.innerHTML = `<div class="center" style="padding-top:30px">
+    <h1>⚔️ CREATURE CHAMPS</h1>
+    <p class="muted" style="margin:10px 0 20px">Choose your element. You start with five different creatures of that element, each with its own moves.</p>
+    <div class="grid" style="max-width:640px;margin:0 auto">
+    ${EL_IDS.map(e => `<button class="card" data-act="start" data-el="${e}" style="border-color:${ELEMENTS[e].color}"><div style="font-size:38px">${ELEMENTS[e].icon}</div><b style="text-transform:capitalize">${e}</b></button>`).join("")}
+    </div></div>`;
+}
+
+function renderBattle() {
+  const b = battle;
+  const me = b.me[b.mi], foe = b.foe[b.fi];
+  const hpbar = x => `<div class="bar"><i style="width:${Math.max(0, x.hp / x.st.maxHp * 100)}%"></i></div>`;
+  const moves = me.c.moves.map((m, i) => `<button class="move" data-act="move" data-i="${i}" ${b.over ? "disabled" : ""} style="border-color:${ELEMENTS[m.el].color}">${ELEMENTS[m.el].icon} ${mv(m)}<small>${m.el === "normal" ? "normal" : m.el} · ${typeMult(m.el, foe.c) > 1 ? "super effective" : typeMult(m.el, foe.c) < 1 ? "resisted" : "neutral"}</small></button>`).join("");
+  const sw = b.me.map((x, i) => `<button class="btn" data-act="switch" data-i="${i}" ${x.hp <= 0 || i === b.mi || b.over ? "disabled" : ""}>${pic(x.c, 22)} ${nm(x.c)} ${Math.ceil(x.hp)}/${x.st.maxHp}</button>`).join("");
+  app.innerHTML = `<div class="arena">
+    <div class="side foe"><div class="big">${pic(foe.c, 96)}</div>
+      <div class="info"><b>${nm(foe.c)}</b> ${tags(foe.c)} <span class="muted">${b.foeName} · foe ${b.fi + 1}/${b.foe.length}</span>${hpbar(foe)}<span class="muted">${Math.ceil(foe.hp)} / ${foe.st.maxHp}</span></div></div>
+    <div class="side"><div class="big">${pic(me.c, 96)}</div>
+      <div class="info"><b>${nm(me.c)}</b> ${tags(me.c)} <span class="muted">Atk ${me.st.atk.toFixed(2)}x</span>${hpbar(me)}<span class="muted">${Math.ceil(me.hp)} / ${me.st.maxHp}</span></div></div>
+    <div class="log" id="log">${b.log.slice(-40).map(l => `<div>${l}</div>`).join("")}</div>
+    ${b.over ? `<div class="center">${b.won ? (b.champion ? `<h2>🏆 You are the CHAMPION!</h2><button class="btn big" data-act="prestige">Restart with +5% attack</button> ` : "") : ""}<button class="btn big" data-act="leave" style="margin-top:8px">Back to hub</button></div>`
+    : `<div class="moves">${moves}</div><div class="row">Switch: ${sw}</div>`}
+  </div>`;
+  const log = document.getElementById("log"); if (log) log.scrollTop = log.scrollHeight;
+}
+
+function renderHub() {
+  const tabs = [["battle", "⚔️ Ladder"], ["editteam", "✏️ Edit Team"], ["team", "🐾 Creatures"], ["shop", "🛒 Shop & Eggs"], ["fuse", "🧬 Fusion"], ["combine", "🧪 Combine"], ["train", "🎯 Training"]];
+  let body = "";
+  if (ui.tab === "battle") {
+    const names = S.team.map(id => S.creatures.find(c => c.id === id)).filter(Boolean);
+    body = `<div class="card center"><h2>Rank #${S.rank} ${S.rank === 1 ? "— CHAMPION BATTLE" : ""}</h2>
+      <p class="muted">Beat rival trainers to climb from #${RANK_START} to #1. Reach #1 and win to restart with +5% attack.</p>
+      <div class="row" style="justify-content:center">${names.map(c => `<span class="pill">${pic(c, 22)} ${nm(c)}</span>`).join("") || "<span class='muted'>No team — pick creatures in the Creatures tab</span>"}</div>
+      <div class="row" style="justify-content:center"><button class="btn big" data-act="battle">Battle!</button><button class="btn big" style="background:#3a56d6;border-color:#6f8cff" data-act="tab" data-k="editteam">✏️ Edit Team</button></div></div>`;
+  } else if (ui.tab === "editteam") {
+    const team = S.team.map(id => S.creatures.find(c => c.id === id)).filter(Boolean);
+    const bench = S.creatures.filter(c => !S.team.includes(c.id));
+    const slots = [];
+    for (let i = 0; i < TEAM_MAX; i++) {
+      const c = team[i];
+      slots.push(c ? `<div class="card" style="text-align:center"><span class="pill">${i === 0 ? "Leads" : "Slot " + (i + 1)}</span><div>${pic(c, 70)}</div><b>${nm(c)}</b><div class="muted">${c.species}</div>
+        <div class="row" style="justify-content:center"><button class="btn" data-act="tmL" data-id="${c.id}" ${i === 0 ? "disabled" : ""}>◀</button><button class="btn red" data-act="tmX" data-id="${c.id}" ${team.length <= 1 ? "disabled" : ""}>Remove</button><button class="btn" data-act="tmR" data-id="${c.id}" ${i === team.length - 1 ? "disabled" : ""}>▶</button></div></div>`
+        : `<div class="card center muted" style="display:flex;align-items:center;justify-content:center;min-height:170px">Empty slot ${i + 1}</div>`);
+    }
+    body = `<h2>Your team (${team.length}/${TEAM_MAX})</h2><p class="muted" style="margin-bottom:8px">The first creature leads the battle. Use ◀ ▶ to reorder, Remove to bench one, or click a benched creature to add it.</p>
+      <div class="grid">${slots.join("")}</div>
+      <h2 style="margin-top:14px">Bench</h2>
+      <div class="grid">${bench.map(c => crCard(c, { act: "tmAdd" })).join("") || '<span class="muted">Everyone is on your team.</span>'}</div>
+      <div class="row"><button class="btn big" data-act="tab" data-k="battle">Done</button></div>`;
+  } else if (ui.tab === "team") {
+    body = `<p class="muted" style="margin-bottom:8px">Click a creature to add/remove it from your team (max 5).</p>
+      <div class="grid">${S.creatures.map(c => crCard(c, { act: "toggleTeam", sel: S.team.includes(c.id) })).join("")}</div>`;
+  } else if (ui.tab === "shop") {
+    const eggHtml = S.eggs.map(e => `<div class="card cr ${ui.selEgg === e.id ? "sel" : ""}" data-act="selEgg" data-id="${e.id}"><div class="em">${EGGS[e.kind].icon}</div><b>${EGGS[e.kind].name}</b><br>${e.el ? tag(e.el.el) + ` T${e.el.tier}` : '<span class="muted">random element</span>'}<br><button class="btn" data-act="hatch" data-id="${e.id}" style="margin-top:6px">Hatch</button></div>`).join("");
+    const elHtml = S.elements.map(x => `<div class="card cr ${ui.selEl === x.id ? "sel" : ""}" data-act="selEl" data-id="${x.id}">${tag(x.el)} Tier ${x.tier}</div>`).join("");
+    body = `<h2>Buy</h2>
+      <div class="row">${Object.entries(EGGS).map(([k, e]) => `<button class="btn" data-act="buyEgg" data-k="${k}" ${S.coins < e.price ? "disabled" : ""}>${e.icon} ${e.name} — ${e.price}🪙</button>`).join("")}</div>
+      <div class="row">${EL_IDS.map(e => `<button class="btn" data-act="buyEl" data-k="${e}" ${S.coins < ELEMENT_PRICE ? "disabled" : ""} style="border-color:${ELEMENTS[e].color}">${ELEMENTS[e].icon} ${e} — ${ELEMENT_PRICE}🪙</button>`).join("")}</div>
+      <h2 style="margin-top:14px">Your eggs</h2><div class="grid">${eggHtml || '<span class="muted">No eggs</span>'}</div>
+      <h2 style="margin-top:14px">Your elements</h2><div class="grid">${elHtml || '<span class="muted">No elements</span>'}</div>
+      <div class="row"><button class="btn" data-act="applyEl" ${ui.selEgg && ui.selEl ? "" : "disabled"}>Put selected element on selected egg</button>
+      <span class="muted">Eggs without an element hatch into a random one.</span></div>`;
+  } else if (ui.tab === "combine") {
+    const crs = S.creatures.map(c => crCard(c, { act: "selCr", sel: ui.selCr === c.id })).join("");
+    const els = S.elements.map(x => `<div class="card cr ${ui.selEl === x.id ? "sel" : ""}" data-act="selEl" data-id="${x.id}">${tag(x.el)} Tier ${x.tier}</div>`).join("");
+    const cr = findCr(ui.selCr), el = S.elements.find(e => e.id === ui.selEl);
+    const bad = cr && el && (el.el === cr.el || el.el === cr.el2);
+    body = `<h2>Combine an animal with an element</h2><p class="muted">Add a second element to a creature (dual typing): it learns that element's moves, hits with both, and takes damage from both types, and shows both effects. Uses up the element. A creature holds one extra element — combining again replaces it.</p>
+      <h2 style="margin-top:10px">1. Pick an animal</h2><div class="grid">${crs}</div>
+      <h2 style="margin-top:14px">2. Pick an element</h2><div class="grid">${els || '<span class="muted">No elements — buy some in the shop</span>'}</div>
+      <div class="row"><button class="btn big" data-act="combine" ${cr && el && !bad ? "" : "disabled"}>${cr && el ? (bad ? "Already that element" : `Combine → ${nm({ ...cr, el2: el.el })}`) : "Combine"}</button></div>`;
+  } else if (ui.tab === "fuse") {
+    const crs = S.creatures.map(c => crCard(c, { act: "selCr", sel: ui.selCr === c.id || ui.selB === c.id })).join("");
+    const els = S.elements.map(x => `<div class="card cr ${ui.selEl === x.id || ui.selEl2 === x.id ? "sel" : ""}" data-act="selElF" data-id="${x.id}">${tag(x.el)} Tier ${x.tier}</div>`).join("");
+    body = `<h2>Fuse creatures</h2><p class="muted">Pick two creatures — they merge into one stronger creature (+25% HP & attack per fuse level). Two different animals blend into one hybrid with a new name (a dragon + a horse = a dragon with horse legs) and it picks up the second one's element. Keeps the first one's moves.</p>
+      <div class="grid">${crs}</div>
+      <div class="row"><button class="btn" data-act="fuseCr" ${ui.selCr && ui.selB ? "" : "disabled"}>${(() => { const fa = findCr(ui.selCr), fb = findCr(ui.selB); return fa && fb ? `Fuse +${fa.fuse} with +${fb.fuse} → +${Math.max(Math.max(fa.fuse, fb.fuse) + 1, fa.fuse + fb.fuse)}${fa.species !== fb.species && !fa.species2 ? " (hybrid!)" : ""}` : "Fuse the two selected"; })()}</button></div>
+      <h2 style="margin-top:14px">Fuse elements</h2><p class="muted">Pick two of the same element and tier to make a higher tier (+15% damage per tier).</p>
+      <div class="grid">${els || '<span class="muted">No elements</span>'}</div>
+      <div class="row"><button class="btn" data-act="fuseEl" ${ui.selEl && ui.selEl2 ? "" : "disabled"}>Fuse the two selected</button></div>`;
+  } else if (ui.tab === "train") {
+    const c = S.creatures.find(x => x.id === ui.selCr);
+    body = `<p class="muted" style="margin-bottom:8px">Pick a creature, then a move slot, then a replacement move (${TRAIN_PRICE}🪙).</p>
+      <div class="grid">${S.creatures.map(x => crCard(x, { act: "selCr", sel: ui.selCr === x.id })).join("")}</div>`;
+    if (c) {
+      body += `<h2 style="margin-top:14px">${nm(c)}'s moves</h2><div class="row">${c.moves.map((m, i) => `<button class="btn ${ui.trainSlot === i ? "tab on" : ""}" data-act="slot" data-i="${i}">${i + 1}: ${mv(m)}</button>`).join("")}</div>`;
+      if (ui.trainSlot != null) {
+        const pool = movePool(c.el, c.el2).filter(m => !c.moves.some(x => x.n === m.n));
+        body += `<div class="row">${pool.map((m, i) => `<button class="btn" data-act="learn" data-n="${m.n}" ${S.coins < TRAIN_PRICE ? "disabled" : ""} style="border-color:${ELEMENTS[m.el].color}">${mv(m)}</button>`).join("")}</div>`;
+      }
+    }
+  }
+  app.innerHTML = `<div class="top"><h1>⚔️ CREATURE CHAMPS</h1>
+    <div><span class="pill">🪙 ${S.coins}</span> <span class="pill">Rank #${S.rank}</span> <span class="pill">Wins ${S.wins}</span> <span class="pill">+${S.prestige * 5}% atk</span></div></div>
+    <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${ui.tab === k ? "on" : ""}" data-act="tab" data-k="${k}">${l}</button>`).join("")}</div>${body}`;
+}
+
+function render() {
+  if (!S) return renderStart();
+  if (ui.tab === "battle-live" && battle) return renderBattle();
+  renderHub();
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function findCr(id) { return S.creatures.find(c => c.id === +id); }
+
+app.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-act]");
+  if (!t) return;
+  const act = t.dataset.act, id = +t.dataset.id;
+  switch (act) {
+    case "start": startGame(t.dataset.el); return;
+    case "tab": ui.tab = t.dataset.k; ui.selCr = ui.selB = ui.selEl = ui.selEl2 = ui.selEgg = null; ui.trainSlot = null; break;
+    case "battle": startBattle(); return;
+    case "move": doTurn(+t.dataset.i); return;
+    case "switch": doTurn(null, +t.dataset.i); return;
+    case "leave": battle = null; ui.tab = "battle"; break;
+    case "prestige": prestigeReset(); return;
+    case "tmAdd": if (S.team.length < TEAM_MAX) { S.team.push(id); save("Added to team"); } else toast("Team is full — remove someone first"); break;
+    case "tmX": if (S.team.length > 1) { S.team = S.team.filter(x => x !== id); save("Moved to bench"); } break;
+    case "tmL": case "tmR": {
+      const i = S.team.indexOf(id), j = act === "tmL" ? i - 1 : i + 1;
+      if (i >= 0 && j >= 0 && j < S.team.length) { [S.team[i], S.team[j]] = [S.team[j], S.team[i]]; save(); }
+      break;
+    }
+    case "toggleTeam": {
+      const i = S.team.indexOf(id);
+      if (i >= 0) { if (S.team.length > 1) S.team.splice(i, 1); else toast("Keep at least one creature"); }
+      else if (S.team.length < TEAM_MAX) S.team.push(id); else toast("Team is full (5)");
+      save(); break;
+    }
+    case "buyEgg": { const e = EGGS[t.dataset.k]; if (S.coins >= e.price) { S.coins -= e.price; S.eggs.push({ id: uid(), kind: t.dataset.k, el: null }); save("Egg bought"); } break; }
+    case "buyEl": if (S.coins >= ELEMENT_PRICE) { S.coins -= ELEMENT_PRICE; S.elements.push({ id: uid(), el: t.dataset.k, tier: 1 }); save("Element bought"); } break;
+    case "selEgg": ui.selEgg = id; break;
+    case "selEl": ui.selEl = id; break;
+    case "applyEl": {
+      const egg = S.eggs.find(e => e.id === ui.selEgg), el = S.elements.find(e => e.id === ui.selEl);
+      if (egg && el) {
+        if (egg.el) S.elements.push({ id: uid(), ...egg.el }); // swap the old one back
+        egg.el = { el: el.el, tier: el.tier };
+        S.elements = S.elements.filter(e => e.id !== el.id);
+        ui.selEl = null; save("Element applied to egg");
+      }
+      break;
+    }
+    case "hatch": {
+      ev.stopPropagation();
+      const i = S.eggs.findIndex(e => e.id === id);
+      if (i < 0) break;
+      const egg = S.eggs[i];
+      const el = egg.el ? egg.el.el : pick(EL_IDS);
+      const sp = weightedSpecies(EGGS[egg.kind].w, el);
+      const c = newCreature(sp, el, egg.el ? egg.el.tier : 1);
+      S.creatures.push(c); S.eggs.splice(i, 1);
+      save(`Hatched a ${el} ${sp}!`);
+      break;
+    }
+    case "selCr":
+      if (ui.tab === "fuse") {
+        if (ui.selCr === id) ui.selCr = null; else if (ui.selB === id) ui.selB = null;
+        else if (!ui.selCr) ui.selCr = id; else ui.selB = id;
+      } else { ui.selCr = id; ui.trainSlot = null; }
+      break;
+    case "selElF":
+      if (ui.selEl === id) ui.selEl = null; else if (ui.selEl2 === id) ui.selEl2 = null;
+      else if (!ui.selEl) ui.selEl = id; else ui.selEl2 = id;
+      break;
+    case "fuseCr": {
+      const a = findCr(ui.selCr), b = findCr(ui.selB);
+      if (a && b && a.id !== b.id) {
+        a.fuse = Math.max(a.fuse, b.fuse) + 1 > a.fuse + b.fuse ? Math.max(a.fuse, b.fuse) + 1 : a.fuse + b.fuse;
+        a.tier = Math.max(a.tier, b.tier);
+        // different animals blend into a hybrid (dragon + horse = a dragon on horse legs)
+        if (b.species !== a.species && !a.species2) a.species2 = b.species;
+        if (b.el !== a.el && !a.el2) giveSecond(a, b.el, b.tier);
+        S.creatures = S.creatures.filter(c => c.id !== b.id);
+        S.team = S.team.filter(x => x !== b.id);
+        if (!S.team.includes(a.id) && S.team.length < TEAM_MAX) S.team.push(a.id);
+        ui.selCr = ui.selB = null;
+        save(`${nm(a)} fused to +${a.fuse}!`);
+      }
+      break;
+    }
+    case "fuseEl": {
+      const a = S.elements.find(e => e.id === ui.selEl), b = S.elements.find(e => e.id === ui.selEl2);
+      if (a && b && a.id !== b.id) {
+        if (a.el !== b.el || a.tier !== b.tier) { toast("Need the same element and tier"); break; }
+        if (a.tier >= MAX_TIER) { toast("Already max tier"); break; }
+        a.tier++;
+        S.elements = S.elements.filter(e => e.id !== b.id);
+        ui.selEl = ui.selEl2 = null;
+        save(`${a.el} is now tier ${a.tier}!`);
+      }
+      break;
+    }
+    case "combine": {
+      const c = findCr(ui.selCr), el = S.elements.find(e => e.id === ui.selEl);
+      if (c && el && el.el !== c.el && el.el !== c.el2) {
+        giveSecond(c, el.el, el.tier);
+        S.elements = S.elements.filter(e => e.id !== el.id);
+        ui.selEl = null;
+        save(`${nm(c)} is now ${c.el} + ${c.el2}!`);
+      }
+      break;
+    }
+    case "slot": ui.trainSlot = +t.dataset.i; break;
+    case "learn": {
+      const c = findCr(ui.selCr);
+      if (c && ui.trainSlot != null && S.coins >= TRAIN_PRICE) {
+        const m = movePool(c.el, c.el2).find(x => x.n === t.dataset.n);
+        if (m) { c.moves[ui.trainSlot] = { ...m }; S.coins -= TRAIN_PRICE; ui.trainSlot = null; save(`Learned ${m.n}!`); }
+      }
+      break;
+    }
+  }
+  render();
+});
+
+if (load()) { /* resume */ }
+render();
+})();
+</script>
+</body>
+</html>
