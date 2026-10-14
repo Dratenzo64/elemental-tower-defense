@@ -619,7 +619,7 @@ function renderHub() {
     }
   }
   app.innerHTML = `<div class="top"><h1>⚔️ CREATURE CHAMPS</h1>
-    <div><span class="pill">🪙 ${S.coins}</span> <span class="pill">Rank #${S.rank}</span> <span class="pill">Wins ${S.wins}</span> <span class="pill">+${S.prestige * 5}% atk</span></div></div>
+    <div><span class="pill">🪙 ${S.coins}</span> <span class="pill">Rank #${S.rank}</span> <span class="pill">Wins ${S.wins}</span> <span class="pill">+${S.prestige * 5}% atk</span> <button class="btn red" data-act="startOver">${ui.confirmReset ? "Really erase everything?" : "Start all over"}</button></div></div>
     <div class="tabs">${tabs.map(([k, l]) => `<button class="tab ${ui.tab === k ? "on" : ""}" data-act="tab" data-k="${k}">${l}</button>`).join("")}</div>${body}`;
 }
 
@@ -645,6 +645,10 @@ app.addEventListener("click", (ev) => {
     case "move": doTurn(+t.dataset.i); return;
     case "switch": doTurn(null, +t.dataset.i); return;
     case "leave": battle = null; ui.tab = "battle"; break;
+    case "startOver":
+      if (!ui.confirmReset) { ui.confirmReset = true; setTimeout(() => { ui.confirmReset = false; if (S) render(); }, 4000); break; }
+      ui.confirmReset = false; try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+      S = null; battle = null; nextId = 1; ui.tab = "battle"; render(); return;
     case "prestige": prestigeReset(); return;
     case "tmAdd": if (S.team.length < TEAM_MAX) { S.team.push(id); save("Added to team"); } else toast("Team is full — remove someone first"); break;
     case "tmX": if (S.team.length > 1) { S.team = S.team.filter(x => x !== id); save("Moved to bench"); } break;
