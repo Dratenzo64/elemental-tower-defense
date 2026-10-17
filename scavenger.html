@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scavenge & Slay</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #14161c; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; }
+  #wrap { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #stage { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; }
+  canvas { width: 100%; height: 100%; background: #2b3a2b; display: block; border-radius: 6px; cursor: crosshair; }
+  #ui { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(10,12,16,.82); overflow: auto; }
+  #ui.on { display: flex; }
+  .panel { background: #1f2430; border: 2px solid #3a4258; border-radius: 12px; padding: 18px 22px; max-width: 880px; width: 90%; max-height: 92%; overflow: auto; }
+  h1, h2 { margin: 4px 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; align-items: center; }
+  .card { background: #2a3040; border: 2px solid #3a4258; border-radius: 8px; padding: 8px 10px; min-width: 150px; }
+  .card.sel { border-color: #ffd54a; }
+  .muted { color: #9aa3b8; font-size: 13px; }
+  button { background: #3d6fd8; color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; font-size: 15px; cursor: pointer; }
+  button:disabled { background: #444b5c; color: #888; cursor: default; }
+  button.big { font-size: 18px; padding: 12px 22px; background: #2f9e57; }
+  button.red { background: #b53b3b; }
+  #touch { position: absolute; inset: 0; display: none; touch-action: none; }
+  body.touch #touch { display: block; }
+  .zone { position: absolute; bottom: 0; width: 50%; height: 70%; touch-action: none; }
+  #zl { left: 0; } #zr { right: 0; }
+  .base { position: absolute; width: 22vmin; height: 22vmin; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.3); display: none; transform: translate(-50%, -50%); }
+  .knob { position: absolute; left: 50%; top: 50%; width: 9vmin; height: 9vmin; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
+  .lbl { position: absolute; right: 8%; bottom: 10%; color: rgba(255,255,255,.35); font-size: 12px; }
+  .sw { position: absolute; top: 56px; width: 54px; height: 44px; padding: 0; opacity: .75; }
+  #bq { left: 10px; } #be { right: 10px; }
+  #retreat { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); display: none; opacity: .8; z-index: 2; }
+  #toast { position: absolute; top: 12px; right: 16px; background: #2f9e57; padding: 6px 12px; border-radius: 8px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 3; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="c" width="1280" height="720"></canvas>
+  <div id="touch">
+    <div class="zone" id="zl"><div class="base"><div class="knob" id="kl"></div></div></div>
+    <div class="zone" id="zr"><div class="base"><div class="knob" id="kr"></div></div><span class="lbl">AIM / ATTACK</span></div>
+    <button class="sw" id="bq">Q</button><button class="sw" id="be">E</button>
+  </div>
+  <button id="retreat" class="red">Retreat (Esc)</button>
+  <div id="ui"></div>
+  <div id="toast">Saved</div>
+</div></div>
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const MATS = { wood: "#a0703c", stone: "#9aa0a6", iron: "#cfd8e6", crystal: "#c07cff" };
+const MAT_IDS = Object.keys(MATS);
+// t: m = melee (press F), r = ranged (drag mouse). h = harvest power. unlock = coin price to learn the recipe.
+const WEAPONS = {
+  stick:  { n: "Stick",         t: "m", d: 8,  cd: .35, rng: 58, arc: 1.8, h: 1 },
+  sling:  { n: "Sling",         t: "r", d: 7,  cd: .5,  spd: 520, h: 1 },
+  club:   { n: "Wood Club",     t: "m", d: 15, cd: .4,  rng: 62, arc: 1.9, h: 1, cost: { wood: 150 } },
+  axe:    { n: "Stone Axe",     t: "m", d: 24, cd: .5,  rng: 70, arc: 2.4, h: 3, cost: { wood: 100, stone: 150 } },
+  sword:  { n: "Iron Sword",    t: "m", d: 32, cd: .3,  rng: 74, arc: 2.0, h: 2, cost: { wood: 100, iron: 200 } },
+  bow:    { n: "Short Bow",     t: "r", d: 14, cd: .4,  spd: 640, h: 1, cost: { wood: 200 } },
+  xbow:   { n: "Crossbow",      t: "r", d: 32, cd: .7,  spd: 820, h: 2, cost: { wood: 150, iron: 150 }, unlock: 300 },
+  staff:  { n: "Crystal Staff", t: "r", d: 26, cd: .35, spd: 600, h: 2, pierce: true, cost: { wood: 100, crystal: 150 }, unlock: 500 },
+  hammer: { n: "War Hammer",    t: "m", d: 75, cd: .9,  rng: 84, arc: 2.8, h: 3, cost: { stone: 200, iron: 200 }, unlock: 700 },
+  flame:  { n: "Flame Blade",   t: "m", d: 52, cd: .3,  rng: 80, arc: 2.2, h: 3, cost: { iron: 150, crystal: 150 }, unlock: 1000 },
+  storm:  { n: "Storm Bow",     t: "r", d: 22, cd: .16, spd: 780, h: 2, cost: { wood: 200, crystal: 200 }, unlock: 1200 },
+};
+const RECIPES = Object.keys(WEAPONS).filter(k => WEAPONS[k].cost);
+const NODE = { wood: { hp: 3, w: 40 }, stone: { hp: 4, w: 30 }, iron: { hp: 5, w: 20 }, crystal: { hp: 6, w: 10 } };
+const W = 1280, H = 720;          // what you see
+const WW = 3840, WH = 2160;       // the whole map (3x wider and taller)
+const GATHER_TIME = 60;
+
+// ============================================================
+// SAVE (same SAVE_KEY / JSON blob / try-catch pattern as the other games)
+// Everything you find is kept: materials, coins, weapons.
+// ============================================================
+const SAVE_KEY = "scavenger-save-v2";
+let S = { coins: 0, mats: { wood: 0, stone: 0, iron: 0, crystal: 0 }, vault: ["stick", "sling"], unlocked: ["club", "axe", "sword", "bow"], start: "stick", best: 0, kills: 0 };
+let toastTimer = null;
+function toast() {
+  const el = document.getElementById("toast");
+  el.classList.add("show"); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1200);
+}
+function save(show = true) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); if (show) toast(); } catch (e) {} }
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.vault)) { S = Object.assign(S, d); S.mats = Object.assign({ wood: 0, stone: 0, iron: 0, crystal: 0 }, d.mats); } }
+  } catch (e) {}
+}
+
+// ============================================================
+// GAME STATE
+// ============================================================
+const cv = document.getElementById("c"), ctx = cv.getContext("2d"), ui = document.getElementById("ui");
+let mode = "menu", run = null, P = null, nodes = [], items = [], foes = [], shots = [];
+const cam = { x: 0, y: 0 };
+const keys = new Set(); const mouse = { x: W / 2, y: H / 2, down: false }; // mouse is in screen coords
+let msg = "", msgT = 0;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function say(t) { msg = t; msgT = 1.8; }
+
+function startRun() {
+  const st = S.vault.includes(S.start) ? S.start : S.vault[0];
+  run = { inv: [st, ...S.vault.filter(k => k !== st)], cur: 0, time: GATHER_TIME, t: 0, kills: 0, coins: 0, found: [], dead: false, spawnT: 1 };
+  P = { x: WW / 2, y: WH / 2, hp: 100, max: 100, iframes: 0, cd: 0, swing: 0, swingAng: 0, swingW: null, hit: new Set() };
+  nodes = []; items = []; foes = []; shots = [];
+  for (let i = 0; i < 90; i++) nodes.push(newNode());
+  mode = "gather"; ui.classList.remove("on");
+}
+function newNode() {
+  let r = Math.random() * 100, type = "wood";
+  for (const t of MAT_IDS) { if (r < NODE[t].w) { type = t; break; } r -= NODE[t].w; }
+  return { x: rnd(60, WW - 60), y: rnd(60, WH - 60), type, hp: NODE[type].hp, max: NODE[type].hp, respawn: 0, flash: 0 };
+}
+const wp = () => WEAPONS[run.inv[run.cur]];
+
+// ============================================================
+// FIGHTING (no levels: enemies keep coming, harder the longer you last)
+// ============================================================
+function spawnFoe() {
+  const s = 1 + run.t / 90, t = run.t;
+  const roll = Math.random();
+  const type = t > 45 && roll < Math.min(.3, .1 + t / 600) ? "brute" : t > 20 && roll < .55 ? "archer" : "slime";
+  const def = { slime: [30, 85, 10, 14], archer: [25, 60, 8, 14], brute: [95, 55, 20, 22] }[type];
+  const a = Math.random() * 7, d = rnd(480, 700);
+  const x = Math.max(40, Math.min(WW - 40, P.x + Math.cos(a) * d)), y = Math.max(40, Math.min(WH - 40, P.y + Math.sin(a) * d));
+  foes.push({ type, x, y, hp: def[0] * s, max: def[0] * s, spd: def[1], dmg: def[2] * Math.min(2.5, s), r: def[3], cd: rnd(.5, 2), flash: 0, s });
+}
+function killFoe(e) {
+  run.kills++; S.kills++;
+  P.hp = Math.min(P.max, P.hp + 3);
+  const big = e.type === "brute" ? 4 : e.type === "archer" ? 2 : 1, k = Math.round(e.s * big);
+  items.push({ x: e.x, y: e.y, vx: rnd(-90, 90), vy: rnd(-90, 90), type: "coin", v: 3 * k + Math.floor(Math.random() * 3) });
+  items.push({ x: e.x, y: e.y, vx: rnd(-90, 90), vy: rnd(-90, 90), type: MAT_IDS[Math.floor(Math.random() * 4)], v: 3 * k + Math.floor(Math.random() * 4) });
+  if (Math.random() < (e.type === "brute" ? .18 : .03)) {
+    const pool = RECIPES.filter(k2 => !S.vault.includes(k2));
+    if (pool.length) items.push({ x: e.x, y: e.y, vx: 0, vy: 0, type: "weapon", key: pool[Math.floor(Math.random() * pool.length)], v: 1 });
+  }
+}
+function hurtFoe(e, d, ang) {
+  e.hp -= d; e.flash = .12;
+  if (e.type !== "boss") { e.x += Math.cos(ang) * 14; e.y += Math.sin(ang) * 14; }
+}
+function hurtPlayer(d) {
+  if (P.iframes > 0 || mode !== "fight") return;
+  P.hp -= d; P.iframes = .6;
+  if (P.hp <= 0) { run.dead = true; endRun(); }
+}
+function endRun() {
+  mode = "over";
+  S.best = Math.max(S.best, Math.floor(run.t));
+  save(); showOver();
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+function cycle(d) { if (!run) return; run.cur = (run.cur + d + run.inv.length) % run.inv.length; }
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (["w", "a", "s", "d", "f", "q", "e", " "].includes(k)) e.preventDefault();
+  if (k === "escape" && mode === "fight") { endRun(); return; }
+  if (e.repeat && (k === "q" || k === "e")) return;
+  if (k === "q") cycle(-1); else if (k === "e") cycle(1); else keys.add(k);
+});
+addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+function setMouse(e) { const r = cv.getBoundingClientRect(); mouse.x = (e.clientX - r.left) * W / r.width; mouse.y = (e.clientY - r.top) * H / r.height; }
+cv.addEventListener("mousemove", setMouse);
+cv.addEventListener("mousedown", e => { setMouse(e); mouse.down = true; });
+addEventListener("mouseup", () => mouse.down = false);
+document.getElementById("retreat").addEventListener("click", () => { if (mode === "fight") endRun(); });
+
+// ============================================================
+// TOUCH CONTROLS: left stick = move, right stick = aim + attack (shoots ranged, swings melee)
+// ============================================================
+const joy = { l: null, r: null };
+function setupStick(zoneId, key) {
+  const z = document.getElementById(zoneId), base = z.querySelector(".base"), knob = z.querySelector(".knob");
+  const R = 60;
+  const upd = (j, e) => { const d = Math.hypot(e.clientX - j.ox, e.clientY - j.oy) || 1, k = Math.min(1, d / R); j.dx = (e.clientX - j.ox) / d * k; j.dy = (e.clientY - j.oy) / d * k; knob.style.transform = `translate(calc(-50% + ${j.dx * R}px), calc(-50% + ${j.dy * R}px))`; };
+  z.addEventListener("pointerdown", e => {
+    if (joy[key]) return; document.body.classList.add("touch");
+    const zr = z.getBoundingClientRect();
+    joy[key] = { id: e.pointerId, ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 };
+    base.style.display = "block"; base.style.left = (e.clientX - zr.left) + "px"; base.style.top = (e.clientY - zr.top) + "px";
+    knob.style.transform = "translate(-50%, -50%)"; z.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  z.addEventListener("pointermove", e => { const j = joy[key]; if (j && j.id === e.pointerId) upd(j, e); });
+  const end = e => { const j = joy[key]; if (j && j.id === e.pointerId) { joy[key] = null; base.style.display = "none"; } };
+  z.addEventListener("pointerup", end); z.addEventListener("pointercancel", end);
+}
+setupStick("zl", "l"); setupStick("zr", "r");
+document.getElementById("bq").addEventListener("pointerdown", e => { e.preventDefault(); cycle(-1); });
+document.getElementById("be").addEventListener("pointerdown", e => { e.preventDefault(); cycle(1); });
+addEventListener("touchstart", () => document.body.classList.add("touch"), { once: true, passive: true });
+if (matchMedia && matchMedia("(pointer: coarse)").matches) document.body.classList.add("touch");
+function touchInput() {
+  const r = joy.r;
+  if (r && (Math.abs(r.dx) > .15 || Math.abs(r.dy) > .15) && run) {
+    mouse.x = P.x - cam.x + r.dx * 300; mouse.y = P.y - cam.y + r.dy * 300;
+    if (wp().t === "m") keys.add("f"); else mouse.down = true;
+    joy.firing = true;
+  } else if (joy.firing) { joy.firing = false; keys.delete("f"); mouse.down = false; }
+}
+
+// ============================================================
+// UPDATE
+// ============================================================
+function useWeapon() {
+  const w = wp();
+  if (P.cd > 0) return;
+  const ang = Math.atan2(mouse.y + cam.y - P.y, mouse.x + cam.x - P.x);
+  if (keys.has("f")) {
+    if (w.t !== "m") { say("This is a ranged weapon — drag the mouse to shoot"); return; }
+    P.cd = w.cd; P.swing = .14; P.swingAng = ang; P.swingW = w; P.hit = new Set();
+  } else if (mouse.down) {
+    if (w.t !== "r") { say("This is a melee weapon — press F to swing"); return; }
+    P.cd = w.cd;
+    shots.push({ x: P.x, y: P.y, vx: Math.cos(ang) * w.spd, vy: Math.sin(ang) * w.spd, d: w.d, h: w.h, pierce: w.pierce, mine: true, life: 1.2, hit: new Set() });
+  }
+}
+function applyMelee() {
+  const w = P.swingW; if (!w) return;
+  const inArc = (o, rad) => {
+    const d = dist(P, o); if (d > w.rng + rad) return false;
+    let da = Math.atan2(o.y - P.y, o.x - P.x) - P.swingAng; da = Math.atan2(Math.sin(da), Math.cos(da));
+    return Math.abs(da) <= w.arc / 2 || d < rad + 20;
+  };
+  for (const n of nodes) if (n.respawn <= 0 && !P.hit.has(n) && inArc(n, 18)) { P.hit.add(n); hitNode(n, w.h); }
+  for (const e of foes) if (!P.hit.has(e) && inArc(e, e.r)) { P.hit.add(e); hurtFoe(e, w.d, P.swingAng); }
+}
+function hitNode(n, h) {
+  n.hp -= h; n.flash = .1;
+  if (n.hp <= 0) {
+    n.respawn = 8;
+    const v = n.type === "crystal" ? 3 + Math.floor(Math.random() * 4) : 5 + Math.floor(Math.random() * 8);
+    items.push({ x: n.x, y: n.y, vx: rnd(-80, 80), vy: rnd(-80, 80), type: n.type, v });
+  }
+}
+function update(dt) {
+  if (mode !== "gather" && mode !== "fight") return;
+  if (msgT > 0) msgT -= dt;
+  touchInput();
+  let dx = (keys.has("d") ? 1 : 0) - (keys.has("a") ? 1 : 0), dy = (keys.has("s") ? 1 : 0) - (keys.has("w") ? 1 : 0);
+  if (joy.l && (Math.abs(joy.l.dx) > .1 || Math.abs(joy.l.dy) > .1)) { P.x += joy.l.dx * 200 * dt; P.y += joy.l.dy * 200 * dt; }
+  else if (dx || dy) { const l = Math.hypot(dx, dy); P.x += dx / l * 200 * dt; P.y += dy / l * 200 * dt; }
+  P.x = Math.max(20, Math.min(WW - 20, P.x)); P.y = Math.max(20, Math.min(WH - 20, P.y));
+  cam.x = Math.max(0, Math.min(WW - W, P.x - W / 2)); cam.y = Math.max(0, Math.min(WH - H, P.y - H / 2));
+  P.cd -= dt; P.iframes -= dt;
+  if (P.swing > 0) { P.swing -= dt; applyMelee(); }
+  useWeapon();
+  for (const s of shots) {
+    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+    if (s.mine) {
+      if (mode === "gather") for (const n of nodes) if (n.respawn <= 0 && dist(s, n) < 20) { hitNode(n, s.h); s.life = 0; break; }
+      for (const e of foes) if (!s.hit.has(e) && dist(s, e) < e.r + 5) { s.hit.add(e); hurtFoe(e, s.d, Math.atan2(s.vy, s.vx)); if (!s.pierce) { s.life = 0; break; } }
+    } else if (dist(s, P) < 16) { hurtPlayer(s.d); s.life = 0; }
+    if (s.x < -20 || s.x > WW + 20 || s.y < -20 || s.y > WH + 20) s.life = 0;
+  }
+  shots = shots.filter(s => s.life > 0);
+  for (const n of nodes) {
+    if (n.respawn > 0) { n.respawn -= dt; if (n.respawn <= 0) Object.assign(n, newNode()); }
+    n.flash -= dt;
+  }
+  pickups(dt);
+  if (mode === "gather") {
+    run.time -= dt;
+    if (run.time <= 0) { mode = "craft"; save(false); showCraft(true); }
+  } else updateFight(dt);
+  for (const e of foes) e.flash -= dt;
+}
+function pickups(dt) {
+  for (const it of items) {
+    const d = dist(it, P) || 1;
+    it.x += it.vx * dt; it.y += it.vy * dt; it.vx *= .93; it.vy *= .93;
+    if (d < 120) { it.x += (P.x - it.x) / d * 280 * dt; it.y += (P.y - it.y) / d * 280 * dt; }
+    if (d < 22) {
+      it.gone = true;
+      if (it.type === "coin") { S.coins += it.v; run.coins += it.v; }
+      else if (it.type === "weapon") {
+        S.vault.push(it.key); run.inv.push(it.key); run.found.push(it.key);
+        say(`Found a ${WEAPONS[it.key].n}!`); save(false);
+      } else S.mats[it.type] += it.v;
+    }
+  }
+  items = items.filter(i => !i.gone);
+}
+function updateFight(dt) {
+  run.t += dt;
+  run.spawnT -= dt;
+  const cap = Math.min(28, 6 + Math.floor(run.t / 15));
+  if (run.spawnT <= 0 && foes.length < cap) { spawnFoe(); run.spawnT = Math.max(.45, 1.6 - run.t / 120); }
+  for (const e of foes) {
+    const ang = Math.atan2(P.y - e.y, P.x - e.x), d = dist(e, P);
+    e.cd -= dt;
+    if (e.type === "archer") {
+      const dir = d < 260 ? -1 : d > 380 ? 1 : 0;
+      e.x += Math.cos(ang) * e.spd * dir * dt; e.y += Math.sin(ang) * e.spd * dir * dt;
+      if (e.cd <= 0 && d < 700) { e.cd = 1.8; shots.push({ x: e.x, y: e.y, vx: Math.cos(ang) * 300, vy: Math.sin(ang) * 300, d: e.dmg, life: 3 }); }
+    } else {
+      e.x += Math.cos(ang) * e.spd * dt; e.y += Math.sin(ang) * e.spd * dt;
+      if (d < e.r + 14) hurtPlayer(e.dmg);
+    }
+  }
+  for (const e of foes) if (e.hp <= 0) killFoe(e);
+  foes = foes.filter(e => e.hp > 0);
+  // autosave occasionally so loot is never lost
+  run.sv = (run.sv || 0) + dt; if (run.sv > 20) { run.sv = 0; save(false); }
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+function draw() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = mode === "fight" ? "#33293a" : "#2b3a2b"; ctx.fillRect(0, 0, W, H);
+  if (!P || !(mode === "gather" || mode === "fight" || mode === "craft" || mode === "over")) return;
+  ctx.translate(-cam.x, -cam.y);
+  ctx.strokeStyle = "rgba(255,255,255,.06)";
+  for (let x = 0; x <= WW; x += 80) if (x > cam.x - 80 && x < cam.x + W + 80) { ctx.beginPath(); ctx.moveTo(x, cam.y); ctx.lineTo(x, cam.y + H); ctx.stroke(); }
+  for (let y = 0; y <= WH; y += 80) if (y > cam.y - 80 && y < cam.y + H + 80) { ctx.beginPath(); ctx.moveTo(cam.x, y); ctx.lineTo(cam.x + W, y); ctx.stroke(); }
+  ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 4; ctx.strokeRect(0, 0, WW, WH); ctx.lineWidth = 1;
+  const vis = o => o.x > cam.x - 60 && o.x < cam.x + W + 60 && o.y > cam.y - 60 && o.y < cam.y + H + 60;
+  for (const n of nodes) {
+    if (n.respawn > 0 || !vis(n)) continue;
+    ctx.fillStyle = n.flash > 0 ? "#fff" : MATS[n.type];
+    ctx.beginPath();
+    if (n.type === "wood") { ctx.fillStyle = n.flash > 0 ? "#fff" : "#3f8a3f"; ctx.arc(n.x, n.y - 6, 20, 0, 7); ctx.fill(); ctx.fillStyle = "#7a5230"; ctx.fillRect(n.x - 4, n.y + 6, 8, 16); }
+    else if (n.type === "crystal") { ctx.moveTo(n.x, n.y - 24); ctx.lineTo(n.x + 14, n.y); ctx.lineTo(n.x, n.y + 16); ctx.lineTo(n.x - 14, n.y); ctx.fill(); }
+    else { ctx.arc(n.x, n.y, n.type === "iron" ? 17 : 19, 0, 7); ctx.fill(); if (n.type === "iron") { ctx.fillStyle = "#6a7488"; ctx.fillRect(n.x - 6, n.y - 4, 12, 8); } }
+    if (n.hp < n.max) { ctx.fillStyle = "#000"; ctx.fillRect(n.x - 16, n.y + 26, 32, 4); ctx.fillStyle = "#ffd54a"; ctx.fillRect(n.x - 16, n.y + 26, 32 * n.hp / n.max, 4); }
+  }
+  for (const it of items) {
+    if (it.type === "coin") { ctx.fillStyle = "#ffd54a"; ctx.beginPath(); ctx.arc(it.x, it.y, 7, 0, 7); ctx.fill(); }
+    else if (it.type === "weapon") { ctx.fillStyle = "#ffffff"; ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(.78); ctx.fillRect(-9, -9, 18, 18); ctx.restore(); ctx.fillStyle = "#ffd54a"; ctx.fillRect(it.x - 4, it.y - 4, 8, 8); }
+    else { ctx.fillStyle = MATS[it.type]; ctx.fillRect(it.x - 5, it.y - 5, 10, 10); ctx.strokeStyle = "#000"; ctx.strokeRect(it.x - 5, it.y - 5, 10, 10); }
+  }
+  for (const e of foes) {
+    if (!vis(e)) continue;
+    ctx.fillStyle = e.flash > 0 ? "#fff" : { slime: "#5ccf6a", archer: "#e0b04a", brute: "#c25b5b" }[e.type];
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 7); ctx.fill();
+    ctx.fillStyle = "#000"; ctx.fillRect(e.x - e.r, e.y - e.r - 10, e.r * 2, 5);
+    ctx.fillStyle = "#e33"; ctx.fillRect(e.x - e.r, e.y - e.r - 10, e.r * 2 * Math.max(0, e.hp / e.max), 5);
+  }
+  for (const s of shots) { ctx.fillStyle = s.mine ? "#ffe27a" : "#ff6b6b"; ctx.beginPath(); ctx.arc(s.x, s.y, s.mine ? 5 : 6, 0, 7); ctx.fill(); }
+  if (mode === "gather" || mode === "fight") {
+    if (P.swing > 0) {
+      ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.beginPath(); ctx.moveTo(P.x, P.y);
+      ctx.arc(P.x, P.y, P.swingW.rng, P.swingAng - P.swingW.arc / 2, P.swingAng + P.swingW.arc / 2); ctx.fill();
+    }
+    ctx.fillStyle = P.iframes > 0 && Math.floor(P.iframes * 20) % 2 ? "#fff" : "#4a90e2";
+    ctx.beginPath(); ctx.arc(P.x, P.y, 14, 0, 7); ctx.fill();
+    const a = Math.atan2(mouse.y + cam.y - P.y, mouse.x + cam.x - P.x);
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.lineTo(P.x + Math.cos(a) * 24, P.y + Math.sin(a) * 24); ctx.stroke(); ctx.lineWidth = 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    drawHud();
+  }
+}
+function drawHud() {
+  ctx.font = "bold 18px system-ui"; ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(0, 0, W, 44);
+  if (mode === "gather") { ctx.fillStyle = run.time < 10 ? "#ff6b6b" : "#ffd54a"; ctx.fillText(`GATHER  ${Math.ceil(Math.max(0, run.time))}s`, 14, 28); }
+  else { ctx.fillStyle = "#fff"; ctx.fillText(`${Math.floor(run.t / 60)}:${String(Math.floor(run.t % 60)).padStart(2, "0")}  kills ${run.kills}`, 14, 28); }
+  let x = 190;
+  for (const m of MAT_IDS) { ctx.fillStyle = MATS[m]; ctx.fillRect(x, 14, 14, 14); ctx.fillStyle = "#fff"; ctx.fillText(`${m} ${S.mats[m]}`, x + 20, 28); x += 135; }
+  ctx.fillStyle = "#ffd54a"; ctx.fillText(`🪙 ${S.coins}`, x, 28);
+  ctx.fillStyle = "#333"; ctx.fillRect(W - 150, 12, 140, 20); ctx.fillStyle = "#e33"; ctx.fillRect(W - 150, 12, 140 * Math.max(0, P.hp / P.max), 20);
+  ctx.fillStyle = "#fff"; ctx.fillText(`${Math.ceil(Math.max(0, P.hp))}`, W - 145, 28);
+  // minimap
+  const mw = 192, mh = 108, mx = W - mw - 10, my = 52;
+  ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(mx, my, mw, mh);
+  if (mode === "gather") for (const n of nodes) if (n.respawn <= 0) { ctx.fillStyle = n.type === "wood" ? "#3f8a3f" : MATS[n.type]; ctx.fillRect(mx + n.x / WW * mw - 1, my + n.y / WH * mh - 1, 3, 3); }
+  for (const e of foes) { ctx.fillStyle = "#f55"; ctx.fillRect(mx + e.x / WW * mw - 1, my + e.y / WH * mh - 1, 3, 3); }
+  ctx.fillStyle = "#4af"; ctx.fillRect(mx + P.x / WW * mw - 3, my + P.y / WH * mh - 3, 6, 6);
+  ctx.strokeStyle = "#fff"; ctx.strokeRect(mx + cam.x / WW * mw, my + cam.y / WH * mh, W / WW * mw, H / WH * mh);
+  // weapon bar
+  ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(0, H - 44, W, 44);
+  ctx.fillStyle = "#fff";
+  ctx.fillText(document.body.classList.contains("touch") ? "Left stick move · right stick aim + attack" : "Q/E switch · F swing · drag mouse shoot", 14, H - 16);
+  let wx = 440;
+  run.inv.forEach((k, i) => {
+    const w = WEAPONS[k], label = `${i === run.cur ? "▶ " : ""}${w.n} (${w.t === "m" ? "F" : "drag"})`;
+    ctx.fillStyle = i === run.cur ? "#ffd54a" : "#888"; ctx.fillText(label, wx, H - 16); wx += ctx.measureText(label).width + 20;
+  });
+  if (msgT > 0) { ctx.textAlign = "center"; ctx.font = "bold 28px system-ui"; ctx.fillStyle = "#fff"; ctx.fillText(msg, W / 2, 110); ctx.textAlign = "left"; }
+}
+
+// ============================================================
+// MENUS (DOM overlay)
+// ============================================================
+const cost = c => Object.entries(c).map(([m, n]) => `${n} ${m}`).join(", ");
+const stat = w => `${w.t === "m" ? "melee (F)" : "ranged (drag)"} · ${w.d} dmg · ${(1 / w.cd).toFixed(1)}/s`;
+const matLine = () => MAT_IDS.map(m => `<span style="color:${MATS[m]}"><b>${m} ${S.mats[m]}</b></span>`).join(" · ");
+function show(html) { ui.innerHTML = `<div class="panel">${html}</div>`; ui.classList.add("on"); }
+function showMenu() {
+  mode = "menu"; run = null;
+  const vault = S.vault.map(k => `<div class="card ${S.start === k ? "sel" : ""}"><b>${WEAPONS[k].n}</b><div class="muted">${stat(WEAPONS[k])}</div><button data-act="pick" data-k="${k}" ${S.start === k ? "disabled" : ""}>${S.start === k ? "Starting weapon" : "Start with this"}</button></div>`).join("");
+  const learn = RECIPES.filter(k => !S.unlocked.includes(k)).map(k => `<div class="card"><b>${WEAPONS[k].n}</b><div class="muted">${stat(WEAPONS[k])}<br>needs ${cost(WEAPONS[k].cost)}</div><button data-act="learn" data-k="${k}" ${S.coins < WEAPONS[k].unlock ? "disabled" : ""}>Learn — ${WEAPONS[k].unlock} coins</button></div>`).join("");
+  show(`<h1>Scavenge &amp; Slay</h1>
+    <p class="muted">Gather materials on the big map for 60 seconds, craft weapons, then fight for as long as you can. Enemies drop coins, materials and sometimes weapons — you keep everything you find. Move: WASD · Swing: F · Shoot: drag the mouse · Switch weapon: Q / E · Leave a fight: Esc</p>
+    <p><b>🪙 ${S.coins}</b> · ${matLine()}</p>
+    <p class="muted">Best fight: ${Math.floor(S.best / 60)}:${String(S.best % 60).padStart(2, "0")} · Total kills: ${S.kills}</p>
+    <h2>Your weapons</h2><div class="row">${vault}</div>
+    ${learn ? `<h2>Learn recipes</h2><div class="row">${learn}</div>` : ""}
+    <div class="row"><button class="big" data-act="go">Enter with ${WEAPONS[S.vault.includes(S.start) ? S.start : S.vault[0]].n}</button><button data-act="craftMenu">Craft</button></div>`);
+}
+function showCraft(inRun) {
+  const have = (inRun ? run.inv : S.vault).map(k => `<div class="card"><b>${WEAPONS[k].n}</b><div class="muted">${stat(WEAPONS[k])}</div></div>`).join("");
+  const rec = S.unlocked.map(k => {
+    const w = WEAPONS[k], owned = S.vault.includes(k), can = MAT_IDS.every(m => S.mats[m] >= (w.cost[m] || 0));
+    return `<div class="card"><b>${w.n}</b><div class="muted">${stat(w)}<br>${cost(w.cost)}</div><button data-act="craft" data-k="${k}" data-run="${inRun ? 1 : 0}" ${owned || !can ? "disabled" : ""}>${owned ? "Owned" : "Craft"}</button></div>`;
+  }).join("");
+  show(`<h1>Craft</h1><p>🪙 ${S.coins} · ${matLine()}</p>
+    <h2>Your weapons</h2><div class="row">${have}</div>
+    <h2>Recipes</h2><div class="row">${rec}</div>
+    <div class="row">${inRun ? '<button class="big" data-act="fight">Fight!</button>' : '<button class="big" data-act="menu">Back</button>'}</div>`);
+}
+function showOver() {
+  const found = run.found.length ? ` Found: ${run.found.map(k => WEAPONS[k].n).join(", ")}.` : "";
+  show(`<h1>${run.dead ? "You fell" : "You retreated"}</h1>
+    <p>Survived ${Math.floor(run.t / 60)}:${String(Math.floor(run.t % 60)).padStart(2, "0")} · ${run.kills} kills · +${run.coins} coins.${found}</p>
+    <p>Everything you collected is kept. <b>🪙 ${S.coins}</b> · ${matLine()}</p>
+    <div class="row"><button class="big" data-act="menu">Back to menu</button></div>`);
+}
+ui.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-act]"); if (!t) return;
+  const k = t.dataset.k;
+  switch (t.dataset.act) {
+    case "pick": S.start = k; save(); showMenu(); break;
+    case "learn": if (S.coins >= WEAPONS[k].unlock && !S.unlocked.includes(k)) { S.coins -= WEAPONS[k].unlock; S.unlocked.push(k); save(); showMenu(); } break;
+    case "go": startRun(); break;
+    case "craftMenu": showCraft(false); break;
+    case "craft": {
+      const w = WEAPONS[k], inRun = t.dataset.run === "1";
+      if (!S.vault.includes(k) && MAT_IDS.every(m => S.mats[m] >= (w.cost[m] || 0))) {
+        for (const m of MAT_IDS) S.mats[m] -= (w.cost[m] || 0);
+        S.vault.push(k); if (inRun) { run.inv.push(k); run.cur = run.inv.length - 1; }
+        save(); showCraft(inRun);
+      }
+      break;
+    }
+    case "fight": ui.classList.remove("on"); mode = "fight"; P.x = WW / 2; P.y = WH / 2; P.hp = P.max; foes = []; shots = []; say("Fight!"); break;
+    case "menu": showMenu(); break;
+  }
+});
+
+// ============================================================
+// LOOP
+// ============================================================
+let last = performance.now();
+const retreatBtn = document.getElementById("retreat");
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  update(dt); draw();
+  retreatBtn.style.display = mode === "fight" ? "block" : "none";
+  requestAnimationFrame(loop);
+}
+load(); showMenu();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
