@@ -70,6 +70,7 @@ const WEAPONS = {
 };
 const RECIPES = Object.keys(WEAPONS).filter(k => WEAPONS[k].cost);
 const NODE = { wood: { hp: 3, w: 40 }, stone: { hp: 4, w: 30 }, iron: { hp: 5, w: 20 }, crystal: { hp: 6, w: 10 } };
+const MAX_CARRY = 4; // most weapons you can bring
 const W = 1280, H = 720;          // what you see
 const WW = 3840, WH = 2160;       // the whole map (3x wider and taller)
 const GATHER_TIME = 60;
@@ -91,7 +92,8 @@ function load() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) { const d = JSON.parse(raw); if (d && Array.isArray(d.vault)) { S = Object.assign(S, d); S.mats = Object.assign({ wood: 0, stone: 0, iron: 0, crystal: 0 }, d.mats); }
-    if (!Array.isArray(S.loadout)) S.loadout = S.vault.slice(); }
+    if (!Array.isArray(S.loadout)) S.loadout = S.vault.slice();
+    S.loadout = S.loadout.slice(0, MAX_CARRY); }
   } catch (e) {}
 }
 
@@ -108,7 +110,7 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 function say(t) { msg = t; msgT = 1.8; }
 
 function startRun() {
-  if (!Array.isArray(S.loadout)) S.loadout = S.vault.slice();
+  if (!Array.isArray(S.loadout)) S.loadout = S.vault.slice(0, MAX_CARRY);
   const bring = S.loadout.filter(k => k === "fists" || S.vault.includes(k));
   run = { inv: bring.length ? bring : ["fists"], cur: 0, time: GATHER_TIME, t: 0, kills: 0, coins: 0, found: [], dead: false, spawnT: 1 };
   P = { x: WW / 2, y: WH / 2, hp: 100, max: 100, iframes: 0, cd: 0, swing: 0, swingAng: 0, swingW: null, hit: new Set() };
@@ -287,7 +289,8 @@ function pickups(dt) {
       it.gone = true;
       if (it.type === "coin") { S.coins += it.v; run.coins += it.v; }
       else if (it.type === "weapon") {
-        S.vault.push(it.key); S.loadout.push(it.key); run.inv.push(it.key); run.found.push(it.key);
+        S.vault.push(it.key); run.found.push(it.key);
+        if (run.inv.length < MAX_CARRY) { run.inv.push(it.key); S.loadout.push(it.key); }
         say(`Found a ${WEAPONS[it.key].n}!`); save(false);
       } else S.mats[it.type] += it.v;
     }
@@ -403,14 +406,14 @@ const matLine = () => MAT_IDS.map(m => `<span style="color:${MATS[m]}"><b>${m} $
 function show(html) { ui.innerHTML = `<div class="panel">${html}</div>`; ui.classList.add("on"); }
 function showMenu() {
   mode = "menu"; run = null;
-  if (!Array.isArray(S.loadout)) S.loadout = S.vault.slice();
-  const vault = ["fists", ...S.vault].map(k => { const on = S.loadout.includes(k); return `<div class="card ${on ? "sel" : ""}"><b>${WEAPONS[k].n}</b><div class="muted">${stat(WEAPONS[k])}</div>${on ? `<button class="red" data-act="bring" data-k="${k}">Leave behind</button>` : `<button data-act="bring" data-k="${k}">Bring</button>`}</div>`; }).join("");
+  if (!Array.isArray(S.loadout)) S.loadout = S.vault.slice(0, MAX_CARRY);
+  const vault = ["fists", ...S.vault].map(k => { const on = S.loadout.includes(k); return `<div class="card ${on ? "sel" : ""}"><b>${WEAPONS[k].n}</b><div class="muted">${stat(WEAPONS[k])}</div>${on ? `<button class="red" data-act="bring" data-k="${k}">Leave behind</button>` : `<button data-act="bring" data-k="${k}" ${S.loadout.length >= MAX_CARRY ? "disabled" : ""}>Bring</button>`}</div>`; }).join("");
   const learn = RECIPES.filter(k => !S.unlocked.includes(k)).map(k => `<div class="card"><b>${WEAPONS[k].n}</b><div class="muted">${stat(WEAPONS[k])}<br>needs ${cost(WEAPONS[k].cost)}</div><button data-act="learn" data-k="${k}" ${S.coins < WEAPONS[k].unlock ? "disabled" : ""}>Learn — ${WEAPONS[k].unlock} coins</button></div>`).join("");
   show(`<h1>Scavenge &amp; Slay</h1>
     <p class="muted">Gather materials on the big map for 60 seconds, craft weapons, then fight for as long as you can. Enemies drop coins, materials and sometimes weapons — you keep everything you find. Move: WASD · Swing: F · Shoot: drag the mouse · Switch weapon: Q / E · Leave a fight: Esc</p>
     <p><b>🪙 ${S.coins}</b> · ${matLine()}</p>
     <p class="muted">Best fight: ${Math.floor(S.best / 60)}:${String(S.best % 60).padStart(2, "0")} · Total kills: ${S.kills}</p>
-    <h2>Weapons to bring into battle</h2><p class="muted">Bring as many or as few as you like (none = bare fists). Bringing ${S.loadout.length} weapon${S.loadout.length === 1 ? "" : "s"}.</p><div class="row">${vault}</div>
+    <h2>Weapons to bring into battle</h2><p class="muted">Choose up to ${MAX_CARRY} (none = bare fists). Bringing ${S.loadout.length}/${MAX_CARRY}.</p><div class="row">${vault}</div>
     ${learn ? `<h2>Learn recipes</h2><div class="row">${learn}</div>` : ""}
     <div class="row"><button class="big" data-act="go">Enter the map</button><button data-act="craftMenu">Craft</button></div>`);
 }
@@ -436,7 +439,7 @@ ui.addEventListener("click", ev => {
   const t = ev.target.closest("[data-act]"); if (!t) return;
   const k = t.dataset.k;
   switch (t.dataset.act) {
-    case "bring": { const i = S.loadout.indexOf(k); if (i >= 0) S.loadout.splice(i, 1); else S.loadout.push(k); save(); showMenu(); break; }
+    case "bring": { const i = S.loadout.indexOf(k); if (i >= 0) S.loadout.splice(i, 1); else if (S.loadout.length < MAX_CARRY) S.loadout.push(k); save(); showMenu(); break; }
     case "learn": if (S.coins >= WEAPONS[k].unlock && !S.unlocked.includes(k)) { S.coins -= WEAPONS[k].unlock; S.unlocked.push(k); save(); showMenu(); } break;
     case "go": startRun(); break;
     case "craftMenu": showCraft(false); break;
@@ -444,7 +447,7 @@ ui.addEventListener("click", ev => {
       const w = WEAPONS[k], inRun = t.dataset.run === "1";
       if (!S.vault.includes(k) && MAT_IDS.every(m => S.mats[m] >= (w.cost[m] || 0))) {
         for (const m of MAT_IDS) S.mats[m] -= (w.cost[m] || 0);
-        S.vault.push(k); if (!S.loadout.includes(k)) S.loadout.push(k); if (inRun) { run.inv.push(k); run.cur = run.inv.length - 1; }
+        S.vault.push(k); if (inRun && run.inv.length < MAX_CARRY) { run.inv.push(k); S.loadout.push(k); run.cur = run.inv.length - 1; } else if (!inRun && S.loadout.length < MAX_CARRY) S.loadout.push(k);
         save(); showCraft(inRun);
       }
       break;
