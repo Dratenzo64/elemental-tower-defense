@@ -25,6 +25,7 @@
   .base { position: absolute; width: 22vmin; height: 22vmin; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.3); display: none; transform: translate(-50%, -50%); }
   .knob { position: absolute; left: 50%; top: 50%; width: 9vmin; height: 9vmin; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
   .wgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
+  h2.sec { margin: 14px 0 0; text-align: left; letter-spacing: 2px; font-size: 18px; color: #bfe8ff; }
   .wcard { background: #0d1a22; border: 2px solid; border-radius: 12px; padding: 12px; text-align: left; color: #e8f4ff; margin: 0; line-height: 1.5; }
   .wcard.done { background: #10241f; }
   .wcard:disabled { opacity: .6; }
@@ -57,39 +58,112 @@
 // DATA
 // ============================================================
 const W = 1280, H = 720, WW = 2600, WH = 1500;
+// A creature: name, body plan, plan options, colour, attack [name, reach, arc, power], fact
+const C = (n, p, o, col, a, f) => ({ n, p, o: o || {}, col, a: { n: a[0], rng: a[1], arc: a[2], m: a[3] }, f });
+const SECTIONS = ["Ancient", "Current", "Future"];
 const WORLDS = [
-  { name: "Primordial Soup", era: "4 billion years ago", bg: ["#0b2a2e", "#06161a"], acc: "#5dffd0", foe: "#ff7a9a",
-    forms: ["Molecule", "Protocell", "Bacterium", "Amoeba"], looks: ["molecule", "protocell", "bacterium", "amoeba"],
-    facts: ["Chemistry before life: carbon molecules drifting in warm water.", "Fatty membranes wrap chemicals into the first cell-like bubbles.", "The first true cells. Simple, tiny and everywhere.", "A single-celled hunter that engulfs food with false feet."],
+  // ================= ANCIENT =================
+  { sec: 0, name: "Primordial Soup", era: "4 billion years ago", bg: ["#0b2a2e", "#06161a"], acc: "#5dffd0", foe: "#ff7a9a",
+    c: [C("Molecule", "molecule", {}, "#5dffd0", ["Reaction burst", 34, 6.3, .9], "Chemistry before life: carbon molecules drifting in warm water."),
+      C("Protocell", "protocell", {}, "#7dffe0", ["Engulf", 46, 2.2, 1.0], "Fatty membranes wrap chemicals into the first cell-like bubbles."),
+      C("Bacterium", "bacterium", {}, "#9dff8a", ["Flagellum lash", 58, 1.2, 1.1], "The first true cells: tiny, simple and everywhere."),
+      C("Amoeba", "amoeba", {}, "#6dffb0", ["Pseudopod grab", 70, 1.6, 1.3], "A single-celled hunter that engulfs food with false feet."),
+      C("Algae Colony", "colony", {}, "#4fe08a", ["Toxin bloom", 60, 6.3, 1.4], "Cells teaming up: the first steps toward bodies made of many cells."),
+      C("Sponge", "sponge", {}, "#ffd36b", ["Filter slam", 74, 2.4, 1.6], "The simplest animal: no organs, just a body that filters water.")],
     boss: { name: "Paramecium Prime", hp: 650, spd: 70, col: "#d86bff", pat: "burst" } },
-  { name: "Ancient Seas", era: "540 million years ago", bg: ["#0a2252", "#040b1f"], acc: "#6bd0ff", foe: "#ffb347",
-    forms: ["Plankton", "Jellyfish", "Trilobite", "Lamprey"], looks: ["plankton", "jelly", "trilobite", "lamprey"],
-    facts: ["Drifting algae and tiny animals: the base of the ocean food chain.", "Soft-bodied animals that sting prey with tentacles.", "Armoured arthropods with compound eyes ruled the Cambrian seabed.", "A jawless, backboned fish: an early vertebrate."],
+  { sec: 0, name: "Ancient Seas", era: "540 million years ago", bg: ["#0a2252", "#040b1f"], acc: "#6bd0ff", foe: "#ffb347",
+    c: [C("Plankton", "plankton", {}, "#6bd0ff", ["Toxin bloom", 50, 6.3, 1.0], "Drifting algae and tiny animals: the base of the ocean food chain."),
+      C("Jellyfish", "jelly", {}, "#c49bff", ["Tentacle sting", 74, 2.8, 1.2], "Soft-bodied animals that sting prey with tentacles."),
+      C("Sea Worm", "serp", { n: 9, sz: .75, head: "worm" }, "#ff9ab0", ["Bristle bite", 56, 1.2, 1.3], "Segmented worms wriggled through the Cambrian mud."),
+      C("Trilobite", "trilobite", {}, "#9ab4ff", ["Claw pinch", 60, 1.0, 1.6], "Armoured arthropods with compound eyes ruled the seabed."),
+      C("Nautiloid", "shell", {}, "#ffc88a", ["Beak snap", 64, 1.2, 1.8], "Shelled relatives of squid that hunted with tentacles and a beak."),
+      C("Lamprey", "serp", { n: 10, sz: 1, head: "lamprey" }, "#6bd0ff", ["Sucker bite", 66, .9, 2.0], "A jawless, backboned fish: an early vertebrate.")],
     boss: { name: "Anomalocaris", hp: 1100, spd: 90, col: "#4a7bff", pat: "charge" } },
-  { name: "Swamps & Shores", era: "400 million years ago", bg: ["#123d33", "#071a16"], acc: "#8affc0", foe: "#ffcf5a",
-    forms: ["Armored Fish", "Lobe-finned Fish", "Tiktaalik", "Amphibian"], looks: ["fish", "lobefin", "tiktaalik", "amphibian"],
-    facts: ["Jawed fish in bony armour, the first big predators with jaws.", "Fleshy, muscular fins that could bear weight.", "A fish with a neck, wrists and fingers-to-be: half fish, half land animal.", "Four legs, lungs and moist skin: life steps onto land."],
+  { sec: 0, name: "Swamps & Shores", era: "400 million years ago", bg: ["#123d33", "#071a16"], acc: "#8affc0", foe: "#ffcf5a",
+    c: [C("Armored Fish", "fish", { armor: 1 }, "#8affc0", ["Armored bite", 56, 1.1, 1.4], "Jawed fish in bony armour: the first big predators with jaws."),
+      C("Lobe-finned Fish", "lobefin", {}, "#6bffd0", ["Fin slap", 66, 2.0, 1.5], "Fleshy, muscular fins that could bear weight."),
+      C("Tiktaalik", "tiktaalik", {}, "#a6ff8a", ["Snap bite", 64, 1.0, 1.8], "A fish with a neck and wrists: half fish, half land animal."),
+      C("Giant Dragonfly", "bug", { wings: 2, big: 1 }, "#7affd8", ["Mandible snap", 60, 1.2, 1.9], "Meganeura had a wingspan of about 70 cm, bigger than any insect today."),
+      C("Amphibian", "quad", { body: 1.05, h: .8, head: .65, legs: 1.1, tail: "none", frog: 1 }, "#8affc0", ["Tongue lash", 120, .5, 2.0], "Four legs, lungs and moist skin: life steps onto land."),
+      C("Early Reptile", "quad", { tail: "long", legs: 1.4 }, "#c8ff8a", ["Tail whip", 70, 2.4, 2.2], "Shelled eggs let animals leave the water for good.")],
     boss: { name: "Dunkleosteus", hp: 1600, spd: 95, col: "#34c28a", pat: "charge" } },
-  { name: "Age of Giants", era: "200 million years ago to today", bg: ["#3d2a14", "#1a1008"], acc: "#ffb86b", foe: "#ff5a5a",
-    forms: ["Reptile", "Dinosaur", "Mammal", "Primate"], looks: ["reptile", "dino", "mammal", "primate"],
-    facts: ["Scaly skin and shelled eggs free animals from the water.", "Fast, upright hunters. Their descendants still fly as birds.", "Warm-blooded, furry and small, hiding from giants and waiting.", "Grasping hands, big brains and tools. The road to humans."],
+  { sec: 0, name: "Age of Dinosaurs", era: "150 million years ago", bg: ["#3d2a14", "#1a1008"], acc: "#ffb86b", foe: "#ff5a5a",
+    c: [C("Small Lizard", "quad", { tail: "long", legs: 1.4, h: .5 }, "#ffd08a", ["Bite", 52, 1.0, 1.3], "Lizards survived the extinction that wiped out the big dinosaurs."),
+      C("Pterosaur", "bird", { span: 2.2, bat: 1, beak: 1.4, crest: 1 }, "#ffa86b", ["Beak stab", 70, .8, 1.5], "Flying reptiles: cousins of the dinosaurs, not dinosaurs themselves."),
+      C("Raptor", "quad", { tail: "long", legs: 1.7, teeth: 1, biped: 1, spikes: 0 }, "#ff9a5a", ["Claw slash", 72, 1.4, 1.8], "Fast, feathered hunters with a sickle-shaped claw."),
+      C("Stegosaurus", "quad", { body: 1.3, tail: "spiked", plates: 1, legs: 1.2, head: .35 }, "#e0b35a", ["Spiked tail swing", 90, 2.6, 2.0], "The spiked tail is called a thagomizer."),
+      C("Triceratops", "quad", { body: 1.3, horns: 3, frill: 1, tail: "short", legs: 1.2 }, "#d4a07a", ["Horn charge", 80, 1.2, 2.3], "Three horns and a bony frill to face down predators."),
+      C("Allosaurus", "quad", { body: 1.4, tail: "long", teeth: 1, legs: 1.7, head: .75, spikes: 1 }, "#ff7a4a", ["Crushing bite", 84, 1.1, 2.6], "A giant meat-eater that lived before Tyrannosaurus.")],
     boss: { name: "Tyrannosaurus Rex", hp: 2300, spd: 85, col: "#ff8a3d", pat: "stomp" } },
+  { sec: 0, name: "Legends of Old", era: "Ice Age & myth", bg: ["#2a1a40", "#0f0820"], acc: "#d6b3ff", foe: "#ffd36b",
+    c: [C("Sabertooth", "quad", { tail: "short", fangs: 1, legs: 1.2, ears: 1 }, "#ffcf8a", ["Fang stab", 66, 1.0, 2.0], "Smilodon had sabre-like canine teeth up to 18 cm long."),
+      C("Woolly Mammoth", "quad", { body: 1.45, tusks: 1, tail: "short", legs: 1.3, head: .6, mane: 1 }, "#b98a6a", ["Tusk sweep", 84, 2.0, 2.4], "Mammoths lived alongside early humans."),
+      C("Griffin", "quad", { wings: 1, beak: 1, tail: "long", legs: 1.2, ears: 0, mane: 1 }, "#ffe27a", ["Talon rake", 76, 1.5, 2.4], "Legend: lion's body, eagle's head. Maybe inspired by dinosaur fossils."),
+      C("Minotaur", "primate", { horns: 1, big: 1.15 }, "#c98a5a", ["Horn gore", 80, 1.3, 2.6], "Greek myth: half bull, half man, lost in a labyrinth."),
+      C("Chimera", "quad", { mane: 1, horns: 2, tail: "snake", legs: 1.3, body: 1.2 }, "#ff9a6a", ["Triple strike", 86, 2.2, 2.8], "Greek myth: a lion, a goat and a serpent in one body."),
+      C("Hydra", "hydra", { heads: 3 }, "#7aff8a", ["Many-headed bite", 90, 3.0, 3.0], "Greek myth: cut off one head and two more grow back.")],
+    boss: { name: "The Ancient Dragon", hp: 3000, spd: 95, col: "#ff4a4a", pat: "stomp" } },
+  // ================= CURRENT =================
+  { sec: 1, name: "Modern Oceans", era: "Today", bg: ["#06384a", "#021520"], acc: "#4ad0ff", foe: "#ff9a5a",
+    c: [C("Krill", "krill", {}, "#ff9a8a", ["Swarm nip", 50, 6.3, 1.4], "Tiny shrimp-like animals. Whales eat tonnes of them."),
+      C("Clownfish", "fish", { stripes: 1, small: 1 }, "#ff9a3a", ["Nip", 52, 1.0, 1.6], "Lives safely inside stinging sea anemones."),
+      C("Octopus", "cephalo", { arms: 8 }, "#ff6a8a", ["Tentacle grab", 76, 2.4, 2.0], "Eight arms, three hearts, and very clever."),
+      C("Dolphin", "fish", { dolphin: 1 }, "#8ac0ff", ["Ram", 70, 1.2, 2.2], "Dolphins hunt together and find food with sound."),
+      C("Great White Shark", "fish", { shark: 1 }, "#b0c0d0", ["Bite", 84, 1.1, 2.8], "Sharks have existed for over 400 million years."),
+      C("Orca", "fish", { dolphin: 1, orca: 1, big: 1.2 }, "#e8f4ff", ["Pod slam", 90, 1.8, 3.0], "The ocean's top predator hunts in close family pods.")],
+    boss: { name: "Colossal Squid", hp: 3800, spd: 100, col: "#e04a6a", pat: "charge" } },
+  { sec: 1, name: "Modern Wilds", era: "Today", bg: ["#1f4a22", "#0a1a0c"], acc: "#8be36b", foe: "#ff7a5a",
+    c: [C("Ant", "bug", { wings: 0, ant: 1 }, "#c8683a", ["Mandible nip", 40, 1.2, 1.4], "Ants can carry about 50 times their own weight."),
+      C("Frog", "quad", { body: 1.05, h: .8, head: .65, legs: 1.1, tail: "none", frog: 1 }, "#6bdc5a", ["Tongue lash", 120, .5, 1.8], "Frogs breathe partly through their skin."),
+      C("Snake", "serp", { n: 12, sz: .85, head: "snake" }, "#c8e05a", ["Venom strike", 80, .6, 2.2], "Snakes have no legs but sense warmth with special pits."),
+      C("Wolf", "quad", { tail: "bushy", legs: 1.4, ears: 1, head: .55, snout: 1 }, "#9aa4b0", ["Bite", 62, 1.1, 2.4], "Wolves hunt in coordinated packs."),
+      C("Bear", "quad", { body: 1.4, tail: "none", legs: 1.2, ears: 1, claws: 1 }, "#9a6a4a", ["Paw swipe", 80, 2.0, 2.8], "A bear's sense of smell is about seven times a dog's."),
+      C("Human", "primate", {}, "#ffd2a8", ["Spear thrust", 96, 2.2, 3.0], "Tools, fire and teamwork changed everything.")],
+    boss: { name: "Apex Grizzly", hp: 4600, spd: 105, col: "#b06a3a", pat: "stomp" } },
+  { sec: 1, name: "Modern Skies", era: "Today", bg: ["#1a4a7a", "#0a1a30"], acc: "#ffe27a", foe: "#ff6a6a",
+    c: [C("Bee", "bug", { wings: 2, bee: 1 }, "#ffd23a", ["Sting", 42, .8, 1.5], "Bees pollinate roughly a third of the food we eat."),
+      C("Sparrow", "bird", { span: 1.4, beak: .8 }, "#c8a07a", ["Peck", 44, .8, 1.6], "Small songbirds live on every continent except Antarctica."),
+      C("Bat", "bird", { span: 2.0, bat: 1, ears: 1 }, "#7a6a8a", ["Bite", 56, 1.0, 2.0], "The only mammals that truly fly."),
+      C("Owl", "bird", { span: 1.8, owl: 1 }, "#d4b48a", ["Talon strike", 66, 1.0, 2.4], "Owls fly almost silently thanks to soft feather edges."),
+      C("Hawk", "bird", { span: 2.1, beak: 1 }, "#c8803a", ["Dive talons", 78, 1.2, 2.8], "A hawk's eyesight is several times sharper than ours."),
+      C("Eagle", "bird", { span: 2.6, beak: 1.2, big: 1.2 }, "#8a6a3a", ["Talon crush", 90, 1.4, 3.2], "Eagles can spot prey from over 3 km away.")],
+    boss: { name: "Condor Titan", hp: 5500, spd: 115, col: "#e8c84a", pat: "charge" } },
+  // ================= FUTURE =================
+  { sec: 2, name: "Neon Dawn", era: "Future: legends upgraded", bg: ["#1a0a40", "#06041a"], acc: "#00f0ff", foe: "#ff3aa0",
+    c: [C("Cyber Imp", "quad", { body: .9, h: .6, legs: 1.2, tail: "thin", horns: 2, ears: 0, cy: 1 }, "#ff5aa0", ["Spark bite", 50, 1.0, 2.0], "Legend: tiny mischievous demons. Upgraded: circuit-board skin."),
+      C("Neon Kitsune", "quad", { tail: "bushy", tails: 3, legs: 1.4, ears: 1, head: .55, snout: 1, cy: 1 }, "#ff9a3a", ["Plasma lash", 70, 2.0, 2.4], "Japanese legend: a fox spirit with many tails. Now with fibre-optic tails."),
+      C("Chrome Griffin", "quad", { wings: 1, beak: 1, tail: "long", legs: 1.2, mane: 1, cy: 1 }, "#c8d4e8", ["Chrome talons", 80, 1.5, 2.8], "A griffin rebuilt in polished metal."),
+      C("Mecha Minotaur", "primate", { horns: 1, big: 1.25, cy: 1 }, "#9aa4b8", ["Piston gore", 88, 1.3, 3.0], "The labyrinth beast, now with hydraulic muscles."),
+      C("Steel Pegasus", "quad", { wings: 1, tail: "bushy", legs: 1.6, head: .6, snout: 1, ears: 1, body: 1.3, cy: 1 }, "#e8f4ff", ["Hoof strike", 90, 1.6, 3.4], "The winged horse of Greek myth, built of steel feathers."),
+      C("Plasma Phoenix", "bird", { span: 2.4, beak: 1, flame: 1, big: 1.2, cy: 1 }, "#ff6a3a", ["Plasma wing sweep", 96, 2.8, 3.6], "A bird that rises from its own ashes, powered by plasma.")],
+    boss: { name: "Mecha Hydra", hp: 6500, spd: 110, col: "#00f0ff", pat: "stomp" } },
+  { sec: 2, name: "Void Realm", era: "Future: beyond the stars", bg: ["#150a28", "#030108"], acc: "#b36bff", foe: "#ff6ad8",
+    c: [C("Void Wisp", "wisp", {}, "#b36bff", ["Void touch", 50, 6.3, 2.2], "A flicker of dark energy."),
+      C("Shadow Fenrir", "quad", { tail: "bushy", legs: 1.5, ears: 1, head: .6, snout: 1, body: 1.2, glow: 1 }, "#5a4a8a", ["Shadow bite", 70, 1.2, 2.8], "Norse legend: the giant wolf Fenrir, grown into a living shadow."),
+      C("Crystal Golem", "golem", {}, "#6ae0ff", ["Crystal fist", 80, 1.8, 3.0], "A figure of living stone, upgraded with a core of crystal."),
+      C("Star Serpent", "serp", { n: 14, sz: 1.1, head: "dragon", glow: 1 }, "#ffd86b", ["Constrict", 96, 3.0, 3.2], "Norse legend: Jormungandr, a serpent that circles the world."),
+      C("Nebula Dragon", "quad", { wings: 1, horns: 2, tail: "long", legs: 1.3, body: 1.4, head: .7, spikes: 1, glow: 1 }, "#ff6ad8", ["Wing slam", 100, 2.6, 3.6], "A dragon whose scales hold swirling clouds of stars."),
+      C("Void Behemoth", "quad", { body: 1.7, horns: 3, tail: "short", legs: 1.2, head: .7, glow: 1, spikes: 1 }, "#7a3aff", ["Quake stomp", 110, 6.3, 4.0], "A colossus that walks between stars.")],
+    boss: { name: "Void Kraken", hp: 7600, spd: 120, col: "#9a3aff", pat: "charge" } },
+  { sec: 2, name: "Ascension", era: "Future: the end of evolution", bg: ["#3a2a08", "#120c02"], acc: "#ffe97a", foe: "#fff0b0",
+    c: [C("Quantum Sprite", "wisp", {}, "#ffe97a", ["Quantum pulse", 54, 6.3, 3.0], "A particle that is everywhere at once."),
+      C("Aether Phoenix", "bird", { span: 2.6, beak: 1, flame: 1, big: 1.3, glow: 1 }, "#fff0a0", ["Aether wing sweep", 100, 2.8, 3.6], "A phoenix of pure light."),
+      C("Solar Griffin", "quad", { wings: 1, beak: 1, tail: "long", legs: 1.3, mane: 1, body: 1.4, glow: 1 }, "#ffd23a", ["Solar talons", 100, 1.6, 4.0], "A griffin with a mane of solar fire."),
+      C("Cosmic Leviathan", "serp", { n: 16, sz: 1.25, head: "dragon", glow: 1 }, "#7ad0ff", ["Tidal crush", 110, 3.2, 4.2], "Legend: Leviathan, the sea monster, now swims between galaxies."),
+      C("Eternal Dragon", "quad", { wings: 1, horns: 2, tail: "long", legs: 1.4, body: 1.6, head: .8, spikes: 1, glow: 1 }, "#ffe97a", ["Eternal wing slam", 116, 2.8, 4.6], "A dragon that has watched every age pass."),
+      C("Titan of Ages", "golem", { gold: 1 }, "#ffd86b", ["World breaker", 124, 6.3, 5.0], "A titan carrying every era on its shoulders.")],
+    boss: { name: "The Ascendant", hp: 9000, spd: 125, col: "#fff0a0", pat: "stomp" } },
 ];
-// Real-world style attacks only: no one in here shoots anything. Everything is contact, bites, lashes and slams.
-const ATK = [
-  [{ n: "Reaction burst", rng: 34, arc: 6.3, m: .9 }, { n: "Engulf", rng: 48, arc: 2.2, m: 1.1 }, { n: "Flagellum lash", rng: 60, arc: 1.2, m: 1.2 }, { n: "Pseudopod grab", rng: 80, arc: 1.6, m: 1.4 }],
-  [{ n: "Toxin bloom", rng: 50, arc: 6.3, m: 1.0 }, { n: "Tentacle sting", rng: 74, arc: 2.8, m: 1.2 }, { n: "Claw pinch", rng: 60, arc: 1.0, m: 1.6 }, { n: "Sucker bite", rng: 66, arc: .9, m: 1.9 }],
-  [{ n: "Armored bite", rng: 56, arc: 1.1, m: 1.4 }, { n: "Fin slap", rng: 66, arc: 2.0, m: 1.5 }, { n: "Snap bite", rng: 64, arc: 1.0, m: 1.8 }, { n: "Tongue lash", rng: 120, arc: .5, m: 1.7 }],
-  [{ n: "Tail whip", rng: 70, arc: 2.4, m: 1.4 }, { n: "Claw slash", rng: 72, arc: 1.4, m: 1.8 }, { n: "Gnaw", rng: 54, arc: 1.0, m: 2.0 }, { n: "Club swing", rng: 92, arc: 2.2, m: 2.2 }],
-];
-const NEED = [50, 110, 190, 300];
+for (const w of WORLDS) { w.forms = w.c.map(x => x.n); w.facts = w.c.map(x => x.f); }
+const LAST = 5; // index of the final form in every world
+const NEED = [50, 110, 190, 300, 440, 600];
 const statsFor = (w, s) => ({
-  r: 10 + s * 4 + w * 3,
-  hp: (30 + 28 * s) * (1 + .7 * w),
-  spd: 175 + s * 12 + w * 10,
-  dmg: (6 + 2.2 * s) * (1 + .5 * w),
-  cd: [.45, .36, .3, .2][s] * (1 - .08 * w),
-  atk: ATK[w][s],
+  r: 9 + s * 3 + w * 1.4,
+  hp: (30 + 26 * s) * (1 + .4 * w),
+  spd: Math.min(330, 175 + s * 10 + w * 6),
+  dmg: (6 + 2 * s) * (1 + .3 * w),
+  cd: [.45, .38, .32, .27, .23, .2][s] * (1 - .02 * w),
+  atk: WORLDS[w].c[s].a,
 });
 
 // ============================================================
@@ -107,6 +181,7 @@ function load() {
     const r = localStorage.getItem(SAVE_KEY);
     if (r) {
       const d = JSON.parse(r); S = Object.assign(S, d);
+      if (d.prog) while (S.prog.length < WORLDS.length) S.prog.push({ stage: 0, xp: 0 });
       if (!d.prog) { // older save: one active world
         S.unlocked = Math.min(WORLDS.length, (d.world || 0) + 1); S.prog = WORLDS.map(() => ({ stage: 0, xp: 0 }));
         S.prog[S.world] = { stage: d.stage || 0, xp: d.xp || 0 }; S.cleared = [];
@@ -144,18 +219,18 @@ function startGame() {
 // ENEMIES
 // ============================================================
 function spawnFoe() {
-  const w = S.world, s = S.stage, m = (1 + .45 * s) * (1 + .8 * w);
+  const w = S.world, s = S.stage, m = (1 + .3 * s) * (1 + .5 * w);
   const roll = Math.random();
   const type = roll < .4 ? "prey" : roll < (s >= 1 ? .85 : 1) ? "hunter" : "lunger";
   const base = { prey: [12, 10, 70, 0, 4], hunter: [22, 13, 100, 8, 7], lunger: [18, 12, 60, 12, 9] }[type];
   const a = rnd(0, 6.28), d = rnd(560, 800);
   foes.push({ type, x: Math.max(30, Math.min(WW - 30, P.x + Math.cos(a) * d)), y: Math.max(30, Math.min(WH - 30, P.y + Math.sin(a) * d)),
-    fs: Math.max(0, Math.min(3, type === "prey" ? s - 1 : type === "hunter" ? s : s + 1)), hp: base[0] * m, max: base[0] * m, r: base[1] + s * 1.5, spd: base[2], dmg: base[3] * (1 + .5 * w) * (1 + .15 * s), xp: base[4] * (1 + .25 * w) * (1 + .1 * s),
+    fs: Math.max(0, Math.min(LAST, type === "prey" ? s - 1 : type === "hunter" ? s : s + 1)), hp: base[0] * m, max: base[0] * m, r: base[1] + s * 1.5, spd: base[2], dmg: base[3] * (1 + .3 * w) * (1 + .1 * s), xp: base[4] * (1 + .12 * w) * (1 + .12 * s),
     cd: rnd(.5, 2), ang: rnd(0, 6.28), t: rnd(0, 9), flash: 0 });
 }
 function spawnBoss() {
   const b = WD().boss;
-  boss = { x: Math.max(200, Math.min(WW - 200, P.x + 700)), y: P.y > WH / 2 ? 300 : WH - 300, r: 62 + S.world * 12, hp: b.hp, max: b.hp, spd: b.spd, cd: 2, cd2: 6, state: "move", st: 0, flash: 0, dx: 0, dy: 0, t: 0 };
+  boss = { x: Math.max(200, Math.min(WW - 200, P.x + 700)), y: P.y > WH / 2 ? 300 : WH - 300, r: 60 + S.world * 6, hp: b.hp, max: b.hp, spd: b.spd, cd: 2, cd2: 6, state: "move", st: 0, flash: 0, dx: 0, dy: 0, t: 0 };
   bossOn = true; foes = foes.filter(f => f.type !== "lunger"); shake = .5;
   say(`${b.name} approaches!`, 3);
 }
@@ -163,7 +238,7 @@ function updateBoss(dt) {
   const b = boss, pat = WD().boss.pat, rage = b.hp < b.max / 2 ? .7 : 1, w = S.world;
   const ang = Math.atan2(P.y - b.y, P.x - b.x);
   b.t += dt; b.cd -= dt; b.cd2 -= dt; b.flash -= dt;
-  const dmgC = 18 + 8 * w;
+  const dmgC = 18 + 5 * w;
   if (b.state === "charge") {
     b.x += b.dx * 480 * dt; b.y += b.dy * 480 * dt; b.st -= dt;
     if (b.st <= 0) { b.state = "move"; pulse(b.x, b.y, 280, 230, 10 + 4 * w); }
@@ -180,7 +255,7 @@ function updateBoss(dt) {
   if (dist(b, P) < b.r + 14) hurtP(dmgC);
   if (b.hp <= 0) bossDown();
 }
-function spawnFoeAt(x, y, type) { spawnFoe(); const f = foes[foes.length - 1]; f.x = x; f.y = y; f.type = type; if (type === "hunter") { f.hp = f.max = 22 * (1 + .45 * S.stage) * (1 + .8 * S.world); f.dmg = 8 * (1 + .5 * S.world); f.spd = 100; f.r = 13 + S.stage * 1.5; } }
+function spawnFoeAt(x, y, type) { spawnFoe(); const f = foes[foes.length - 1]; f.x = x; f.y = y; f.type = type; if (type === "hunter") { f.hp = f.max = 22 * (1 + .3 * S.stage) * (1 + .5 * S.world); f.dmg = 8 * (1 + .3 * S.world); f.spd = 100; f.r = 13 + S.stage * 1.5; } }
 function bossDown() {
   for (let i = 0; i < 60; i++) fx.push({ x: boss.x, y: boss.y, vx: rnd(-400, 400), vy: rnd(-400, 400), life: rnd(.5, 1.4), c: WD().boss.col });
   boss = null; bossOn = false; foes = []; shots = []; flash = .6; shake = .8;
@@ -189,8 +264,8 @@ function bossDown() {
   setTimeout(() => {
     if (mode !== "won") return;
     if (!S.cleared.includes(S.world)) S.cleared.push(S.world);
-    S.prog[S.world] = { stage: 3, xp: 0 }; S.stage = 3; S.xp = 0;
-    if (last) { S.done = true; save(); show(`<h1>YOU EVOLVED!</h1><p>You defeated ${WORLDS[S.world].boss.name}. From a molecule in the soup, through plankton, fish and amphibians, to dinosaurs, mammals and primates — four billion years of evolution, and you came out on top.</p><button class="big" data-act="select">World select</button>`); }
+    S.prog[S.world] = { stage: LAST, xp: 0 }; S.stage = LAST; S.xp = 0;
+    if (last) { S.done = true; save(); show(`<h1>YOU EVOLVED!</h1><p>You defeated ${WORLDS[S.world].boss.name}. From a single molecule, through the ancient seas, dinosaurs and legends, the animals of today, and finally the upgraded myths of the future — you evolved through all of it.</p><button class="big" data-act="select">World select</button>`); }
     else { S.unlocked = Math.max(S.unlocked, S.world + 2); save(); show(`<h1>WORLD CLEARED</h1><p>${WORLDS[S.world].boss.name} is defeated. A new world is unlocked: <b>${WORLDS[S.world + 1].name}</b> (${WORLDS[S.world + 1].era}). Every world keeps its own evolution and XP, so you can go back whenever you like.</p><button class="big" data-act="world" data-w="${S.world + 1}">Enter ${WORLDS[S.world + 1].name}</button> <button data-act="select">World select</button>`); }
   }, 1600);
 }
@@ -213,9 +288,9 @@ function die() {
 function gainXp(n) {
   if (bossOn) return;
   S.xp += n;
-  if (S.xp >= NEED[S.stage] * (1 + .3 * S.world)) {
-    if (S.stage < 3) evolve();
-    else if (!bossOn) { S.xp = NEED[3] * (1 + .3 * S.world); spawnBoss(); }
+  if (S.xp >= NEED[S.stage] * (1 + .12 * S.world)) {
+    if (S.stage < LAST) evolve();
+    else if (!bossOn) { S.xp = NEED[LAST] * (1 + .12 * S.world); spawnBoss(); }
   }
 }
 function evolve() {
@@ -362,75 +437,122 @@ function stepFx(dt) {
 // ============================================================
 function atom(x, y, r, c) { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.beginPath(); ctx.arc(x - r * .3, y - r * .3, r * .35, 0, 7); ctx.fill(); }
 function drawBeing(x, y, r, face, w, s, col, t, hit) {
-  const look = WORLDS[w].looks[s], c = hit ? "#fff" : col;
+  const cr = WORLDS[w].c[s], plan = cr.p, o = cr.o || {}, c = hit ? "#fff" : col;
+  r *= (o.big || 1) * (o.small ? .75 : 1);
   ctx.save(); ctx.translate(x, y); ctx.rotate(face);
-  ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.fillStyle = c; ctx.strokeStyle = c;
+  ctx.shadowColor = col; ctx.shadowBlur = o.glow ? 28 : 16; ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineCap = "round";
   const eye = (ex, ey, er) => { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, er, 0, 7); ctx.fill(); ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(ex + er * .25, ey, er * .5, 0, 7); ctx.fill(); ctx.fillStyle = c; };
   const leg = (lx, ly, ph, len) => { ctx.lineWidth = Math.max(3, r * .2); ctx.beginPath(); ctx.moveTo(lx * r, ly * r * .5); ctx.lineTo(lx * r + Math.sin(t / 120) * r * .35 * ph, ly * r * len); ctx.stroke(); };
-  switch (look) {
-    case "molecule":
-      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-r * .5, 0); ctx.lineTo(r * .5, -r * .3); ctx.lineTo(r * .3, r * .6); ctx.lineTo(-r * .5, 0); ctx.stroke();
+  const ell = (ex, ey, rx, ry) => { ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, 0, 0, 7); ctx.fill(); };
+  const tri = (a, b, c2, d, e, f2) => { ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c2, d); ctx.lineTo(e, f2); ctx.fill(); };
+  const wave = (i, k = 150, amp = .45) => Math.sin(t / k + i * .7) * r * amp;
+  switch (plan) {
+    case "molecule": ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-r * .5, 0); ctx.lineTo(r * .5, -r * .3); ctx.lineTo(r * .3, r * .6); ctx.lineTo(-r * .5, 0); ctx.stroke();
       atom(-r * .5, 0, r * .5, c); atom(r * .5, -r * .3, r * .45, c); atom(r * .3, r * .6, r * .4, c); break;
-    case "protocell":
-      ctx.globalAlpha = .35; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill(); ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.stroke();
+    case "protocell": ctx.globalAlpha = .35; ell(0, 0, r, r); ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.stroke();
       atom(r * .15, 0, r * .35, "#fff"); atom(-r * .5, r * .3, r * .15, c); atom(-r * .3, -r * .5, r * .12, c); break;
-    case "bacterium":
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.2, r * .6, 0, 0, 7); ctx.globalAlpha = .75; ctx.fill(); ctx.globalAlpha = 1;
-      ctx.lineWidth = 3; ctx.beginPath(); for (let i = 0; i <= 12; i++) { const px = -r * 1.2 - i * r * .18, py = Math.sin(t / 100 + i * .9) * r * .3; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
+    case "bacterium": ctx.globalAlpha = .75; ell(0, 0, r * 1.2, r * .6); ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.beginPath();
+      for (let i = 0; i <= 12; i++) { const px = -r * 1.2 - i * r * .18, py = Math.sin(t / 100 + i * .9) * r * .3; i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
       atom(r * .2, 0, r * .22, "#fff"); atom(-r * .4, r * .1, r * .15, "#fff"); break;
-    case "amoeba":
-      ctx.globalAlpha = .65; ctx.beginPath(); for (let i = 0; i <= 28; i++) { const a = i / 28 * 6.283, rr = r * (1 + .16 * Math.sin(t / 200 + i * 2.1)); i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(rr, 0); } ctx.fill(); ctx.globalAlpha = 1;
+    case "amoeba": ctx.globalAlpha = .65; ctx.beginPath(); for (let i = 0; i <= 28; i++) { const a = i / 28 * 6.283, rr = r * (1 + .16 * Math.sin(t / 200 + i * 2.1)); i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(rr, 0); } ctx.fill(); ctx.globalAlpha = 1;
       atom(r * .2, 0, r * .38, "#fff"); atom(-r * .4, r * .35, r * .2, c); atom(-r * .3, -r * .4, r * .17, c); break;
-    case "plankton":
-      ctx.lineWidth = 2; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 + t / 900; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .8, Math.sin(a) * r * .8); ctx.lineTo(Math.cos(a) * r * 1.35, Math.sin(a) * r * 1.35); ctx.stroke(); }
-      ctx.globalAlpha = .5; ctx.beginPath(); ctx.arc(0, 0, r * .9, 0, 7); ctx.fill(); ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.stroke(); atom(0, 0, r * .3, "#fff"); atom(r * .4, r * .3, r * .15, c); break;
-    case "jelly": {
-      ctx.lineWidth = 2.5; for (let i = -2; i <= 2; i++) { ctx.beginPath(); for (let k = 0; k <= 8; k++) { const px = -r * .5 - k * r * .22, py = i * r * .28 + Math.sin(t / 130 + k * .8 + i) * r * .18; k ? ctx.lineTo(px, py) : ctx.moveTo(-r * .3, i * r * .28); ctx.lineTo(px, py); } ctx.stroke(); }
-      const pul = 1 + Math.sin(t / 200) * .08; ctx.globalAlpha = .7; ctx.beginPath(); ctx.ellipse(0, 0, r * .9 * pul, r * 1.05, 0, -Math.PI / 2, Math.PI / 2, true); ctx.arc(0, 0, 0.01, 0, 0); ctx.fill(); ctx.beginPath(); ctx.arc(0, 0, r * 1.05 * pul, -Math.PI / 2, Math.PI / 2, false); ctx.fill(); ctx.globalAlpha = 1; atom(r * .1, 0, r * .25, "#fff"); break; }
-    case "trilobite":
-      for (let i = 0; i < 6; i++) { ctx.globalAlpha = i % 2 ? .75 : 1; ctx.beginPath(); ctx.ellipse(-r * .9 + i * r * .32, 0, r * .22, r * (.6 - i * .03 + (i > 3 ? 0 : .1)), 0, 0, 7); ctx.fill(); }
-      ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(r * 1.0, 0, r * .7, -Math.PI / 2, Math.PI / 2); ctx.fill();
-      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r * 1.5, -r * .2); ctx.lineTo(r * 2, -r * .6); ctx.moveTo(r * 1.5, r * .2); ctx.lineTo(r * 2, r * .6); ctx.stroke(); eye(r * 1.15, -r * .3, r * .13); eye(r * 1.15, r * .3, r * .13); break;
-    case "lamprey": {
-      for (let i = 9; i >= 0; i--) { const px = -i * r * .42, py = Math.sin(t / 150 + i * .7) * r * .45; ctx.beginPath(); ctx.arc(px + r * .8, py, r * (.62 - i * .04), 0, 7); ctx.fill(); }
-      ctx.fillStyle = "#300"; ctx.beginPath(); ctx.arc(r * 1.25, Math.sin(t / 150) * r * .45 * 0, r * .3, 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; ctx.beginPath(); ctx.arc(r * 1.25 + Math.cos(a) * r * .22, Math.sin(a) * r * .22, r * .05, 0, 7); ctx.fill(); }
-      eye(r * .9, -r * .35, r * .12); break; }
+    case "colony": for (const [px, py, rr] of [[0, 0, .55], [.7, .3, .4], [-.6, .4, .45], [-.2, -.65, .4], [.55, -.5, .35], [-.8, -.3, .3]]) { ctx.globalAlpha = .7; ell(px * r, py * r, rr * r, rr * r); ctx.globalAlpha = 1; atom(px * r + rr * r * .2, py * r, rr * r * .3, "#fff"); } break;
+    case "sponge": ctx.globalAlpha = .8; ell(0, 0, r * 1.1, r * .9); ctx.globalAlpha = 1; ctx.fillStyle = "rgba(0,0,0,.45)"; for (const [px, py] of [[.2, 0], [-.4, .35], [-.3, -.4], [.5, .45], [.55, -.4], [-.8, 0]]) { ctx.beginPath(); ctx.arc(px * r, py * r, r * .17, 0, 7); ctx.fill(); } ctx.fillStyle = c; break;
+    case "plankton": ctx.lineWidth = 2; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 + t / 900; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * .8, Math.sin(a) * r * .8); ctx.lineTo(Math.cos(a) * r * 1.35, Math.sin(a) * r * 1.35); ctx.stroke(); }
+      ctx.globalAlpha = .5; ell(0, 0, r * .9, r * .9); ctx.globalAlpha = 1; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, r * .9, 0, 7); ctx.stroke(); atom(0, 0, r * .3, "#fff"); atom(r * .4, r * .3, r * .15, c); break;
+    case "jelly": ctx.lineWidth = 2.5; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(-r * .3, i * r * .28); for (let k = 1; k <= 8; k++) ctx.lineTo(-r * .3 - k * r * .22, i * r * .28 + Math.sin(t / 130 + k * .8 + i) * r * .18); ctx.stroke(); }
+      ctx.globalAlpha = .7; ctx.beginPath(); ctx.arc(0, 0, r * 1.05 * (1 + Math.sin(t / 200) * .08), -Math.PI / 2, Math.PI / 2); ctx.fill(); ctx.globalAlpha = 1; atom(r * .1, 0, r * .25, "#fff"); break;
+    case "trilobite": for (let i = 0; i < 6; i++) { ctx.globalAlpha = i % 2 ? .75 : 1; ell(-r * .9 + i * r * .32, 0, r * .22, r * (.6 - i * .03 + (i > 3 ? 0 : .1))); }
+      ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(r * 1.0, 0, r * .7, -Math.PI / 2, Math.PI / 2); ctx.fill(); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r * 1.5, -r * .2); ctx.lineTo(r * 2, -r * .6); ctx.moveTo(r * 1.5, r * .2); ctx.lineTo(r * 2, r * .6); ctx.stroke(); eye(r * 1.15, -r * .3, r * .13); eye(r * 1.15, r * .3, r * .13); break;
+    case "serp": {
+      const n = o.n || 10, sz = o.sz || 1, hd = o.head;
+      for (let i = n - 1; i >= 0; i--) { const px = -i * r * .42 * sz + r * .8, py = wave(i); ctx.beginPath(); ctx.arc(px, py, r * (.62 - i * (.4 / n)) * sz, 0, 7); ctx.fill(); if (hd === "worm" && i % 2) { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py - r * .5 * sz); ctx.lineTo(px - r * .1, py - r * .85 * sz); ctx.moveTo(px, py + r * .5 * sz); ctx.lineTo(px - r * .1, py + r * .85 * sz); ctx.stroke(); } }
+      if (hd === "lamprey") { ctx.fillStyle = "#300"; ctx.beginPath(); ctx.arc(r * 1.25, 0, r * .3, 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; ctx.beginPath(); ctx.arc(r * 1.25 + Math.cos(a) * r * .22, Math.sin(a) * r * .22, r * .05, 0, 7); ctx.fill(); } }
+      if (hd === "snake") { ell(r * 1.2, 0, r * .55, r * .38); ctx.strokeStyle = "#f33"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r * 1.7, 0); ctx.lineTo(r * 2.1, wave(0, 90, .15)); ctx.stroke(); ctx.strokeStyle = c; }
+      if (hd === "dragon") { ell(r * 1.3, 0, r * .75 * sz, r * .5 * sz); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(r * 1.2, -r * .4 * sz); ctx.lineTo(r * .6, -r * 1.1 * sz); ctx.moveTo(r * 1.2, r * .4 * sz); ctx.lineTo(r * .6, r * 1.1 * sz); ctx.stroke(); }
+      if (hd === "dragon" || hd === "snake") { eye(r * 1.4, -r * .2, r * .13); eye(r * 1.4, r * .2, r * .13); } else eye(r * .9, -r * .3, r * .12);
+      break; }
     case "fish": case "lobefin": {
-      const flap = Math.sin(t / 110) * .35;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * .75, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-r * 1.1, 0); ctx.lineTo(-r * 1.9, -r * .7 + flap * r); ctx.lineTo(-r * 1.9, r * .7 + flap * r); ctx.fill();
-      if (look === "fish") { ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(r * (.5 - i * .5), -r * .7); ctx.lineTo(r * (.5 - i * .5), r * .7); ctx.stroke(); } ctx.strokeStyle = c; ctx.beginPath(); ctx.moveTo(-r * .3, -r * .7); ctx.lineTo(0, -r * 1.3); ctx.lineTo(r * .4, -r * .7); ctx.fill(); }
-      else { for (const sd of [-1, 1]) { ctx.lineWidth = r * .3; ctx.beginPath(); ctx.moveTo(0, sd * r * .6); ctx.lineTo(r * .1 - Math.sin(t / 150) * r * .2, sd * r * 1.2); ctx.stroke(); ctx.beginPath(); ctx.arc(r * .1 - Math.sin(t / 150) * r * .2, sd * r * 1.25, r * .25, 0, 7); ctx.fill(); } }
-      eye(r * .7, -r * .25, r * .2); break; }
-    case "tiktaalik":
-      ctx.beginPath(); ctx.ellipse(-r * .2, 0, r * 1.2, r * .6, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-r * 1.3, 0); ctx.lineTo(-r * 2, Math.sin(t / 140) * r * .4); ctx.lineWidth = r * .3; ctx.stroke();
+      const flap = Math.sin(t / 110) * .35, sh = o.shark, dol = o.dolphin;
+      ctx.beginPath(); ctx.ellipse(0, 0, r * (sh ? 1.6 : 1.3), r * (sh ? .7 : .75), 0, 0, 7); ctx.fill();
+      if (dol) { tri(-r * 1.2, 0, -r * 2.1, -r * .8 + flap * r, -r * 2.1, r * .8 + flap * r); }
+      else tri(-r * 1.1, 0, -r * 1.9, -r * .7 + flap * r, -r * 1.9, r * .7 + flap * r);
+      if (plan === "fish") {
+        if (o.armor) { ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(r * (.5 - i * .5), -r * .7); ctx.lineTo(r * (.5 - i * .5), r * .7); ctx.stroke(); } ctx.strokeStyle = c; }
+        if (o.stripes) { ctx.fillStyle = "#fff"; for (let i = 0; i < 2; i++) { ctx.fillRect(r * (.3 - i * .7), -r * .72, r * .18, r * 1.44); } ctx.fillStyle = c; }
+        if (o.orca) { ctx.fillStyle = "#fff"; ell(r * .1, r * .3, r * .6, r * .3); ctx.fillStyle = c; }
+        tri(-r * .3, -r * .7, 0, -r * (sh || dol ? 1.5 : 1.3), r * .4, -r * .7); ctx.globalAlpha = .7; tri(-r * .1, r * .5, -r * .7, r * 1.2, r * .2, r * .6); ctx.globalAlpha = 1;
+        if (sh) { ctx.fillStyle = "#fff"; for (let i = 0; i < 4; i++) tri(r * (1.1 + i * .1), -r * .12, r * (1.2 + i * .1), 0, r * (1.1 + i * .1), r * .12); ctx.fillStyle = c; }
+      } else { for (const sd of [-1, 1]) { ctx.lineWidth = r * .3; ctx.beginPath(); ctx.moveTo(0, sd * r * .6); ctx.lineTo(r * .1 - Math.sin(t / 150) * r * .2, sd * r * 1.2); ctx.stroke(); ell(r * .1 - Math.sin(t / 150) * r * .2, sd * r * 1.25, r * .25, r * .25); } }
+      eye(r * (sh ? 1.0 : .7), -r * .25, r * .2); break; }
+    case "tiktaalik": ell(-r * .2, 0, r * 1.2, r * .6); ctx.beginPath(); ctx.moveTo(-r * 1.3, 0); ctx.lineTo(-r * 2, Math.sin(t / 140) * r * .4); ctx.lineWidth = r * .3; ctx.stroke();
       for (const [lx, ly] of [[.4, 1], [.4, -1], [-.6, 1], [-.6, -1]]) { ctx.lineWidth = r * .25; ctx.beginPath(); ctx.moveTo(lx * r, ly * r * .45); ctx.lineTo(lx * r + r * .35, ly * r * 1.2); ctx.stroke(); }
-      ctx.beginPath(); ctx.moveTo(r * .9, -r * .5); ctx.lineTo(r * 1.9, 0); ctx.lineTo(r * .9, r * .5); ctx.fill(); eye(r * 1.2, -r * .25, r * .13); eye(r * 1.2, r * .25, r * .13); break;
-    case "amphibian": case "reptile": case "dino": {
-      const wk = look === "amphibian" ? 1.1 : 1;
-      for (const [lx, ly, ph] of [[.5, .55, 1], [.5, -.55, -1], [-.5, .55, -1], [-.5, -.55, 1]]) leg(lx, ly * wk, ph, look === "dino" ? 1.7 : 1.4);
-      ctx.beginPath(); ctx.ellipse(0, 0, r * (look === "dino" ? 1.25 : 1.15), r * (look === "amphibian" ? .8 : .6), 0, 0, 7); ctx.fill();
-      if (look !== "amphibian") { ctx.lineWidth = r * .3; ctx.beginPath(); ctx.moveTo(-r * 1.1, 0); ctx.quadraticCurveTo(-r * 2, Math.sin(t / 160) * r * .6, -r * (look === "dino" ? 2.4 : 1.9), 0); ctx.stroke(); }
-      ctx.beginPath(); ctx.ellipse(r * 1.2, 0, r * (look === "amphibian" ? .65 : .55), r * (look === "amphibian" ? .55 : .4), 0, 0, 7); ctx.fill();
-      if (look === "dino") { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(r * 1.4, -r * .3); ctx.lineTo(r * 1.5, -r * .55); ctx.lineTo(r * 1.65, -r * .25); ctx.moveTo(r * 1.4, r * .3); ctx.lineTo(r * 1.5, r * .55); ctx.lineTo(r * 1.65, r * .25); ctx.fill(); ctx.fillStyle = c;
-        ctx.lineWidth = 3; ctx.beginPath(); for (let i = 0; i < 5; i++) { ctx.moveTo(-r * .8 + i * r * .4, -r * .55); ctx.lineTo(-r * .7 + i * r * .4, -r * .9); } ctx.stroke(); }
-      eye(r * 1.35, -r * .18, r * .13); eye(r * 1.35, r * .18, r * .13); break; }
-    case "mammal":
-      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-r * .9, 0); ctx.quadraticCurveTo(-r * 1.6, Math.sin(t / 150) * r * .6, -r * 2.1, 0); ctx.stroke();
-      for (const [lx, ly, ph] of [[.4, .6, 1], [.4, -.6, -1], [-.4, .6, -1], [-.4, -.6, 1]]) leg(lx, ly, ph, 1.2);
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.0, r * .65, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(r * 1.0, 0, r * .5, r * .4, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * .85, -r * .45, r * .2, 0, 7); ctx.arc(r * .85, r * .45, r * .2, 0, 7); ctx.fill();
-      ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(r * 1.4, -r * .1); ctx.lineTo(r * 1.9, -r * .35); ctx.moveTo(r * 1.4, r * .1); ctx.lineTo(r * 1.9, r * .35); ctx.stroke();
-      eye(r * 1.1, -r * .17, r * .1); eye(r * 1.1, r * .17, r * .1); break;
-    case "primate":
-      ctx.beginPath(); ctx.ellipse(0, 0, r * .55, r * 1.05, 0, 0, 7); ctx.fill();   // shoulders
-      ctx.beginPath(); ctx.arc(r * .2, 0, r * .5, 0, 7); ctx.fill();               // head
+      tri(r * .9, -r * .5, r * 1.9, 0, r * .9, r * .5); eye(r * 1.2, -r * .25, r * .13); eye(r * 1.2, r * .25, r * .13); break;
+    case "bug": {
+      const ant = o.ant, wg = o.wings || 0;
+      for (const [lx, ph] of [[.5, 1], [0, -1], [-.5, 1]]) for (const sd of [-1, 1]) { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lx * r, sd * r * .2); ctx.lineTo(lx * r + Math.sin(t / 90) * r * .2 * ph, sd * r * .95); ctx.stroke(); }
+      if (wg) { ctx.globalAlpha = .45; const fl = .6 + Math.sin(t / 40) * .25; for (const sd of [-1, 1]) { ell(-r * .1, sd * r * 1.0 * fl * (o.big ? 1.7 : 1.1), r * (o.big ? 1.5 : .9), r * .3); } ctx.globalAlpha = 1; }
+      ell(-r * .8, 0, r * (ant ? .75 : .65), r * (ant ? .5 : .42)); ell(0, 0, r * .4, r * .34); ell(r * .65, 0, r * .36, r * .32);
+      if (o.bee) { ctx.fillStyle = "#222"; for (const px of [-1.0, -.7]) ctx.fillRect(px * r, -r * .4, r * .12, r * .8); ctx.fillStyle = c; }
+      ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r * .9, -r * .15); ctx.lineTo(r * 1.5, -r * .5); ctx.moveTo(r * .9, r * .15); ctx.lineTo(r * 1.5, r * .5); ctx.stroke(); eye(r * .78, -r * .15, r * .1); eye(r * .78, r * .15, r * .1); break; }
+    case "krill": ctx.lineWidth = 2; for (let i = 0; i < 6; i++) { const px = -i * r * .35 + r * .4, py = Math.sin(i * .5) * r * .25 - i * r * .08 * 0 + wave(i, 120, .15); ctx.globalAlpha = .9; ell(px, py, r * (.38 - i * .03), r * (.3 - i * .025)); ctx.beginPath(); ctx.moveTo(px, py + r * .2); ctx.lineTo(px - r * .1, py + r * .6); ctx.stroke(); }
+      ctx.globalAlpha = 1; tri(-r * 1.9, 0, -r * 2.4, -r * .4, -r * 2.4, r * .4); ctx.beginPath(); ctx.moveTo(r * .7, -r * .1); ctx.lineTo(r * 1.4, -r * .5); ctx.moveTo(r * .7, r * .1); ctx.lineTo(r * 1.4, r * .5); ctx.stroke(); eye(r * .6, -r * .12, r * .1); break;
+    case "shell": ctx.beginPath(); ctx.arc(-r * .5, 0, r * .85, 0, 7); ctx.globalAlpha = .85; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.lineWidth = 3; ctx.beginPath(); for (let a = 0; a < 12; a += .3) { const rr = a * r * .07; ctx.lineTo(-r * .5 + Math.cos(a) * rr, Math.sin(a) * rr); } ctx.stroke(); ctx.strokeStyle = c;
+      ctx.lineWidth = 3; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(r * .3, i * r * .15); for (let k = 1; k <= 5; k++) ctx.lineTo(r * .3 + k * r * .25, i * r * .25 + Math.sin(t / 130 + k + i) * r * .12); ctx.stroke(); } ell(r * .3, 0, r * .4, r * .45); eye(r * .45, -r * .2, r * .12); eye(r * .45, r * .2, r * .12); break;
+    case "cephalo": { const n = o.arms || 8; ell(-r * .2, 0, r * .85, r * .85);
+      for (let i = 0; i < n; i++) { const sy = (i / (n - 1) - .5) * r * 1.4; ctx.lineWidth = r * .2; ctx.beginPath(); ctx.moveTo(-r * .6, sy * .6); for (let k = 1; k <= 7; k++) ctx.lineTo(-r * .6 - k * r * .28, sy + Math.sin(t / 140 + k * .7 + i) * r * .25); ctx.stroke(); }
+      eye(r * .35, -r * .3, r * .2); eye(r * .35, r * .3, r * .2); break; }
+    case "wisp": for (let i = 7; i >= 0; i--) { ctx.globalAlpha = .12 + .05 * (7 - i); ell(-i * r * .35, wave(i, 130, .3), r * (.7 - i * .05), r * (.7 - i * .05)); } ctx.globalAlpha = 1; ell(0, 0, r * .75, r * .75); atom(r * .1, 0, r * .35, "#fff"); break;
+    case "golem": ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(-r * .8, -r * .9, r * 1.5, r * 1.8, r * .3) : ctx.rect(-r * .8, -r * .9, r * 1.5, r * 1.8); ctx.fill();
+      ell(r * .8, -r * .85, r * .45, r * .45); ell(r * .8, r * .85, r * .45, r * .45); ell(r * .2, 0, r * .4, r * .4);
+      ctx.fillStyle = o.gold ? "#fff6c0" : "#fff"; ctx.beginPath(); ctx.arc(r * .1, 0, r * .22, 0, 7); ctx.fill(); ctx.fillStyle = c; for (let i = -2; i <= 2; i++) tri(-r * .8, i * r * .35 - r * .12, -r * 1.5, i * r * .35, -r * .8, i * r * .35 + r * .12);
+      eye(r * .55, -r * .25, r * .12); eye(r * .55, r * .25, r * .12); break;
+    case "hydra": { const n = o.heads || 3; ell(-r * .4, 0, r * 1.1, r * .75); ctx.lineWidth = r * .3; ctx.beginPath(); ctx.moveTo(-r * 1.4, 0); ctx.quadraticCurveTo(-r * 2.2, wave(0, 160, .6), -r * 2.6, 0); ctx.stroke();
+      for (let i = 0; i < n; i++) { const a = (i - (n - 1) / 2) * .7, sw = Math.sin(t / 200 + i) * r * .2, hx = r * 1.7 + Math.cos(a) * r * .5, hy = Math.sin(a) * r * 1.4 + sw; ctx.lineWidth = r * .35; ctx.beginPath(); ctx.moveTo(r * .4, Math.sin(a) * r * .3); ctx.quadraticCurveTo(r * 1.2, Math.sin(a) * r * .9 - sw, hx, hy); ctx.stroke(); ell(hx, hy, r * .45, r * .35); eye(hx + r * .15, hy - r * .1, r * .1); }
+      for (let i = 0; i < 4; i++) leg(-.2 - i * .01, i % 2 ? 1 : -1, i % 2 ? 1 : -1, 1.2); break; }
+    case "bird": {
+      const sp = o.span || 1.8, fl = Math.sin(t / 90) * .5 + .5, owl = o.owl, bat = o.bat;
+      if (o.flame) { for (let i = 0; i < 5; i++) { ctx.fillStyle = ["#ff3a1a", "#ff8a1a", "#ffd21a", "#ff5a1a", "#ffaa3a"][i]; const ty = (i - 2) * r * .35 + Math.sin(t / 100 + i) * r * .15; ctx.beginPath(); ctx.moveTo(-r * .6, ty * .3); ctx.quadraticCurveTo(-r * 1.6, ty * 1.2, -r * (2.6 + (i % 2) * .5), ty * 1.6); ctx.quadraticCurveTo(-r * 1.6, ty * .8, -r * .6, ty * .1); ctx.fill(); } ctx.fillStyle = c; }
+      for (const sd of [-1, 1]) { ctx.globalAlpha = .9; ctx.beginPath(); ctx.moveTo(r * .3, sd * r * .3); ctx.lineTo(-r * .1 - fl * r * .3, sd * r * sp * (.6 + .4 * fl)); if (bat) { ctx.lineTo(-r * .5, sd * r * sp * .5 * (.6 + .4 * fl)); ctx.lineTo(-r * .8, sd * r * sp * .75 * (.6 + .4 * fl)); } ctx.lineTo(-r * .9, sd * r * .35); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
+      ell(-r * .2, 0, r * .95, r * .5); ell(r * .75, 0, r * (owl ? .55 : .38), r * (owl ? .55 : .38));
+      if (o.crest) tri(r * .6, -r * .3, -r * .2, -r * .5, r * .8, -r * .1);
+      if (o.ears || owl) { tri(r * .6, -r * .3, r * .5, -r * .7, r * .85, -r * .4); tri(r * .6, r * .3, r * .5, r * .7, r * .85, r * .4); }
+      if (!bat || o.beak) { ctx.fillStyle = "#ffcf3a"; tri(r * 1.1, -r * .12, r * (1.1 + .5 * (o.beak || .7)), 0, r * 1.1, r * .12); ctx.fillStyle = c; }
+      eye(r * .85, -r * .15, r * (owl ? .18 : .1)); eye(r * .85, r * .15, r * (owl ? .18 : .1)); break; }
+    case "primate": ell(0, 0, r * .55, r * 1.05); ell(r * .2, 0, r * .5, r * .5);
       ctx.lineWidth = r * .28; ctx.beginPath(); ctx.moveTo(0, -r * .9); ctx.lineTo(r * 1.0, -r * .8); ctx.moveTo(0, r * .9); ctx.lineTo(r * 1.0, r * .7); ctx.stroke();
-      ctx.strokeStyle = "#c99a5a"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(r * .8, -r * .8); ctx.lineTo(r * 1.9, -r * (.8 - Math.sin(t / 200) * .4)); ctx.stroke(); ctx.strokeStyle = c;
-      eye(r * .5, -r * .18, r * .1); eye(r * .5, r * .18, r * .1); break;
+      ctx.strokeStyle = o.horns ? "#e8e0c8" : "#c99a5a"; ctx.lineWidth = o.horns ? 4 : 5;
+      if (o.horns) { ctx.beginPath(); ctx.moveTo(r * .4, -r * .35); ctx.quadraticCurveTo(r * 1.0, -r * .9, r * 1.2, -r * .45); ctx.moveTo(r * .4, r * .35); ctx.quadraticCurveTo(r * 1.0, r * .9, r * 1.2, r * .45); ctx.stroke(); }
+      else { ctx.beginPath(); ctx.moveTo(r * .8, -r * .8); ctx.lineTo(r * 1.9, -r * (.8 - Math.sin(t / 200) * .4)); ctx.stroke(); }
+      ctx.strokeStyle = c; eye(r * .5, -r * .18, r * .1); eye(r * .5, r * .18, r * .1); break;
+    case "quad": {
+      const bw = o.body || 1.15, bh = o.h || .62, hd = o.head || .5, lg = o.legs || 1.4, tl = o.tail || "long";
+      if (o.wings) for (const sd of [-1, 1]) { ctx.globalAlpha = .85; const fl = .6 + Math.sin(t / 130) * .3; ctx.beginPath(); ctx.moveTo(r * .2, sd * r * .35); ctx.lineTo(-r * .4, sd * r * 2.1 * fl); ctx.lineTo(-r * 1.0, sd * r * 1.4 * fl); ctx.lineTo(-r * 1.2, sd * r * .5); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
+      const nTails = o.tails || 1;
+      for (let k = 0; k < nTails; k++) { const off = (k - (nTails - 1) / 2) * .8; ctx.lineWidth = tl === "thin" ? 2 : r * (tl === "bushy" ? .5 : .3); ctx.beginPath();
+        if (tl === "none") break;
+        if (tl === "short") { ctx.moveTo(-r * bw, 0); ctx.lineTo(-r * (bw + .5), wave(k, 160, .2)); }
+        else if (tl === "snake") { ctx.moveTo(-r * bw, 0); for (let i = 1; i <= 8; i++) ctx.lineTo(-r * bw - i * r * .3, wave(i, 100, .4)); }
+        else { ctx.moveTo(-r * bw * .9, 0); ctx.quadraticCurveTo(-r * 2, wave(k, 160, .6) + off * r, -r * (tl === "bushy" ? 2.0 : 2.3), off * r * .8); }
+        ctx.stroke(); }
+      if (tl === "spiked") { for (const sd of [-1, 1]) tri(-r * 2.0, 0, -r * 2.6, sd * r * .5, -r * 1.8, sd * r * .2); }
+      if (!o.biped) for (const [lx, ly, ph] of [[.5, .55, 1], [.5, -.55, -1], [-.5, .55, -1], [-.5, -.55, 1]]) leg(lx * bw, ly, ph, lg);
+      else for (const ph of [1, -1]) leg(0, ph * .6, ph, lg);
+      ell(0, 0, r * bw, r * (o.frog ? bh : bh)); if (o.mane) { ctx.globalAlpha = .7; ell(r * bw * .55, 0, r * .55, r * .75); ctx.globalAlpha = 1; }
+      if (o.plates) { ctx.lineWidth = 3; for (let i = 0; i < 5; i++) tri(-r * .8 + i * r * .4, -r * bh * .8, -r * .8 + i * r * .4 + r * .2, -r * (bh + .45), -r * .8 + i * r * .4 + r * .4, -r * bh * .8); }
+      if (o.spikes) for (let i = 0; i < 5; i++) tri(-r * .8 + i * r * .4, -r * bh * .9, -r * .75 + i * r * .4, -r * (bh + .3), -r * .6 + i * r * .4, -r * bh * .9);
+      ell(r * bw * (1.0 + hd * .15), 0, r * hd, r * hd * .8);
+      if (o.snout) ell(r * (bw + hd * .9), 0, r * hd * .6, r * hd * .35);
+      if (o.frill) { ctx.globalAlpha = .8; ctx.beginPath(); ctx.arc(r * bw * .95, 0, r * .75, -Math.PI * .6, Math.PI * .6); ctx.fill(); ctx.globalAlpha = 1; }
+      const hx = r * bw * 1.1 + r * hd;
+      if (o.horns) { ctx.strokeStyle = "#e8e0c8"; ctx.lineWidth = 4; const n = o.horns; for (let i = 0; i < Math.min(n, 3); i++) { const sd = n === 3 ? [-1, 0, 1][i] : (i ? 1 : -1); ctx.beginPath(); ctx.moveTo(hx - r * .2, sd * r * .25); ctx.lineTo(hx + r * .55, sd * r * (n === 3 ? .45 : .6)); ctx.stroke(); } ctx.strokeStyle = c; }
+      if (o.beak) { ctx.fillStyle = "#ffcf3a"; tri(hx + r * .3, -r * .15, hx + r * .85, 0, hx + r * .3, r * .15); ctx.fillStyle = c; }
+      if (o.tusks) { ctx.strokeStyle = "#f4ecd0"; ctx.lineWidth = 5; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(hx, sd * r * .2); ctx.quadraticCurveTo(hx + r * .9, sd * r * .6, hx + r * 1.1, sd * r * .1); ctx.stroke(); } ctx.strokeStyle = c; }
+      if (o.fangs || o.teeth) { ctx.fillStyle = "#fff"; for (const sd of [-1, 1]) tri(hx + r * .2, sd * r * .12, hx + r * .35, sd * r * (o.fangs ? .6 : .3), hx + r * .45, sd * r * .12); ctx.fillStyle = c; }
+      if (o.ears) { tri(hx - r * .25, -r * .3, hx - r * .45, -r * .7, hx, -r * .35); tri(hx - r * .25, r * .3, hx - r * .45, r * .7, hx, r * .35); }
+      eye(hx + r * .1, -r * hd * .35, r * .11); eye(hx + r * .1, r * hd * .35, r * .11); break; }
   }
+  if (o.cy) { ctx.shadowBlur = 8; ctx.strokeStyle = "#7ffcff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-r * .8, -r * .25); ctx.lineTo(r * .2, -r * .25); ctx.lineTo(r * .5, 0); ctx.moveTo(-r * .8, r * .25); ctx.lineTo(0, r * .25); ctx.stroke(); ctx.fillStyle = "#7ffcff"; ctx.beginPath(); ctx.arc(r * .6, -r * .1, r * .12, 0, 7); ctx.fill(); }
   ctx.restore();
 }
 function drawFoe(f, t) {
@@ -479,7 +601,7 @@ function draw() {
   ctx.shadowBlur = 0;
   if (mode === "play") {
     ctx.globalAlpha = P.inv > 0 && Math.floor(P.inv * 20) % 2 ? .4 : 1;
-    drawBeing(P.x, P.y, st.r, P.face, S.world, S.stage, wd.acc, tm * 1000, P.hitF > 0);
+    drawBeing(P.x, P.y, st.r, P.face, S.world, S.stage, wd.c[S.stage].col, tm * 1000, P.hitF > 0);
     ctx.globalAlpha = 1;
   }
   for (const p of fx) { ctx.globalAlpha = Math.max(0, p.life * 1.5); ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 5, 5); }
@@ -488,14 +610,14 @@ function draw() {
   hud();
 }
 function hud() {
-  const wd = WD(), need = NEED[S.stage] * (1 + .3 * S.world);
+  const wd = WD(), need = NEED[S.stage] * (1 + .12 * S.world);
   ctx.textAlign = "left"; ctx.font = "bold 18px system-ui"; ctx.fillStyle = "#fff";
   ctx.fillText(`${wd.name} · ${wd.forms[S.stage]} · ${st.atk.n}`, 16, 26);
   ctx.fillStyle = "#222"; ctx.fillRect(16, 36, 260, 14); ctx.fillStyle = "#e44"; ctx.fillRect(16, 36, 260 * Math.max(0, P.hp / st.hp), 14);
   ctx.fillStyle = "#222"; ctx.fillRect(16, 56, 260, 10); ctx.fillStyle = bossOn ? "#888" : wd.acc; ctx.fillRect(16, 56, 260 * Math.min(1, S.xp / need), 10);
   ctx.font = "12px system-ui"; ctx.fillStyle = "#cfe8ff";
-  ctx.fillText(S.stage < 3 ? `XP → ${wd.forms[S.stage + 1]}` : (bossOn ? "BOSS FIGHT" : "XP → BOSS"), 16, 82);
-  let cx = 16; ctx.textAlign = "left"; ctx.font = "bold 12px system-ui";
+  ctx.fillText(S.stage < LAST ? `XP → ${wd.forms[S.stage + 1]}` : (bossOn ? "BOSS FIGHT" : "XP → BOSS"), 16, 82);
+  let cx = 16; ctx.textAlign = "left"; ctx.font = "bold 11px system-ui";
   wd.forms.forEach((n, i) => { ctx.fillStyle = i === S.stage ? wd.acc : i < S.stage ? "#7a9aa8" : "#4a5a66"; const t2 = (i ? " › " : "") + n; ctx.fillText(t2, cx, 100); cx += ctx.measureText(t2).width; });
   ctx.textAlign = "right"; ctx.font = "12px system-ui"; ctx.fillStyle = "#cfe8ff"; ctx.fillText(`kills ${S.kills} · dash ${P.dashCd > 0 ? Math.ceil(P.dashCd * 10) / 10 + "s" : "ready"}`, W - 16, 24);
   if (boss) {
@@ -516,15 +638,16 @@ function show(html) { ui.innerHTML = `<div class="panel">${html}</div>`; ui.clas
 function showMenu() {
   mode = "menu"; document.body.classList.remove("play");
   commit();
-  const cards = WORLDS.map((wd, i) => {
+  const card = (wd, i) => {
     const open = i < S.unlocked, pr = S.prog[i], cl = S.cleared.includes(i);
     return `<button class="wcard ${cl ? "done" : ""}" data-act="world" data-w="${i}" ${open ? "" : "disabled"} style="border-color:${open ? wd.acc : "#2a3645"}">
       <b style="color:${open ? wd.acc : "#6b7a90"}">${open ? wd.name : "🔒 Locked"}</b><br><span class="muted">${open ? wd.era : "Defeat the boss of the world before"}</span>
-      ${open ? `<br><span style="font-size:14px">${wd.forms[pr.stage]} · ${Math.floor(pr.xp)} XP${cl ? " · ✓ boss defeated" : ""}</span><br><span class="muted">Boss: ${wd.boss.name}</span>` : ""}</button>`;
-  }).join("");
+      ${open ? `<br><span style="font-size:14px">${wd.forms[pr.stage]} · ${Math.floor(pr.xp)} XP${cl ? " · ✓ boss defeated" : ""}</span><br><span class="muted">${wd.forms.length} creatures · Boss: ${wd.boss.name}</span>` : ""}</button>`;
+  };
+  const cards = SECTIONS.map((sn, si) => `<h2 class="sec">${["🦴", "🌍", "🚀"][si]} ${sn}</h2><div class="wgrid">${WORLDS.map((wd, i) => wd.sec === si ? card(wd, i) : "").join("")}</div>`).join("");
   show(`<h1>PRIMORDIAL</h1>
     <p class="muted">Start as a single molecule and evolve. Defeat a world's boss to unlock the next one. Every world keeps its own evolution and XP — jump into any unlocked world whenever you want.</p>
-    <div class="wgrid">${cards}</div>
+    ${cards}
     <p class="muted">WASD / left stick move · hold mouse / right stick attack · Space / DASH · P / Esc pause</p>
     <button class="red" data-act="new">Erase all progress</button>`);
 }
