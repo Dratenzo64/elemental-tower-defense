@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Primordial</title>
 <style>
   html, body { margin: 0; height: 100%; background: #05080c; color: #e8f4ff; font-family: system-ui, sans-serif; overflow: hidden; }
@@ -11,7 +11,7 @@
   canvas { width: 100%; height: 100%; display: block; border-radius: 6px; cursor: crosshair; background: #0a1a1f; }
   #ui { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,8,12,.86); overflow: auto; }
   #ui.on { display: flex; }
-  .panel { background: #101c24; border: 2px solid #2b5a63; border-radius: 14px; padding: 20px 28px; max-width: 700px; width: 90%; text-align: center; box-shadow: 0 0 40px #27ffd322; }
+  .panel { touch-action: pan-y; background: #101c24; border: 2px solid #2b5a63; border-radius: 14px; padding: 20px 28px; max-width: 700px; width: 90%; text-align: center; box-shadow: 0 0 40px #27ffd322; }
   h1 { margin: 4px 0 8px; letter-spacing: 4px; text-shadow: 0 0 16px #5dffd0; }
   .muted { color: #8eb0c4; font-size: 14px; }
   button { background: #1f8fd8; color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font-size: 16px; cursor: pointer; margin: 4px; }
@@ -24,6 +24,14 @@
   #zl { left: 0; } #zr { right: 0; }
   .base { position: absolute; width: 22vmin; height: 22vmin; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.3); display: none; transform: translate(-50%, -50%); }
   .knob { position: absolute; left: 50%; top: 50%; width: 9vmin; height: 9vmin; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
+  .wgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
+  .wcard { background: #0d1a22; border: 2px solid; border-radius: 12px; padding: 12px; text-align: left; color: #e8f4ff; margin: 0; line-height: 1.5; }
+  .wcard.done { background: #10241f; }
+  .wcard:disabled { opacity: .6; }
+  #rotate { position: fixed; inset: 0; background: #05080c; z-index: 99; display: none; align-items: center; justify-content: center; text-align: center; font-size: 20px; padding: 30px; }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+  body { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; touch-action: none; }
+  @media (pointer: coarse) { #dashBtn { width: 80px; height: 80px; font-size: 15px; } #pauseBtn { padding: 10px 14px; font-size: 16px; } .panel { padding: 14px 16px; } button { min-height: 44px; } }
   #pauseBtn { position: absolute; right: 12px; top: 44px; display: none; z-index: 2; background: #101c24cc; border: 1px solid #2b5a63; padding: 6px 12px; font-size: 14px; margin: 0; }
   body.play #pauseBtn { display: block; }
   #dashBtn { top: 96px !important; position: absolute; right: 12px; top: 60px; width: 64px; height: 64px; border-radius: 50%; opacity: .75; padding: 0; font-size: 13px; }
@@ -32,6 +40,7 @@
 </style>
 </head>
 <body>
+<div id="rotate">📱 Rotate your phone to landscape to play</div>
 <div id="wrap"><div id="stage">
   <canvas id="c" width="1280" height="720"></canvas>
   <div id="touch">
@@ -87,11 +96,30 @@ const statsFor = (w, s) => ({
 // SAVE (same SAVE_KEY / JSON blob / try-catch pattern as the other games)
 // ============================================================
 const SAVE_KEY = "primordial-save-v1";
-let S = { world: 0, stage: 0, xp: 0, kills: 0, started: false, done: false };
+const freshS = () => ({ world: 0, stage: 0, xp: 0, kills: 0, started: false, done: false, unlocked: 1, cleared: [], prog: WORLDS.map(() => ({ stage: 0, xp: 0 })) });
+let S = freshS();
+const commit = () => { if (S.prog && S.prog[S.world]) S.prog[S.world] = { stage: S.stage, xp: S.xp }; }; // every world keeps its own evolution + xp
 let toastTimer = null;
 function toast() { const el = document.getElementById("toast"); el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 1200); }
-function save(show = true) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); if (show) toast(); } catch (e) {} }
-function load() { try { const r = localStorage.getItem(SAVE_KEY); if (r) S = Object.assign(S, JSON.parse(r)); } catch (e) {} }
+function save(show = true) { try { commit(); localStorage.setItem(SAVE_KEY, JSON.stringify(S)); if (show) toast(); } catch (e) {} }
+function load() {
+  try {
+    const r = localStorage.getItem(SAVE_KEY);
+    if (r) {
+      const d = JSON.parse(r); S = Object.assign(S, d);
+      if (!d.prog) { // older save: one active world
+        S.unlocked = Math.min(WORLDS.length, (d.world || 0) + 1); S.prog = WORLDS.map(() => ({ stage: 0, xp: 0 }));
+        S.prog[S.world] = { stage: d.stage || 0, xp: d.xp || 0 }; S.cleared = [];
+        for (let i = 0; i < (d.world || 0); i++) S.cleared.push(i);
+      }
+    }
+  } catch (e) {}
+}
+function startWorld(w) {
+  commit(); S.world = w; S.stage = S.prog[w].stage; S.xp = S.prog[w].xp; S.started = true;
+  try { const el = document.documentElement; if (document.body.classList.contains("touch") && el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {})).catch(() => {}); } catch (e) {}
+  startGame();
+}
 
 // ============================================================
 // STATE
@@ -160,8 +188,10 @@ function bossDown() {
   const last = S.world === WORLDS.length - 1;
   setTimeout(() => {
     if (mode !== "won") return;
-    if (last) { S.done = true; save(); show(`<h1>YOU EVOLVED!</h1><p>You defeated ${WORLDS[S.world].boss.name}. From a molecule in the soup, through plankton, fish and amphibians, to dinosaurs, mammals and primates — four billion years of evolution, and you came out on top.</p><button class="big" data-act="again">Play again from the soup</button> <button data-act="menu">Menu</button>`); }
-    else { S.world++; S.stage = 0; S.xp = 0; save(); show(`<h1>WORLD CLEARED</h1><p>${WORLDS[S.world - 1].boss.name} is defeated. A new world opens: <b>${WORLDS[S.world].name}</b>. You start over as a ${WORLDS[S.world].forms[0]} — evolve again!</p><button class="big" data-act="go">Enter ${WORLDS[S.world].name}</button>`); }
+    if (!S.cleared.includes(S.world)) S.cleared.push(S.world);
+    S.prog[S.world] = { stage: 3, xp: 0 }; S.stage = 3; S.xp = 0;
+    if (last) { S.done = true; save(); show(`<h1>YOU EVOLVED!</h1><p>You defeated ${WORLDS[S.world].boss.name}. From a molecule in the soup, through plankton, fish and amphibians, to dinosaurs, mammals and primates — four billion years of evolution, and you came out on top.</p><button class="big" data-act="select">World select</button>`); }
+    else { S.unlocked = Math.max(S.unlocked, S.world + 2); save(); show(`<h1>WORLD CLEARED</h1><p>${WORLDS[S.world].boss.name} is defeated. A new world is unlocked: <b>${WORLDS[S.world + 1].name}</b> (${WORLDS[S.world + 1].era}). Every world keeps its own evolution and XP, so you can go back whenever you like.</p><button class="big" data-act="world" data-w="${S.world + 1}">Enter ${WORLDS[S.world + 1].name}</button> <button data-act="select">World select</button>`); }
   }, 1600);
 }
 
@@ -227,7 +257,7 @@ cv.addEventListener("mousemove", setMouse);
 cv.addEventListener("mousedown", e => { setMouse(e); mouse.down = true; });
 addEventListener("mouseup", () => mouse.down = false);
 function togglePause() {
-  if (mode === "play") { mode = "pause"; keys.clear(); mouse.down = false; show(`<h1>PAUSED</h1><p class="muted">${WD().name} · ${WD().forms[S.stage]}</p><button class="big" data-act="resume">Resume</button> <button data-act="menu">Main menu</button>`); }
+  if (mode === "play") { mode = "pause"; keys.clear(); mouse.down = false; show(`<h1>PAUSED</h1><p class="muted">${WD().name} · ${WD().forms[S.stage]}</p><button class="big" data-act="resume">Resume</button> <button data-act="menu">Switch world</button>`); }
   else if (mode === "pause") { mode = "play"; ui.classList.remove("on"); }
 }
 document.getElementById("pauseBtn").addEventListener("click", e => { e.stopPropagation(); togglePause(); });
@@ -485,19 +515,27 @@ function hud() {
 function show(html) { ui.innerHTML = `<div class="panel">${html}</div>`; ui.classList.add("on"); }
 function showMenu() {
   mode = "menu"; document.body.classList.remove("play");
-  const has = S.started || S.xp > 0 || S.stage > 0 || S.world > 0;
+  commit();
+  const cards = WORLDS.map((wd, i) => {
+    const open = i < S.unlocked, pr = S.prog[i], cl = S.cleared.includes(i);
+    return `<button class="wcard ${cl ? "done" : ""}" data-act="world" data-w="${i}" ${open ? "" : "disabled"} style="border-color:${open ? wd.acc : "#2a3645"}">
+      <b style="color:${open ? wd.acc : "#6b7a90"}">${open ? wd.name : "🔒 Locked"}</b><br><span class="muted">${open ? wd.era : "Defeat the boss of the world before"}</span>
+      ${open ? `<br><span style="font-size:14px">${wd.forms[pr.stage]} · ${Math.floor(pr.xp)} XP${cl ? " · ✓ boss defeated" : ""}</span><br><span class="muted">Boss: ${wd.boss.name}</span>` : ""}</button>`;
+  }).join("");
   show(`<h1>PRIMORDIAL</h1>
-    <p class="muted">You begin as a single molecule in a world of goo. Fight, grow, and evolve — then defeat the boss to reach the next world.</p>
-    <p class="muted">WASD move · hold the mouse to attack · Space dash · P / Esc pause</p>
-    ${has ? `<p><b>Progress:</b> ${WORLDS[S.world].name} — ${WORLDS[S.world].forms[S.stage]}</p><button class="big" data-act="go">Continue</button> <button class="red" data-act="new">New game</button>` : '<button class="big" data-act="go">Begin</button>'}`);
+    <p class="muted">Start as a single molecule and evolve. Defeat a world's boss to unlock the next one. Every world keeps its own evolution and XP — jump into any unlocked world whenever you want.</p>
+    <div class="wgrid">${cards}</div>
+    <p class="muted">WASD / left stick move · hold mouse / right stick attack · Space / DASH · P / Esc pause</p>
+    <button class="red" data-act="new">Erase all progress</button>`);
 }
 ui.addEventListener("click", ev => {
   const t = ev.target.closest("[data-act]"); if (!t) return;
   switch (t.dataset.act) {
-    case "go": S.started = true; startGame(); break;
-    case "new": case "again": S = { world: 0, stage: 0, xp: 0, kills: 0, started: true, done: false }; save(); startGame(); break;
+    case "world": startWorld(+t.dataset.w); break;
+    case "select": showMenu(); break;
+    case "new": if (confirm("Erase all progress?")) { S = freshS(); S.started = true; save(); showMenu(); } break;
     case "resume": togglePause(); break;
-    case "menu": showMenu(); break;
+    case "menu": save(false); showMenu(); break;
   }
 });
 
