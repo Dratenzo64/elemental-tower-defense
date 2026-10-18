@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Glacier Crates</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #08121c; color: #e8f6ff; font-family: system-ui, sans-serif; overflow: hidden; user-select: none; -webkit-user-select: none; overscroll-behavior: none; }
+  #wrap { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  #top { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 6px; }
+  .pill { background: #12263a; border: 1px solid #2b4a6a; border-radius: 999px; padding: 7px 16px; font-size: 18px; font-weight: 600; }
+  button { background: #1f6fd8; color: #fff; border: 0; border-radius: 10px; padding: 10px 18px; font-size: 18px; cursor: pointer; min-height: 46px; }
+  button.hint { background: #c8962a; }
+  button:disabled { background: #25364a; color: #667a92; cursor: default; }
+  button.big { background: #1fa862; font-size: 18px; padding: 12px 24px; }
+  button.red { background: #b53b3b; }
+  #board { flex: 1; width: 100%; min-height: 0; touch-action: none; }
+  canvas { width: 100%; height: 100%; display: block; }
+  #pad { display: none; padding: 6px 0 10px; gap: 6px; justify-content: center; align-items: center; }
+  body.touch #pad { display: flex; }
+  #pad .dp { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 64px); gap: 4px; }
+  #pad .dp button { padding: 0; font-size: 22px; min-height: 0; }
+  #ui { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,10,18,.9); overflow: auto; touch-action: pan-y; }
+  #ui.on { display: flex; }
+  .panel { background: #0f2033; border: 2px solid #2b4a6a; border-radius: 14px; padding: 18px 22px; max-width: 720px; width: 92%; max-height: 92%; overflow: auto; text-align: center; box-shadow: 0 0 40px #4ad0ff22; }
+  h1 { margin: 4px 0 6px; letter-spacing: 3px; text-shadow: 0 0 14px #4ad0ff; }
+  .muted { color: #8eaac4; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; margin: 12px 0; }
+  .lv { background: #12263a; border: 2px solid #2b4a6a; padding: 10px 4px; }
+  .lv.done { border-color: #5dffb0; }
+  #toast { position: absolute; top: 10px; right: 14px; background: #1fa862; padding: 6px 12px; border-radius: 8px; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top"><button id="bMenu">Levels</button><span class="pill" id="pLevel"></span><span class="pill" id="pMoves"></span><span class="pill" id="pPar"></span><span class="pill" id="pHints"></span><button id="bHint" class="hint">💡 Hint (H)</button><button id="bUndo">Undo (Z)</button><button id="bReset" class="red">Restart (R)</button><button id="bFull">⛶</button></div>
+  <div id="board"><canvas id="c"></canvas></div>
+  <div id="pad"><div class="dp"><span></span><button data-d="U">▲</button><span></span><button data-d="L">◀</button><button data-d="D">▼</button><button data-d="R">▶</button></div></div>
+  <div id="ui"></div>
+  <div id="toast">Saved</div>
+</div>
+<script>
+// ============================================================
+// GLACIER CRATES
+// Push every crate onto a goal. Normal floor: crates move one square.
+// Ice: a crate pushed onto ice keeps sliding until it hits something or leaves the ice.
+// Every level below was solved by a computer, so each one can be beaten (par = the best possible number of steps).
+// ============================================================
+const LEVELS = [{"g":["######","#....#","#....#","#..$.#","#.III#","#.I.@#","#GI.##","######"],"par":9},{"g":["######","#...G#","#.$$.#","#II@.#","#.G.I#","#.##I#","######"],"par":10},{"g":["######","#.@.G#","#.$..#","#.G.I#","#..#$#","##I..#","######"],"par":11},{"g":["#######","#....I#","#..I$.#","#G.I.##","#.@#..#","##....#","#######"],"par":13},{"g":["######","#.IIG#","#..$.#","##.#@#","#....#","#.#$.#","#..G.#","######"],"par":14},{"g":["#######","#.....#","##...$#","#..#..#","#.G$.G#","#G.ICI#","##.@..#","#######"],"par":16},{"g":["########","#G.$...#","##...@.#","#....#G#","#G$.#..#","#..ICI.#","#.II...#","########"],"par":17},{"g":["########","#G.I#.##","#..I...#","#@..I$.#","##.I#$.#","#..#IG.#","#..II..#","########"],"par":19},{"g":["########","#.G..$G#","#...#@.#","#I#C...#","#....II#","#......#","########"],"par":21},{"g":["########","#III#.##","#III.$.#","#@$.#..#","#G...G.#","########"],"par":22},{"g":["########","#.....@#","#..$.#I#","#GII..G#","#.$..#$#","#I...G.#","########"],"par":24},{"g":["########","#GG#...#","#..I$..#","#..I...#","#@#I...#","##.$...#","#......#","########"],"par":26},{"g":["########","##.I..@#","#G#IG..#","#..I...#","#.$I.$.#","#.#..$G#","########"],"par":27},{"g":["########","##..G..#","##CII.@#","#.....$#","#II..II#","#G...$G#","########"],"par":29},{"g":["########","##III.@#","#.III..#","#.GII..#","#.$.C..#","#.G###.#","#G...$.#","########"],"par":31},{"g":["#######","#.#G.G#","##....#","#IICIG#","#.$$#I#","#..@.I#","#######"],"par":33},{"g":["########","#.G..G.#","#.#....#","#III#..#","#$.$$@.#","#....#I#","#G...I.#","########"],"par":35},{"g":["########","#G#.G..#","#...#..#","#...I..#","#.I.I$$#","###$.#@#","#.I...G#","########"],"par":37},{"g":["######","#G.II#","##.II#","#.$II#","#@#IG#","#.$I.#","#G.$.#","######"],"par":38},{"g":["########","##..#..#","#G.#.$.#","#ICI.@.#","#$.G...#","#G.#...#","########"],"par":40},{"g":["########","#@..ICG#","#G$.##I#","#$..I..#","#...##G#","#......#","########"],"par":42},{"g":["########","#GG..#.#","#.#G.II#","#.IIC###","#.#.I..#","#$..C..#","#..@#..#","########"],"par":44},{"g":["########","#G..#..#","#G#I$I.#","#G.I$I.#","#.CIII.#","#..I#I.#","#...@#.#","########"],"par":47},{"g":["######","#.GGG#","#...I#","#I#PI#","#.$$##","#.$.I#","##..I#","######"],"par":48},{"g":["#######","#....@#","#G.G.##","#.#.CI#","#..$.G#","#.#.$.#","##...##","#######"],"par":50},{"g":["########","#..GI.@#","##$.IGG#","#IIII#.#","#I$.C..#","#I.#...#","########"],"par":52},{"g":["########","#G..$..#","#.$.I#.#","##III.G#","#.CI#.G#","#.PII..#","########"],"par":53},{"g":["########","#......#","#..$#$.#","#G.IG.G#","#.IICI.#","#..I..##","#.@....#","########"],"par":53},{"g":["#######","#G.#..#","#..$$.#","#.@.C.#","#G..I.#","#...I##","##.GII#","#######"],"par":59},{"g":["########","#@#...G#","#.#$G..#","#..I$$G#","#..I..I#","#......#","########"],"par":61}];
+const DIRS = { U: [0, -1], R: [1, 0], D: [0, 1], L: [-1, 0] };
+const SAVE_KEY = "glaciercrates-save-v1";
+let S = { unlocked: 1, best: {} };
+let toastTimer = null;
+function toast() { const el = document.getElementById("toast"); el.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 1200); }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); toast(); } catch (e) {} }
+function load() { try { const r = localStorage.getItem(SAVE_KEY); if (r) S = Object.assign(S, JSON.parse(r)); } catch (e) {} }
+
+const cv = document.getElementById("c"), ctx = cv.getContext("2d"), ui = document.getElementById("ui");
+let hintPath = null, hints = 0, hintShow = null, li = 0, L, W, H, wall, ice, goal, player, crates, moves, pushes, hist, mode = "menu", anim = null, dirty = true;
+
+function parse(i) {
+  L = LEVELS[i]; li = i; H = L.g.length; W = L.g[0].length;
+  wall = []; ice = []; goal = []; crates = []; player = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ch = L.g[y][x], id = y * W + x;
+    wall[id] = ch === "#" ? 1 : 0; ice[id] = ch === "I" || ch === "C" || ch === "P" ? 1 : 0; goal[id] = ch === "G" ? 1 : 0;
+    if (ch === "$" || ch === "C") crates.push(id);
+    if (ch === "@" || ch === "P") player = id;
+  }
+  moves = 0; pushes = 0; hist = []; anim = null; dirty = true; hintPath = null; hints = 0; hintShow = null;
+}
+function tryMove(d, st) { // st: {p, cs}; returns new state or null
+  const [dx, dy] = DIRS[d], delta = dy * W + dx, t = st.p + delta;
+  if (wall[t]) return null;
+  let cs = st.cs, pushed = false;
+  const ci = cs.indexOf(t);
+  if (ci >= 0) {
+    let cur = t + delta;
+    if (wall[cur] || cs.includes(cur)) return null;
+    while (ice[cur]) { const n = cur + delta; if (wall[n] || cs.includes(n)) break; cur = n; }
+    cs = cs.slice(); cs[ci] = cur; pushed = true;
+  }
+  return { p: t, cs, pushed, from: ci >= 0 ? t : -1, to: ci >= 0 ? cs[ci] : -1 };
+}
+const solved = cs => cs.every(c => goal[c]);
+// Breadth-first search from the current position: returns the shortest list of moves ("" if solved, null if stuck, undefined if too big)
+function solveFrom(p0, cs0, limit = 3e6) {
+  const K = cs0.length, sh = i => 6 * (i + 1);
+  const enc = (p, cs) => { let k = p; for (let i = 0; i < K; i++) k |= cs[i] << sh(i); return k; };
+  const start = cs0.slice().sort((a, b) => a - b);
+  if (solved(start)) return "";
+  const seen = new Uint8Array(1 << (6 * (K + 1)));
+  const keys = [enc(p0, start)], par = [-1], mv = [""];
+  seen[keys[0]] = 1;
+  const names = "URDL";
+  for (let head = 0; head < keys.length; head++) {
+    const key = keys[head], p = key & 63, cs = [];
+    for (let i = 0; i < K; i++) cs.push((key >> sh(i)) & 63);
+    for (let di = 0; di < 4; di++) {
+      const r = tryMove(names[di], { p, cs }); if (!r) continue;
+      const ncs = r.pushed ? r.cs.slice().sort((a, b) => a - b) : cs;
+      const nk = enc(r.p, ncs); if (seen[nk]) continue; seen[nk] = 1;
+      keys.push(nk); par.push(head); mv.push(names[di]);
+      if (keys.length > limit) return undefined;
+      if (r.pushed && solved(ncs)) { let out = "", i = keys.length - 1; while (par[i] >= 0) { out = mv[i] + out; i = par[i]; } return out; }
+    }
+  }
+  return null;
+}
+function hint() {
+  if (mode !== "play") return;
+  const msg = document.getElementById("pHints");
+  const show = () => { hintShow = { dir: hintPath[0], until: performance.now() + 4000 }; };
+  if (hintPath && hintPath.length) { hints++; updateHud(); show(); return; }
+  msg.textContent = "Thinking…";
+  setTimeout(() => {
+    const r = solveFrom(player, crates);
+    if (r === null) { say("This position can't be solved any more. Undo or restart!"); updateHud(); return; }
+    if (r === undefined) { say("Too complicated to hint from here. Try undoing a few moves."); updateHud(); return; }
+    if (r === "") return;
+    hintPath = r; hints++; updateHud(); show();
+  }, 30);
+}
+let note = "", noteUntil = 0;
+function say(t) { note = t; noteUntil = performance.now() + 3500; }
+function move(d) {
+  if (mode !== "play" || (anim && performance.now() < anim.end - 60)) return;
+  const r = tryMove(d, { p: player, cs: crates });
+  if (!r) { shake = 8; return; }
+  hist.push({ p: player, cs: crates.slice() });
+  anim = { t0: performance.now(), end: performance.now() + 110 + (r.pushed ? 60 * Math.max(0, Math.abs(r.to - r.from) > 1 ? 3 : 0) : 0), fromP: player, from: r.from, to: r.to };
+  player = r.p; crates = r.cs; moves++; if (r.pushed) pushes++;
+  if (hintPath && hintPath[0] === d) hintPath = hintPath.slice(1); else hintPath = null;
+  hintShow = null;
+  dirty = true; updateHud();
+  if (solved(crates)) setTimeout(win, 380);
+}
+function undo() { if (mode !== "play" || !hist.length) return; const h = hist.pop(); player = h.p; crates = h.cs; moves = Math.max(0, moves - 1); anim = null; dirty = true; hintPath = null; hintShow = null; updateHud(); }
+function updateHud() {
+  document.getElementById("pLevel").textContent = `Level ${li + 1} / ${LEVELS.length}`;
+  document.getElementById("pMoves").textContent = `Steps ${moves}`;
+  document.getElementById("pPar").textContent = `Par ${L.par}`;
+  document.getElementById("pHints").textContent = `Hints ${hints}`;
+}
+function stars(m) { const s = m <= L.par ? 3 : m <= Math.ceil(L.par * 1.4) ? 2 : 1; return hints > 0 ? Math.min(2, s) : s; }
+function win() {
+  if (mode !== "play") return;
+  mode = "won";
+  const s = stars(moves);
+  if (S.best[li] == null || moves < S.best[li]) S.best[li] = moves;
+  if (S.stars == null) S.stars = {}; S.stars[li] = Math.max(S.stars[li] || 0, s);
+  S.unlocked = Math.max(S.unlocked, li + 2); save();
+  const last = li === LEVELS.length - 1;
+  show(`<h1>Solved!</h1><div style="font-size:42px">${"★".repeat(s)}${"☆".repeat(3 - s)}</div><p class="muted">${moves} steps (par ${L.par}) · ${hints} hint${hints === 1 ? "" : "s"}${s < 3 ? (hints ? " — hints cap you at 2 stars" : " — can you match par?") : " — perfect!"}</p>
+    ${last ? "<p>You cleared every level!</p>" : '<button class="big" data-act="next">Next level</button> '}<button data-act="again">Replay</button> <button data-act="menu">Levels</button>`);
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+let shake = 0, flakes = Array.from({ length: 40 }, () => ({ x: Math.random(), y: Math.random(), s: .5 + Math.random() }));
+function lerp(a, b, t) { return a + (b - a) * t; }
+function draw(now) {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cw = r.width, ch = r.height;
+  const g = ctx.createLinearGradient(0, 0, 0, ch); g.addColorStop(0, "#0b1c2e"); g.addColorStop(1, "#050b14"); ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
+  ctx.fillStyle = "rgba(255,255,255,.35)"; for (const f of flakes) { f.y = (f.y + .0006 * f.s) % 1; ctx.beginPath(); ctx.arc(f.x * cw, f.y * ch, 1.5 * f.s, 0, 7); ctx.fill(); }
+  if (!L || (mode !== "play" && mode !== "won")) return;
+  const ts = Math.floor(Math.min((cw - 4) / W, (ch - 4) / H)), ox = Math.floor((cw - ts * W) / 2), oy = Math.floor((ch - ts * H) / 2);
+  const sx = shake > 0 ? (Math.random() - .5) * shake : 0; if (shake > 0) shake = Math.max(0, shake - 1);
+  ctx.save(); ctx.translate(ox + sx, oy);
+  const k = anim ? Math.min(1, (now - anim.t0) / (anim.end - anim.t0)) : 1, e = k * (2 - k);
+  const px = id => (id % W) * ts, py = id => Math.floor(id / W) * ts;
+  for (let id = 0; id < W * H; id++) {
+    const x = px(id), y = py(id);
+    if (wall[id]) { ctx.fillStyle = "#1d3552"; ctx.fillRect(x, y, ts, ts); ctx.fillStyle = "#2c4f78"; ctx.fillRect(x, y, ts, ts * .12); ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.strokeRect(x + .5, y + .5, ts - 1, ts - 1); continue; }
+    if (ice[id]) { const gg = ctx.createLinearGradient(x, y, x + ts, y + ts); gg.addColorStop(0, "#9fe4ff"); gg.addColorStop(1, "#4fb4e8"); ctx.fillStyle = gg; ctx.fillRect(x, y, ts, ts); ctx.strokeStyle = "rgba(255,255,255,.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + ts * .2, y + ts * .75); ctx.lineTo(x + ts * .5, y + ts * .45); ctx.moveTo(x + ts * .55, y + ts * .8); ctx.lineTo(x + ts * .8, y + ts * .55); ctx.stroke(); ctx.lineWidth = 1; }
+    else { ctx.fillStyle = ((id % W) + Math.floor(id / W)) % 2 ? "#14283d" : "#112336"; ctx.fillRect(x, y, ts, ts); }
+    if (goal[id]) { ctx.strokeStyle = "#5dffb0"; ctx.shadowColor = "#5dffb0"; ctx.shadowBlur = 12; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x + ts / 2, y + ts / 2, ts * .28, 0, 7); ctx.stroke(); ctx.shadowBlur = 0; ctx.lineWidth = 1; }
+  }
+  // crates
+  crates.forEach((c, i) => {
+    let x = px(c), y = py(c);
+    if (anim && anim.to === c) { x = lerp(px(anim.from), px(c), e); y = lerp(py(anim.from), py(c), e); }
+    const on = goal[c], m = ts * .1;
+    ctx.fillStyle = on ? "#2fd17a" : "#d08a3a"; ctx.shadowColor = on ? "#5dffb0" : "#000"; ctx.shadowBlur = on ? 14 : 4; ctx.fillRect(x + m, y + m, ts - 2 * m, ts - 2 * m); ctx.shadowBlur = 0;
+    ctx.strokeStyle = on ? "#0c6a3a" : "#7a4a14"; ctx.lineWidth = 3; ctx.strokeRect(x + m + 1.5, y + m + 1.5, ts - 2 * m - 3, ts - 2 * m - 3);
+    ctx.beginPath(); ctx.moveTo(x + m, y + m); ctx.lineTo(x + ts - m, y + ts - m); ctx.moveTo(x + ts - m, y + m); ctx.lineTo(x + m, y + ts - m); ctx.stroke(); ctx.lineWidth = 1;
+  });
+  // player
+  let x = px(player), y = py(player);
+  if (anim) { x = lerp(px(anim.fromP), px(player), e); y = lerp(py(anim.fromP), py(player), e); }
+  ctx.fillStyle = "#ff7ab8"; ctx.shadowColor = "#ff7ab8"; ctx.shadowBlur = 12; ctx.beginPath(); ctx.arc(x + ts / 2, y + ts / 2, ts * .34, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x + ts * .42, y + ts * .45, ts * .07, 0, 7); ctx.arc(x + ts * .6, y + ts * .45, ts * .07, 0, 7); ctx.fill();
+  ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(x + ts * .43, y + ts * .46, ts * .035, 0, 7); ctx.arc(x + ts * .61, y + ts * .46, ts * .035, 0, 7); ctx.fill();
+  if (hintShow && now < hintShow.until && mode === "play") {
+    const d = DIRS[hintShow.dir], bob = Math.sin(now / 150) * ts * .06, cx = px(player) + ts / 2, cy = py(player) + ts / 2;
+    ctx.save(); ctx.translate(cx + d[0] * (ts * .72 + bob), cy + d[1] * (ts * .72 + bob)); ctx.rotate(Math.atan2(d[1], d[0]));
+    ctx.fillStyle = "#ffd54a"; ctx.shadowColor = "#ffd54a"; ctx.shadowBlur = 16; ctx.beginPath(); ctx.moveTo(ts * .25, 0); ctx.lineTo(-ts * .15, -ts * .22); ctx.lineTo(-ts * .15, ts * .22); ctx.fill(); ctx.restore();
+  }
+  ctx.restore();
+  if (note && now < noteUntil) { ctx.textAlign = "center"; ctx.font = `bold ${Math.max(16, Math.min(26, cw / 28))}px system-ui`; ctx.fillStyle = "rgba(0,0,0,.7)"; const tw = ctx.measureText(note).width; ctx.fillRect(cw / 2 - tw / 2 - 14, 8, tw + 28, 40); ctx.fillStyle = "#ffd54a"; ctx.fillText(note, cw / 2, 36); }
+}
+
+// ============================================================
+// MENUS + INPUT
+// ============================================================
+function show(html) { ui.innerHTML = `<div class="panel">${html}</div>`; ui.classList.add("on"); }
+function showMenu() {
+  mode = "menu"; document.body.classList.remove("playing");
+  const cells = LEVELS.map((l, i) => { const open = i < S.unlocked, b = S.best[i]; const st = b != null ? ((S.stars && S.stars[i]) || (b <= l.par ? 3 : b <= Math.ceil(l.par * 1.4) ? 2 : 1)) : 0;
+    return `<button class="lv ${b != null ? "done" : ""}" data-act="play" data-i="${i}" ${open ? "" : "disabled"}><b>${open ? i + 1 : "🔒"}</b><br><span style="color:#ffd54a">${"★".repeat(st)}${"☆".repeat(b != null ? 3 - st : 0)}</span>${b != null ? `<br><span class="muted">${b}/${l.par}</span>` : ""}</button>`; }).join("");
+  show(`<h1>GLACIER CRATES</h1>
+    <p class="muted">Push every crate onto a green goal ring. On normal floor a pushed crate moves one square. <b style="color:#7fd6ff">On ice it keeps sliding</b> until it hits a wall or another crate, or reaches normal floor. You can only push (never pull), so plan ahead. Every level is solvable; beat the par for 3 stars.</p>
+    <p class="muted">Stuck? The Hint button (or H) shows your next best move, but using hints caps a level at 2 stars.</p>
+    <p class="muted">Arrow keys / WASD move · Z undo · R restart · H hint · swipe or use the buttons on a phone</p>
+    <div class="grid">${cells}</div>`);
+}
+function start(i) { parse(i); mode = "play"; ui.classList.remove("on"); updateHud(); }
+ui.addEventListener("click", e => {
+  const t = e.target.closest("[data-act]"); if (!t) return;
+  switch (t.dataset.act) { case "play": start(+t.dataset.i); break; case "next": start(li + 1); break; case "again": start(li); break; case "menu": showMenu(); break; }
+});
+document.getElementById("bMenu").onclick = showMenu;
+document.getElementById("bUndo").onclick = undo;
+document.getElementById("bHint").onclick = hint;
+document.getElementById("bFull").onclick = () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (e) {} };
+document.getElementById("bReset").onclick = () => { if (mode === "play") start(li); };
+document.querySelectorAll("#pad [data-d]").forEach(b => b.addEventListener("pointerdown", e => { e.preventDefault(); document.body.classList.add("touch"); move(b.dataset.d); }));
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  const m = { arrowup: "U", w: "U", arrowdown: "D", s: "D", arrowleft: "L", a: "L", arrowright: "R", d: "R" }[k];
+  if (m) { e.preventDefault(); move(m); } else if (k === "z" || k === "u") undo(); else if (k === "h") hint(); else if (k === "r" && mode === "play") start(li);
+});
+let sw = null;
+const bd = document.getElementById("board");
+bd.addEventListener("pointerdown", e => { sw = { x: e.clientX, y: e.clientY }; });
+bd.addEventListener("pointerup", e => {
+  if (!sw) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y; sw = null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  document.body.classList.add("touch"); move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "R" : "L") : (dy > 0 ? "D" : "U"));
+});
+addEventListener("touchstart", () => document.body.classList.add("touch"), { once: true, passive: true });
+if (matchMedia && matchMedia("(pointer: coarse)").matches) document.body.classList.add("touch");
+function loop(now) { draw(now); requestAnimationFrame(loop); }
+load(); showMenu(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
