@@ -187,7 +187,7 @@ function dash() {
 function throwKnife() {
   P.throwCd = .45 * Math.pow(.7, has("rapid")); boost = Math.max(boost, .12);
   const a = P.face, n = has("triple") ? 3 : 1;
-  for (let i = 0; i < n; i++) { const b = a + (i - (n - 1) / 2) * .22; knives.push({ x: P.x + Math.cos(b) * 16, y: P.y + Math.sin(b) * 16, vx: Math.cos(b) * 820, vy: Math.sin(b) * 820, life: 1.1, bounce: has("ricochet") ? 3 : 0, mine: true, hit: new Set() }); }
+  for (let i = 0; i < n; i++) { const b = a + (i - (n - 1) / 2) * .22; knives.push({ x: P.x + Math.cos(b) * 16, y: P.y + Math.sin(b) * 16, vx: Math.cos(b) * 820, vy: Math.sin(b) * 820, life: 1.1, bounce: has("ricochet") ? 4 : 0, mine: true, hit: new Set() }); }
 }
 function burst(x, y, n, c) { for (let i = 0; i < n; i++) { const a = rnd(0, 6.28), s = rnd(60, 320); fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rnd(.3, .8), c }); } }
 function hurt() {
@@ -195,10 +195,11 @@ function hurt() {
   P.hp--; P.inv = 1.0; shake = .3; flashRed = .35; burst(P.x, P.y, 20, "#ff5a5a"); combo = 0;
   if (P.hp <= 0) gameOver();
 }
-function killEnemy(e, by) {
+function killEnemy(e, by, viaDash) {
   e.hp -= by; e.flash = .12;
   if (e.hp > 0) { burst(e.x, e.y, 6, "#fff"); return; }
-  kills++; combo++; comboT = 3; const pts = 10 * (e.type === "boss" ? 20 : 1) * Math.min(10, combo); score += pts;
+  kills++; combo++; comboT = 3; const pts = 10 * (e.type === "boss" ? 20 : 1) * Math.min(10, combo) * (viaDash ? 3 : 1); score += pts;
+  if (viaDash && msgT <= 0) say("DASH KILL  x3", .7);
   burst(e.x, e.y, e.type === "boss" ? 70 : 24, e.type === "boss" ? "#ff9ae0" : "#ff7a7a"); shake = Math.max(shake, e.type === "boss" ? .6 : .12); boost = Math.max(boost, .15);
 }
 
@@ -228,7 +229,7 @@ function update(dtReal) {
   // --- player moves in real time; the WORLD only moves as fast as you do ---
   if (P.dash > 0) {
     P.dash -= dtReal; P.x += P.dx * dtReal; P.y += P.dy * dtReal; P.trail.push({ x: P.x, y: P.y, t: .25 });
-    for (const e of enemies) if (!P.hit.has(e) && dist(e, P) < e.r + 22) { P.hit.add(e); killEnemy(e, e.type === "boss" ? 3 : 9); }
+    for (const e of enemies) if (!P.hit.has(e) && dist(e, P) < e.r + 22) { P.hit.add(e); killEnemy(e, e.type === "boss" ? 3 : 9, true); }
   } else if (iv.m > 0) { P.x += iv.x * 270 * iv.m * dtReal; P.y += iv.y * 270 * iv.m * dtReal; }
   pushOut(P, 12);
   P.trail.forEach(t => t.t -= dtReal); P.trail = P.trail.filter(t => t.t > 0);
@@ -244,9 +245,16 @@ function update(dtReal) {
   // --- knives ---
   for (const k of knives) {
     const px = k.x, py = k.y; k.x += k.vx * dt; k.y += k.vy * dt; k.life -= dt;
-    if (k.x < 0 || k.x > W) { if (k.bounce-- > 0) { k.vx = -k.vx; k.x = Math.max(0, Math.min(W, k.x)); } else k.life = 0; }
-    if (k.y < 0 || k.y > H) { if (k.bounce-- > 0) { k.vy = -k.vy; k.y = Math.max(0, Math.min(H, k.y)); } else k.life = 0; }
-    if (inObs(k.x, k.y)) { if (k.bounce-- > 0) { const hx = inObs(k.x, py), hy = inObs(px, k.y); if (!hx) k.vx = -k.vx; else if (!hy) k.vy = -k.vy; else { k.vx = -k.vx; k.vy = -k.vy; } k.x = px; k.y = py; } else k.life = 0; }
+    const rebound = () => { k.bounce--; k.life += .35; k.hit.clear(); burst(k.x, k.y, 3, "#9fd0ff"); };
+    if (k.x < 0 || k.x > W) { if (k.bounce > 0) { rebound(); k.vx = -k.vx; k.x = Math.max(1, Math.min(W - 1, k.x)); } else k.life = 0; }
+    if (k.y < 0 || k.y > H) { if (k.bounce > 0) { rebound(); k.vy = -k.vy; k.y = Math.max(1, Math.min(H - 1, k.y)); } else k.life = 0; }
+    if (k.life > 0 && inObs(k.x, k.y)) {
+      if (k.bounce > 0) {
+        const hitX = inObs(k.x, py), hitY = inObs(px, k.y);   // which axis actually ran into the block?
+        if (hitX && !hitY) k.vx = -k.vx; else if (hitY && !hitX) k.vy = -k.vy; else { k.vx = -k.vx; k.vy = -k.vy; }
+        k.x = px; k.y = py; rebound();
+      } else k.life = 0;
+    }
     for (const e of enemies) if (!k.hit.has(e) && dist(k, e) < e.r + 6) { k.hit.add(e); killEnemy(e, 1); if (!has("pierce")) { k.life = 0; break; } }
   }
   knives = knives.filter(k => k.life > 0);
@@ -366,7 +374,7 @@ function showMenu() {
   mode = "menu"; document.body.classList.remove("play");
   show(`<h1>HUSH</h1>
     <p>Time only moves when <b>you</b> move.</p>
-    <p class="muted">Stand still and every bullet freezes in the air. Study the gaps, pick your path, then move — and the storm moves with you. Dash through enemies to slice them, throw knives, and pick an upgrade after each wave. Every 5th wave is a boss. You have 3 hearts.</p>
+    <p class="muted">Stand still and every bullet freezes in the air. Study the gaps, pick your path, then move — and the storm moves with you. Dash through enemies to slice them (dash kills score triple), throw knives, and pick an upgrade after each wave. Every 5th wave is a boss. You have 3 hearts.</p>
     <p class="muted">WASD move · mouse aim · click = throw knife · Space / Shift / right-click = dash-slash · P pause<br>On a phone: left stick moves (the harder you push, the faster time runs), right stick aims and throws, DASH button.</p>
     <p class="muted">Best: wave ${S.bestWave} · ${S.bestScore} points</p>
     <button class="big" data-act="play">Play</button>`);
