@@ -772,6 +772,7 @@
 <header>
   <h1>DRATENZO GAMES</h1>
   <p class="subtitle">// FREE INDIE WEB GAMES · NO INSTALLS, JUST PLAY //</p>
+  <p class="subtitle">🪙 ONE COIN · SHARED BY EVERY GAME · BALANCE SHOWN BOTTOM-LEFT</p>
 </header>
 
 <div class="tabs" id="tabs">
@@ -787,6 +788,35 @@
 <footer>© <span id="year"></span> Dratenzo Games · Built with love</footer>
 
 <script>
+/* ===== Dratenzo wallet: ONE coin balance shared by every game (same-origin localStorage) ===== */
+const Wallet = (() => {
+  const KEY = "dratenzo-wallet-v1";
+  let mem = { coins: 0, m: {} }, loaded = false, pill = null, pop = null, popT = 0;
+  const read = () => { if (loaded) return mem; loaded = true; try { const r = localStorage.getItem(KEY); if (r) { const d = JSON.parse(r); if (d && typeof d.coins === "number") mem = { coins: d.coins, m: d.m || {} }; } } catch (e) {} return mem; };
+  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} };
+  const css = "position:fixed;left:8px;bottom:8px;z-index:2147483000;background:rgba(15,20,35,.82);color:#ffd54a;border:1px solid rgba(255,213,74,.5);border-radius:999px;padding:4px 12px;font:700 14px system-ui,sans-serif;pointer-events:none;box-shadow:0 0 10px rgba(255,213,74,.25)";
+  function mount() {
+    if (pill || !document.body) return;
+    pill = document.createElement("div"); pill.id = "wallet-pill"; pill.style.cssText = css;
+    pop = document.createElement("div"); pop.style.cssText = css.replace("bottom:8px", "bottom:44px") + ";opacity:0;transition:opacity .3s;color:#9affb0;border-color:rgba(154,255,176,.5)";
+    document.body.appendChild(pill); document.body.appendChild(pop); api.refresh();
+  }
+  const api = {
+    get() { return Math.floor(read().coins); },
+    set(n) { read(); mem.coins = Math.max(0, Math.floor(n) || 0); write(); api.refresh(); },
+    add(n) { api.set(api.get() + n); },
+    earn(n, why) { n = Math.floor(n); if (!(n > 0)) return; api.add(n); api.pop("+" + n + " 🪙" + (why ? " " + why : "")); },
+    floor(n) { if (api.get() < n) api.set(n); },
+    migrate(game, legacy) { read(); if (mem.m[game]) return; mem.m[game] = 1; mem.coins += Math.max(0, Math.floor(legacy) || 0); write(); },
+    bind(obj, prop, game) { api.migrate(game, obj[prop]); Object.defineProperty(obj, prop, { get: () => api.get(), set: v => api.set(v), enumerable: true, configurable: true }); api.refresh(); },
+    refresh() { if (pill) pill.textContent = "🪙 " + api.get(); },
+    pop(t) { if (!pop) return; pop.textContent = t; pop.style.opacity = 1; clearTimeout(popT); popT = setTimeout(() => { pop.style.opacity = 0; }, 1400); },
+  };
+  window.addEventListener("storage", e => { if (e.key === KEY) { loaded = false; api.refresh(); } });
+  if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+  return api;
+})();
+/* ===== end wallet ===== */
 // ============================================================
 // GAME LIBRARY — add new entries here as you build more games.
 // Set `available: false` to show "Coming Soon" instead of a play button.

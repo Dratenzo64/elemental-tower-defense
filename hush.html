@@ -30,6 +30,8 @@
   .base { position: absolute; width: 22vmin; height: 22vmin; border-radius: 50%; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.3); display: none; transform: translate(-50%, -50%); }
   .knob { position: absolute; left: 50%; top: 50%; width: 9vmin; height: 9vmin; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
   #dashBtn { position: absolute; right: 12px; top: 56px; width: 76px; height: 76px; border-radius: 50%; opacity: .8; padding: 0; font-size: 14px; background: #7a3df0; }
+  .abBtn { position: absolute; right: 18px; width: 58px; height: 58px; border-radius: 50%; opacity: .85; padding: 0; font-size: 12px; display: none; background: #1f6f8f; }
+  body.touch .abBtn.own { display: block; }
   #pauseBtn { position: absolute; right: 12px; top: 10px; display: none; z-index: 2; background: #10131fcc; border: 1px solid #2d3555; padding: 6px 12px; font-size: 14px; margin: 0; min-height: 0; }
   body.play #pauseBtn { display: block; }
   #rotate { position: fixed; inset: 0; background: #05060b; z-index: 99; display: none; align-items: center; justify-content: center; text-align: center; font-size: 20px; padding: 30px; }
@@ -46,12 +48,42 @@
     <div class="zone" id="zl"><div class="base"><div class="knob"></div></div></div>
     <div class="zone" id="zr"><div class="base"><div class="knob"></div></div></div>
     <button id="dashBtn">DASH</button>
+    <button class="abBtn" id="abq" style="top:140px">NOVA</button><button class="abBtn" id="abe" style="top:204px">BLINK</button><button class="abBtn" id="abr" style="top:268px">STORM</button>
   </div>
   <button id="pauseBtn">❚❚</button>
   <div id="ui"></div>
   <div id="toast">Saved</div>
 </div></div>
 <script>
+/* ===== Dratenzo wallet: ONE coin balance shared by every game (same-origin localStorage) ===== */
+const Wallet = (() => {
+  const KEY = "dratenzo-wallet-v1";
+  let mem = { coins: 0, m: {} }, loaded = false, pill = null, pop = null, popT = 0;
+  const read = () => { if (loaded) return mem; loaded = true; try { const r = localStorage.getItem(KEY); if (r) { const d = JSON.parse(r); if (d && typeof d.coins === "number") mem = { coins: d.coins, m: d.m || {} }; } } catch (e) {} return mem; };
+  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} };
+  const css = "position:fixed;left:8px;bottom:8px;z-index:2147483000;background:rgba(15,20,35,.82);color:#ffd54a;border:1px solid rgba(255,213,74,.5);border-radius:999px;padding:4px 12px;font:700 14px system-ui,sans-serif;pointer-events:none;box-shadow:0 0 10px rgba(255,213,74,.25)";
+  function mount() {
+    if (pill || !document.body) return;
+    pill = document.createElement("div"); pill.id = "wallet-pill"; pill.style.cssText = css;
+    pop = document.createElement("div"); pop.style.cssText = css.replace("bottom:8px", "bottom:44px") + ";opacity:0;transition:opacity .3s;color:#9affb0;border-color:rgba(154,255,176,.5)";
+    document.body.appendChild(pill); document.body.appendChild(pop); api.refresh();
+  }
+  const api = {
+    get() { return Math.floor(read().coins); },
+    set(n) { read(); mem.coins = Math.max(0, Math.floor(n) || 0); write(); api.refresh(); },
+    add(n) { api.set(api.get() + n); },
+    earn(n, why) { n = Math.floor(n); if (!(n > 0)) return; api.add(n); api.pop("+" + n + " 🪙" + (why ? " " + why : "")); },
+    floor(n) { if (api.get() < n) api.set(n); },
+    migrate(game, legacy) { read(); if (mem.m[game]) return; mem.m[game] = 1; mem.coins += Math.max(0, Math.floor(legacy) || 0); write(); },
+    bind(obj, prop, game) { api.migrate(game, obj[prop]); Object.defineProperty(obj, prop, { get: () => api.get(), set: v => api.set(v), enumerable: true, configurable: true }); api.refresh(); },
+    refresh() { if (pill) pill.textContent = "🪙 " + api.get(); },
+    pop(t) { if (!pop) return; pop.textContent = t; pop.style.opacity = 1; clearTimeout(popT); popT = setTimeout(() => { pop.style.opacity = 0; }, 1400); },
+  };
+  window.addEventListener("storage", e => { if (e.key === KEY) { loaded = false; api.refresh(); } });
+  if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+  return api;
+})();
+/* ===== end wallet ===== */
 // ============================================================
 // HUSH — time only moves when you move.
 // Stand still and the world freezes: plan your route through a storm of frozen bullets,
@@ -68,7 +100,7 @@ function load() { try { const r = localStorage.getItem(SAVE_KEY); if (r) S = Obj
 const cv = document.getElementById("c"), ctx = cv.getContext("2d"), ui = document.getElementById("ui");
 const keys = new Set(), mouse = { x: W / 2, y: H / 2, down: false };
 const rnd = (a, b) => a + Math.random() * (b - a), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-let mode = "menu", P, enemies = [], bullets = [], knives = [], obs = [], fx = [], ts = .05, wave = 0, score = 0, combo = 0, comboT = 0, kills = 0, msg = "", msgT = 0, shake = 0, waveClear = 0, tm = 0, boost = 0, U = {}, flashRed = 0;
+let mode = "menu", P, enemies = [], bullets = [], knives = [], obs = [], fx = [], ts = .05, wave = 0, score = 0, combo = 0, comboT = 0, kills = 0, runCoins = 0, msg = "", msgT = 0, shake = 0, waveClear = 0, tm = 0, boost = 0, U = {}, flashRed = 0;
 
 // ---- upgrades ----
 const UPS = [
@@ -81,18 +113,45 @@ const UPS = [
   { id: "pierce", n: "Piercing Knives", d: "Knives fly through enemies", max: 1 },
   { id: "shock", n: "Shockwave", d: "Dashing erases nearby bullets", max: 1 },
   { id: "chill", n: "Cold Air", d: "Enemy bullets are 20% slower", max: 2 },
+  { id: "vamp", n: "Bloodthirst", d: "Heal 1 heart every few kills (fewer kills per level)", max: 2 },
+  { id: "aegis", n: "Aegis", d: "A shield absorbs one hit; it recharges every wave", max: 1 },
+  { id: "blades", n: "Orbit Blades", d: "+2 blades spin around you and slice enemies", max: 3 },
+  { id: "boom", n: "Volatile Knives", d: "Knife kills explode and hurt nearby enemies", max: 1 },
+  { id: "rush", n: "Bloodrush", d: "Dash kills instantly recharge your dash", max: 1 },
+  { id: "greed", n: "Greed", d: "+50% coins from kills", max: 2 },
+  { id: "deflect", n: "Deflect", d: "Knives destroy enemy bullets they touch", max: 1 },
+  { id: "deep", n: "Deep Freeze", d: "Time freezes completely when you stand still", max: 1 },
+  { id: "homing", n: "Homing Knives", d: "Knives curve toward the nearest enemy", max: 1 },
+  { id: "nova", n: "[Q] Nova", d: "Active: erase every bullet and stun all enemies 2s (18s cooldown)", max: 1 },
+  { id: "blink", n: "[E] Blink", d: "Active: teleport toward your aim, invulnerable briefly (5s cooldown)", max: 1 },
+  { id: "storm", n: "[R] Knife Storm", d: "Active: fire a ring of 16 knives (10s cooldown)", max: 1 },
 ];
 const has = id => U[id] || 0;
+const AB = { nova: { k: "q", cd: 18, n: "NOVA" }, blink: { k: "e", cd: 5, n: "BLINK" }, storm: { k: "r", cd: 10, n: "STORM" } };
+function syncAbBtns() { for (const id in AB) document.getElementById("ab" + AB[id].k).classList.toggle("own", !!has(id)); }
+function useAbility(id) {
+  if (mode !== "play" || !has(id) || P.ab[id] > 0) return;
+  P.ab[id] = AB[id].cd;
+  if (id === "nova") { bullets = bullets.filter(b => b.mine); for (const e of enemies) e.stun = 2; fx.push({ ring: true, x: P.x, y: P.y, r: 10, life: .5, max: 900, c: "#6ee7ff" }); shake = .25; boost = .3; say("NOVA", .6); }
+  else if (id === "blink") {
+    const a = aimAngle(); let d = 0; fx.push({ ring: true, x: P.x, y: P.y, r: 6, life: .3, max: 60, c: "#b08aff" });
+    for (let st = 10; st <= 320; st += 10) { const nx = P.x + Math.cos(a) * st, ny = P.y + Math.sin(a) * st; if (nx < 14 || nx > W - 14 || ny < 14 || ny > H - 14 || inObs(nx, ny, 12)) break; d = st; }
+    P.x += Math.cos(a) * d; P.y += Math.sin(a) * d; P.inv = Math.max(P.inv, .5); boost = .25; fx.push({ ring: true, x: P.x, y: P.y, r: 6, life: .3, max: 60, c: "#b08aff" });
+  } else if (id === "storm") {
+    for (let i = 0; i < 16; i++) { const b = i / 16 * 6.283; knives.push({ x: P.x + Math.cos(b) * 16, y: P.y + Math.sin(b) * 16, vx: Math.cos(b) * 820, vy: Math.sin(b) * 820, life: 1.1, bounce: has("ricochet") ? 4 : 0, mine: true, hit: new Set() }); }
+    boost = .3; shake = .2;
+  }
+}
 
 // ============================================================
 // RUN SETUP
 // ============================================================
 function newRun() {
-  U = {}; wave = 0; score = 0; combo = 0; kills = 0;
-  P = { x: W / 2, y: H / 2, hp: 3, max: 3, inv: 0, dash: 0, dx: 0, dy: 0, dashCd: 0, throwCd: 0, face: 0, trail: [] };
+  U = {}; wave = 0; score = 0; combo = 0; kills = 0; runCoins = 0;
+  P = { ab: { nova: 0, blink: 0, storm: 0 }, shield: 0, orb: 0, vk: 0, x: W / 2, y: H / 2, hp: 3, max: 3, inv: 0, dash: 0, dx: 0, dy: 0, dashCd: 0, throwCd: 0, face: 0, trail: [] };
   bullets = []; knives = []; fx = []; enemies = []; ts = .05;
   mode = "play"; document.body.classList.add("play"); ui.classList.remove("on");
-  tryFullscreen(); nextWave();
+  syncAbBtns(); tryFullscreen(); nextWave();
 }
 function tryFullscreen() { try { const el = document.documentElement; if (document.body.classList.contains("touch") && el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {})).catch(() => {}); } catch (e) {} }
 function makeObstacles() {
@@ -110,7 +169,7 @@ function makeObstacles() {
 }
 function nextWave() {
   wave++; makeObstacles(); bullets = []; knives = []; waveClear = 0;
-  P.x = W / 2; P.y = H / 2; P.dash = 0; P.inv = 1.5;
+  P.x = W / 2; P.y = H / 2; P.dash = 0; P.inv = 1.5; P.shield = has("aegis") ? 1 : 0;
   const boss = wave % 5 === 0, n = boss ? 4 : 3 + Math.floor(wave * 1.2);
   const pool = ["rusher", "gunner"]; if (wave >= 2) pool.push("gunner"); if (wave >= 3) pool.push("shotgun"); if (wave >= 4) pool.push("sniper"); if (wave >= 7) pool.push("shotgun", "sniper", "rusher");
   enemies = [];
@@ -140,6 +199,7 @@ addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   if (["w", "a", "s", "d", " ", "shift", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
   if ((k === " " || k === "shift") && !e.repeat) dash();
+  if (!e.repeat && mode === "play") for (const id in AB) if (AB[id].k === k) useAbility(id);
   if ((k === "escape" || k === "p") && !e.repeat) togglePause();
   keys.add(k);
 });
@@ -160,6 +220,7 @@ function setupStick(id, key) {
   z.addEventListener("pointerup", end); z.addEventListener("pointercancel", end);
 }
 setupStick("zl", "l"); setupStick("zr", "r");
+for (const id in AB) document.getElementById("ab" + AB[id].k).addEventListener("pointerdown", e => { e.preventDefault(); useAbility(id); });
 document.getElementById("dashBtn").addEventListener("pointerdown", e => { e.preventDefault(); dash(); });
 document.getElementById("pauseBtn").addEventListener("click", e => { e.stopPropagation(); togglePause(); });
 addEventListener("touchstart", () => document.body.classList.add("touch"), { once: true, passive: true });
@@ -192,13 +253,18 @@ function throwKnife() {
 function burst(x, y, n, c) { for (let i = 0; i < n; i++) { const a = rnd(0, 6.28), s = rnd(60, 320); fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rnd(.3, .8), c }); } }
 function hurt() {
   if (P.inv > 0 || mode !== "play") return;
+  if (P.shield > 0) { P.shield--; P.inv = .8; shake = .15; burst(P.x, P.y, 16, "#6ee7ff"); fx.push({ ring: true, x: P.x, y: P.y, r: 10, life: .35, max: 90, c: "#6ee7ff" }); return; }
   P.hp--; P.inv = 1.0; shake = .3; flashRed = .35; burst(P.x, P.y, 20, "#ff5a5a"); combo = 0;
   if (P.hp <= 0) gameOver();
 }
 function killEnemy(e, by, viaDash) {
   e.hp -= by; e.flash = .12;
   if (e.hp > 0) { burst(e.x, e.y, 6, "#fff"); return; }
-  kills++; combo++; comboT = 3; const pts = 10 * (e.type === "boss" ? 20 : 1) * Math.min(10, combo) * (viaDash ? 3 : 1); score += pts;
+  kills++; combo++; comboT = 3; { const c = Math.round((e.type === "boss" ? 25 : 1) * (viaDash ? 3 : 1) * (1 + .5 * has("greed"))); Wallet.add(c); runCoins += c; }
+  if (has("vamp") && ++P.vk >= 14 - 4 * has("vamp")) { P.vk = 0; if (P.hp < P.max) { P.hp++; say("+1 ♥", .6); } }
+  if (viaDash && has("rush")) P.dashCd = 0;
+  if (has("boom") && by === 1 && !viaDash) { fx.push({ ring: true, x: e.x, y: e.y, r: 8, life: .3, max: 90, c: "#ffb347" }); for (const o of enemies.slice()) if (o !== e && o.hp > 0 && dist(o, e) < 90) killEnemy(o, 2); }
+  const pts = 10 * (e.type === "boss" ? 20 : 1) * Math.min(10, combo) * (viaDash ? 3 : 1); score += pts;
   if (viaDash && msgT <= 0) say("DASH KILL  x3", .7);
   burst(e.x, e.y, e.type === "boss" ? 70 : 24, e.type === "boss" ? "#ff9ae0" : "#ff7a7a"); shake = Math.max(shake, e.type === "boss" ? .6 : .12); boost = Math.max(boost, .15);
 }
@@ -234,16 +300,20 @@ function update(dtReal) {
   pushOut(P, 12);
   P.trail.forEach(t => t.t -= dtReal); P.trail = P.trail.filter(t => t.t > 0);
   boost = Math.max(0, boost - dtReal);
-  const target = P.dash > 0 ? .7 : boost > 0 ? .55 : iv.m > 0 ? Math.max(.2, iv.m) : .05;
+  const target = P.dash > 0 ? .7 : boost > 0 ? .55 : iv.m > 0 ? Math.max(.2, iv.m) : has("deep") ? .005 : .05;
   ts += (target - ts) * Math.min(1, dtReal * 16);
   const dt = dtReal * ts;
   P.inv -= dtReal; P.dashCd -= dt; P.throwCd -= dt;
+  for (const id in P.ab) if (P.ab[id] > 0) P.ab[id] -= dtReal;
+  if (has("blades")) { P.orb += dtReal * 4; const n = 2 * has("blades"); for (let i = 0; i < n; i++) { const a = P.orb + i / n * 6.283, bx = P.x + Math.cos(a) * 46, by2 = P.y + Math.sin(a) * 46; for (const e of enemies) if (e.hp > 0 && (e.ob || 0) <= tm && Math.hypot(e.x - bx, e.y - by2) < e.r + 8) { e.ob = tm + .25; killEnemy(e, 1); } } }
   P.face = aimAngle();
   const wantThrow = mouse.down || (joy.r && Math.hypot(joy.r.dx, joy.r.dy) > .2);
   if (wantThrow && P.throwCd <= 0) throwKnife();
   comboT -= dt; if (comboT <= 0) combo = 0;
   // --- knives ---
   for (const k of knives) {
+    if (has("homing") && k.mine) { let best = null, bd = 1e9; for (const e of enemies) { const d = dist(e, k); if (e.hp > 0 && d < bd) { bd = d; best = e; } } if (best) { const sp = Math.hypot(k.vx, k.vy), cur = Math.atan2(k.vy, k.vx); let df = Math.atan2(best.y - k.y, best.x - k.x) - cur; df = Math.atan2(Math.sin(df), Math.cos(df)); const na = cur + Math.max(-1, Math.min(1, df)) * 6 * dt; k.vx = Math.cos(na) * sp; k.vy = Math.sin(na) * sp; } }
+    if (has("deflect")) bullets = bullets.filter(b => { if (b.mine) return true; if (dist(b, k) < 14) { burst(b.x, b.y, 3, "#9fe6ff"); return false; } return true; });
     const px = k.x, py = k.y; k.x += k.vx * dt; k.y += k.vy * dt; k.life -= dt;
     const rebound = () => { k.bounce--; k.life += .35; k.hit.clear(); burst(k.x, k.y, 3, "#9fd0ff"); };
     if (k.x < 0 || k.x > W) { if (k.bounce > 0) { rebound(); k.vx = -k.vx; k.x = Math.max(1, Math.min(W - 1, k.x)); } else k.life = 0; }
@@ -261,6 +331,7 @@ function update(dtReal) {
   // --- enemies ---
   for (const e of enemies) {
     e.flash -= dt; e.cd -= dt;
+    if (e.stun > 0) { e.stun -= dtReal; continue; }
     if (e.sp > 0) { e.sp -= dt; continue; }
     const a = Math.atan2(P.y - e.y, P.x - e.x), d = dist(e, P);
     const move = (ang, s) => { e.x += Math.cos(ang) * s * dt; e.y += Math.sin(ang) * s * dt; };
@@ -299,18 +370,19 @@ function update(dtReal) {
   }
   bullets = bullets.filter(b => b.life > 0);
   // --- wave flow ---
-  if (!enemies.length && waveClear === 0) { waveClear = 1; score += 50 * wave; say("Wave clear!", 1.4); bullets = []; setTimeout(() => { if (mode === "play") showUpgrades(); }, 900); }
+  if (!enemies.length && waveClear === 0) { waveClear = 1; score += 50 * wave; Wallet.add(5 * wave); runCoins += 5 * wave; say("Wave clear!  +" + 5 * wave + " 🪙", 1.4); bullets = []; setTimeout(() => { if (mode === "play") showUpgrades(); }, 900); }
 }
 function gameOver() {
   mode = "over"; document.body.classList.remove("play");
   S.runs++; const newBest = wave > S.bestWave || score > S.bestScore;
   S.bestWave = Math.max(S.bestWave, wave); S.bestScore = Math.max(S.bestScore, score); save(newBest);
-  show(`<h1 style="font-size:34px">YOU FROZE</h1><p>Reached wave <b>${wave}</b> · score <b>${score}</b> · ${kills} kills</p><p class="muted">Best: wave ${S.bestWave} · ${S.bestScore} points</p><button class="big" data-act="play">Try again</button> <button data-act="menu">Menu</button>`);
+  show(`<h1 style="font-size:34px">YOU FROZE</h1><p>Reached wave <b>${wave}</b> · score <b>${score}</b> · ${kills} kills</p><p class="muted">Coins earned this run: <b style="color:#ffd54a">${runCoins} 🪙</b> (added to your shared wallet)</p><p class="muted">Best: wave ${S.bestWave} · ${S.bestScore} points</p><button class="big" data-act="play">Try again</button> <button data-act="menu">Menu</button>`);
 }
 function showUpgrades() {
   mode = "upgrade"; document.body.classList.remove("play");
   const avail = UPS.filter(u => has(u.id) < u.max).sort(() => Math.random() - .5).slice(0, 3);
   P.hp = Math.min(P.max, P.hp + (wave % 2 === 0 ? 1 : 0));
+  if (!avail.length) { P.hp = P.max; mode = "play"; document.body.classList.add("play"); nextWave(); return; }
   show(`<h2>Wave ${wave} cleared</h2><p class="muted">Choose an upgrade. ${wave % 2 === 0 ? "You healed 1 heart." : ""}</p><div class="ups">${avail.map(u => `<button class="up" data-act="up" data-id="${u.id}"><b>${u.n}</b>${u.d}${has(u.id) ? `<br><span class="muted">level ${has(u.id)} → ${has(u.id) + 1}</span>` : ""}</button>`).join("")}</div>`);
 }
 
@@ -345,6 +417,9 @@ function draw() {
   ctx.globalAlpha = P.inv > 0 && Math.floor(P.inv * 16) % 2 ? .35 : 1;
   ctx.fillStyle = "#fff"; ctx.shadowColor = "#9ab8ff"; ctx.shadowBlur = 18; ctx.beginPath(); ctx.arc(P.x, P.y, 12, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
   ctx.strokeStyle = "#7ab0ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(P.x, P.y); ctx.lineTo(P.x + Math.cos(P.face) * 24, P.y + Math.sin(P.face) * 24); ctx.stroke(); ctx.lineWidth = 1; ctx.globalAlpha = 1;
+  if (P.shield > 0) { ctx.strokeStyle = "rgba(110,231,255,.8)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(P.x, P.y, 25, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+  if (has("blades")) { const n = 2 * has("blades"); ctx.fillStyle = "#9fe6ff"; ctx.shadowColor = "#9fe6ff"; ctx.shadowBlur = 10; for (let i = 0; i < n; i++) { const a = P.orb + i / n * 6.283; ctx.beginPath(); ctx.arc(P.x + Math.cos(a) * 46, P.y + Math.sin(a) * 46, 7, 0, 7); ctx.fill(); } ctx.shadowBlur = 0; }
+  for (const e of enemies) if (e.stun > 0) { ctx.strokeStyle = "rgba(110,231,255,.8)"; ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 6, 0, 7); ctx.stroke(); }
   if (P.dashCd > 0) { ctx.strokeStyle = "rgba(176,138,255,.8)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(P.x, P.y, 19, -Math.PI / 2, -Math.PI / 2 + 6.283 * (1 - P.dashCd / (1.3 * Math.pow(.7, has("dashcd"))))); ctx.stroke(); ctx.lineWidth = 1; }
   for (const p of fx) { ctx.globalAlpha = Math.max(0, p.life * 2); if (p.ring) { ctx.strokeStyle = p.c; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.stroke(); ctx.lineWidth = 1; } else { ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 4, 4); } } ctx.globalAlpha = 1;
   // frozen-time tint
@@ -361,9 +436,10 @@ function hud() {
   if (combo > 1) { ctx.fillStyle = "#ffd54a"; ctx.font = "bold 18px system-ui"; ctx.fillText(`x${Math.min(10, combo)} combo`, W / 2, 58); }
   ctx.textAlign = "right"; ctx.font = "13px system-ui"; ctx.fillStyle = "#93a0c8"; ctx.fillText(ts < .15 ? "TIME: FROZEN — move to make time pass" : ts > .9 ? "TIME: FLOWING" : "TIME: " + Math.round(ts * 100) + "%", W - 70, 24);
   ctx.fillStyle = "#1a2040"; ctx.fillRect(W - 250, 34, 180, 8); ctx.fillStyle = "#7a9bff"; ctx.fillRect(W - 250, 34, 180 * ts, 8);
+  { let i = 0; ctx.textAlign = "left"; ctx.font = "bold 14px system-ui"; for (const id in AB) if (has(id)) { const c = P.ab[id], x = 16 + i++ * 96, y = H - 44; ctx.fillStyle = c > 0 ? "#1a2040" : "#1f6f8f"; ctx.fillRect(x, y, 88, 26); if (c > 0) { ctx.fillStyle = "#2a4a70"; ctx.fillRect(x, y, 88 * (1 - c / AB[id].cd), 26); } ctx.fillStyle = "#fff"; ctx.fillText(`[${AB[id].k.toUpperCase()}] ${AB[id].n}`, x + 6, y + 18); } }
   if (msgT > 0) { ctx.textAlign = "center"; ctx.font = "bold 40px system-ui"; ctx.fillStyle = "#fff"; ctx.globalAlpha = Math.min(1, msgT); ctx.fillText(msg, W / 2, 130); ctx.globalAlpha = 1; }
   ctx.textAlign = "center"; ctx.font = "13px system-ui"; ctx.fillStyle = "rgba(255,255,255,.35)";
-  ctx.fillText(document.body.classList.contains("touch") ? "Left stick move · right stick aim + throw · DASH" : "WASD move · mouse aim · click throw · Space / right-click dash · P pause", W / 2, H - 10);
+  ctx.fillText(document.body.classList.contains("touch") ? "Left stick move · right stick aim + throw · DASH" : "WASD move · mouse aim · click throw · Space / right-click dash · Q/E/R abilities · P pause", W / 2, H - 10);
 }
 
 // ============================================================
