@@ -77,7 +77,7 @@ load();
 const cv = document.getElementById("c"), ctx = cv.getContext("2d"), ui = document.getElementById("ui");
 const keys = new Set();
 const rnd = (a, b) => a + Math.random() * (b - a), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-let plats = [], mode = "menu", P = null, enemies = [], bullets = [], fx = [], wave = 0, score = 0, combo = 0, comboT = 0, kills = 0, runCoins = 0, tm = 0, shake = 0, flash = 0, clearing = false, U = {}, msg = "", msgT = 0, deathWhy = "";
+let practice = false, tut = {}, plats = [], mode = "menu", P = null, enemies = [], bullets = [], fx = [], wave = 0, score = 0, combo = 0, comboT = 0, kills = 0, runCoins = 0, tm = 0, shake = 0, flash = 0, clearing = false, U = {}, msg = "", msgT = 0, deathWhy = "";
 const has = id => U[id] || 0;
 
 // ---- abilities you unlock between waves ----
@@ -96,13 +96,20 @@ const UPS = [
 ];
 
 // ---- run setup ----
-function newRun() {
+function newRun(prac) {
+  practice = !!prac; tut = {};
   U = {}; wave = 0; score = 0; combo = 0; kills = 0; runCoins = 0;
   P = { x: W / 2, y: 250, vx: 0, vy: 0, face: 1, hp: 3, max: 3, inv: 1.5, charges: 2, chCd: 0, smCd: 0, smT: 0, saved: false, peak: 250, totem: 0, alt: false, rod: 0, swapCd: 0 };
   enemies = []; bullets = []; fx = [];
   mode = "play"; document.body.classList.add("play"); ui.classList.remove("on");
-  document.getElementById("te").style.display = own("rod") ? "" : "none";
-  nextWave();
+  document.getElementById("te").style.display = own("rod") || practice ? "" : "none";
+  if (practice) setupPractice(); else nextWave();
+}
+const TUT = [["up", "Tap W: boost upward"], ["glide", "Hold A or D: glide sideways (speed gives lift)"], ["dive", "Hold S: dive to build speed"], ["hit", "SPACE next to a target: smash it (falls + speed = damage, hits launch you up)"], ["plat", "Land on a platform"], ["swap", "Press F: swap to your second smasher (no launch, rapid hits)"], ["pull", "Press E: the pull stick hooks the nearest target"]];
+function spawnPractice() { spawn(["drone", "shooter", "bruiser", "heavy"][Math.floor(Math.random() * 4)]); }
+function setupPractice() {
+  wave = 0; makePlats(); enemies = []; for (let i = 0; i < 3; i++) spawnPractice();
+  say("PRACTICE — nothing here can hurt you", 3);
 }
 function makePlats() {
   plats = []; const n = 3 + Math.floor(Math.random() * 3);
@@ -130,13 +137,14 @@ function spawn(type) {
 function say(t, d = 1.5) { msg = t; msgT = d; }
 
 // ---- input ----
-function dashUp() { if (mode !== "play" || P.charges < 1) return; P.charges--; if (P.chCd <= 0) P.chCd = .75; P.vy = -720; puff(P.x, P.y + 12, 8, "#bfe8ff"); }
-function swapMace() { if (mode !== "play" || P.swapCd > 0) return; P.swapCd = .3; P.alt = !P.alt; P.smCd = Math.min(P.smCd, .1); fx.push({ ring: true, x: P.x, y: P.y, r: 6, life: .3, max: 50, c: "#ffe27a" }); say(`${S.owner}'s ${maceLabel()}`, .8); }
+function dashUp() { if (mode !== "play" || P.charges < 1) return; tut.up = 1; P.charges--; if (P.chCd <= 0) P.chCd = .75; P.vy = -720; puff(P.x, P.y + 12, 8, "#bfe8ff"); }
+function swapMace() { if (mode !== "play" || P.swapCd > 0) return; tut.swap = 1; P.swapCd = .3; P.alt = !P.alt; P.smCd = Math.min(P.smCd, .1); fx.push({ ring: true, x: P.x, y: P.y, r: 6, life: .3, max: 50, c: "#ffe27a" }); say(`${S.owner}'s ${maceLabel()}`, .8); }
 function pull() {
-  if (mode !== "play" || !own("rod") || P.rod > 0) return;
+  if (mode !== "play" || !(own("rod") || practice) || P.rod > 0) return;
   let best = null, bd = 1e9; const rng = own("line") ? 560 : 440;
   for (const e of enemies) { const d = dist(e, P), side = (e.x - P.x) * P.face >= -30 ? 0 : 160; if (e.hp > 0 && d < rng && d + side < bd) { bd = d + side; best = e; } }
   P.rod = own("line") ? 1.6 : 2.8;
+  if (best) tut.pull = 1;
   if (!best) { fx.push({ line: true, x: P.x, y: P.y, x2: P.x + P.face * 200, y2: P.y - 20, life: .2 }); return; }
   const m = best.type === "boss" ? .35 : best.type === "heavy" ? .7 : 1;
   best.vx = (P.x - best.x) * 3.2 * m; best.vy = Math.min(0, (P.y - best.y) * 3.2 * m) - 120; best.wind = 0; best.armed = false;
@@ -152,6 +160,7 @@ function smash() {
   for (const e of enemies) if (e.hp > 0 && Math.hypot(e.x - cx, e.y - cy) < R + e.r) { hit = true; hurtEnemy(e, isC() && (e.type === "heavy" || e.type === "boss") ? dmg * 2 : dmg, cx, cy); if (e.hp > 0) { if (isC()) e.burn = 6; else if (isG() || own("ember")) e.burn = 4; } }
   const br = R * (has("wall") ? 1.9 : 1);
   bullets = bullets.filter(b => { if (Math.hypot(b.x - cx, b.y - cy) < br) { hit = true; puff(b.x, b.y, 3, "#9fe6ff"); return false; } return true; });
+  if (hit) tut.hit = 1;
   fx.push({ ring: true, x: cx, y: cy, r: 10, life: .35, max: R, c: "#9fe6ff" });
   puff(cx, cy, 14, "#dff6ff"); shake = Math.max(shake, hit ? .25 : .1);
   if (!isC()) { const gb = own("gust") ? 1.4 : 1; P.vy = hit ? -((isG() ? 640 : 380) * gb + has("reb") * 110 + Math.min(isG() ? 360 : 260, fall * .35)) : (isG() ? -260 : -170); P.peak = P.y; }   // the Crucible has no gust recoil
@@ -171,15 +180,15 @@ function hurtEnemy(e, dmg, cx, cy, burn) {
   e.hp -= dmg; e.flash = .12;
   if (!burn) { const a = Math.atan2(e.y - cy, e.x - cx); e.vx += Math.cos(a) * 320; e.vy += Math.sin(a) * 320; e.wind = 0; }
   if (e.hp > 0) { puff(e.x, e.y, 6, "#fff"); return; }
-  kills++; combo++; comboT = 3; S.kills++;
-  const c = e.type === "boss" ? 25 : e.type === "heavy" ? 3 : 1; Wallet.add(c); runCoins += c;
+  kills++; combo++; comboT = 3; if (!practice) S.kills++;
+  const c = e.type === "boss" ? 25 : e.type === "heavy" ? 3 : 1; if (!practice) { Wallet.add(c); runCoins += c; }
   score += 10 * (e.type === "boss" ? 15 : e.type === "heavy" ? 3 : 1) * Math.min(10, combo);
   puff(e.x, e.y, e.type === "boss" ? 60 : 20, "#ffcf6a"); shake = Math.max(shake, e.type === "boss" ? .6 : .15);
   if (has("chain")) { fx.push({ ring: true, x: e.x, y: e.y, r: 8, life: .3, max: 80, c: "#ffcf6a" }); for (const o of enemies) if (o !== e && o.hp > 0 && dist(o, e) < 80) hurtEnemy(o, 1, e.x, e.y); }
 }
 function puff(x, y, n, c) { for (let i = 0; i < n; i++) { const a = rnd(0, 6.28), s = rnd(40, 260); fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rnd(.25, .7), c }); } }
 function hurt(kx, ky, why) {
-  if (P.inv > 0 || mode !== "play") return;
+  if (P.inv > 0 || mode !== "play" || practice) return;
   P.hp--; P.inv = 1; flash = .35; shake = .3; combo = 0; P.vx = kx; P.vy = ky; puff(P.x, P.y, 16, "#ff6a6a");
   if (P.hp <= 0 && !totem()) die(why || "Slain");
 }
@@ -232,6 +241,7 @@ function update(dt) {
   if (mode !== "play") return;
   const dir = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
   const cruise = 300 * (1 + .25 * has("slip")), diving = keys.has("s") || keys.has("arrowdown"), pulling = keys.has("w") || keys.has("arrowup");
+  if (dir) tut.glide = 1; if (diving && P.vy > 300) tut.dive = 1; if (P.onP) tut.plat = 1;
   if (dir) { P.face = dir; if (Math.abs(P.vx) < cruise || Math.sign(P.vx) !== dir) P.vx += (dir * cruise - P.vx) * Math.min(1, dt * 4); else P.vx *= 1 - dt * .12; }
   else P.vx *= Math.max(0, 1 - dt * (Math.abs(P.vx) > 300 ? .4 : 1.5));
   // glide: horizontal speed gives lift
@@ -254,7 +264,8 @@ function update(dt) {
   comboT -= dt; if (comboT <= 0) combo = 0;
   // THE FLOOR
   if (P.y + 14 >= FLOOR) {
-    if (has("gust") && !P.saved) { P.saved = true; P.y = FLOOR - 16; P.vy = -760; P.inv = Math.max(P.inv, .8); fx.push({ ring: true, x: P.x, y: FLOOR, r: 10, life: .5, max: 160, c: "#ffe27a" }); say("SAFETY GUST!", .8); }
+    if (practice) { P.y = FLOOR - 16; P.vy = -760; fx.push({ ring: true, x: P.x, y: FLOOR, r: 10, life: .5, max: 160, c: "#ff6a6a" }); say("In a real run the floor KILLS you!", 1.2); }
+    else if (has("gust") && !P.saved) { P.saved = true; P.y = FLOOR - 16; P.vy = -760; P.inv = Math.max(P.inv, .8); fx.push({ ring: true, x: P.x, y: FLOOR, r: 10, life: .5, max: 160, c: "#ffe27a" }); say("SAFETY GUST!", .8); }
     else if (totem()) { /* saved */ } else { die(`${S.owner} hit the floor`); return; }
   }
   // enemies (on the ground for now)
@@ -298,9 +309,10 @@ function update(dt) {
   enemies = enemies.filter(e => e.hp > 0);
   for (const b of bullets) { b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt; if (b.x < -10 || b.x > W + 10 || b.y < -10 || b.y > FLOOR + 5) b.life = 0; else if (dist(b, P) < 15) { hurt(b.vx * .5, b.vy * .5, "Shot down"); if (P.inv > .9) b.life = 0; } }
   bullets = bullets.filter(b => b.life > 0);
-  if (!enemies.length && !clearing) { clearing = true; score += 50 * wave; Wallet.earn(5 * wave, "wave clear"); setTimeout(() => { if (mode === "play") showUpgrades(); }, 700); }
+  if (practice) { if (enemies.length < 3) spawnPractice(); }
+  else if (!enemies.length && !clearing) { clearing = true; score += 50 * wave; Wallet.earn(5 * wave, "wave clear"); setTimeout(() => { if (mode === "play") showUpgrades(); }, 700); }
 }
-function shoot(e, a, spd, n, spread) { for (let i = 0; i < n; i++) { const b = a + (i - (n - 1) / 2) * spread; bullets.push({ x: e.x, y: e.y, vx: Math.cos(b) * spd, vy: Math.sin(b) * spd, life: 6 }); } }
+function shoot(e, a, spd, n, spread) { if (practice) return; for (let i = 0; i < n; i++) { const b = a + (i - (n - 1) / 2) * spread; bullets.push({ x: e.x, y: e.y, vx: Math.cos(b) * spd, vy: Math.sin(b) * spd, life: 6 }); } }
 
 // ---- draw ----
 function draw() {
@@ -343,9 +355,10 @@ function draw() {
 function hud() {
   ctx.textAlign = "left"; ctx.font = "bold 22px system-ui";
   for (let i = 0; i < P.max; i++) { ctx.fillStyle = i < P.hp ? "#ff4a6a" : "#3a2a3a"; ctx.fillText("♥", 14 + i * 26, 30); }
-  ctx.fillStyle = "#eef2ff"; ctx.font = "bold 16px system-ui"; ctx.fillText(`Wave ${wave}`, 14, 54);
+  ctx.fillStyle = "#eef2ff"; ctx.font = "bold 16px system-ui"; ctx.fillText(practice ? "PRACTICE" : `Wave ${wave}`, 14, 54);
   for (let i = 0; i < 2 + has("dd"); i++) { ctx.fillStyle = i < P.charges ? "#9fe6ff" : "#26385c"; ctx.fillRect(14 + i * 22, 64, 18, 8); }
   if (own("rod")) { ctx.fillStyle = "#9fe6ff"; ctx.font = "12px system-ui"; ctx.fillText(P.rod > 0 ? "[E] pull stick …" : "[E] pull stick ready", 14, 114); }
+  if (practice) { ctx.textAlign = "right"; ctx.font = "bold 14px system-ui"; ctx.fillStyle = "#ffe27a"; ctx.fillText("LEARN THE MOVES  (P = pause / quit)", W - 14, 24); ctx.font = "13px system-ui"; TUT.forEach((t, i) => { ctx.fillStyle = tut[t[0]] ? "#6ee79a" : "#cfe4ff"; ctx.fillText((tut[t[0]] ? "✔ " : "• ") + t[1], W - 14, 46 + i * 20); }); ctx.textAlign = "left"; }
   if (P.totem) { ctx.fillStyle = "#ffe27a"; ctx.font = "bold 14px system-ui"; ctx.fillText("✦ TOTEM x" + P.totem, 110, 30); }
   ctx.fillStyle = "#26385c"; ctx.fillRect(14, 78, 80, 6); ctx.fillStyle = "#ff9a5a"; ctx.fillRect(14, 78, 80 * Math.max(0, Math.min(1, 1 - P.smCd / smCdMax())), 6);
   ctx.font = "13px system-ui"; ctx.fillStyle = "#9fe6ff"; ctx.fillText(`SPEED ${Math.round(Math.hypot(P.vx, P.vy))} · FALL ${Math.round(Math.max(0, P.y - P.peak))} → SMASH DMG ${smashDmg()}`, 14, 100);
@@ -364,7 +377,7 @@ function showMenu() {
     <p>Your name:<br><input id="ow" maxlength="14" value="${S.owner.replace(/"/g, "")}"></p>
     <p>Name your smasher:<br><input id="nm" maxlength="14" value="${S.name.replace(/"/g, "")}"></p>
     <p class="muted">Flight rules: fast sideways flight gives lift. <b>Hold S</b> to dive and build speed, hold A/D to swoop it into forward speed, <b>hold W</b> to pull up, tap W for a rocket boost. Smash damage grows with how far you fell and how fast you move. Kite the ground monsters, strike, rocket away.<br>SPACE smash · P pause · Touch the floor and you die.</p>
-    <button class="big" data-act="play">Play</button> <button data-act="shop">Shop</button>
+    <button class="big" data-act="play">Play</button> <button data-act="practice">Practice</button> <button data-act="shop">Shop</button>
     <p class="muted">Best wave: ${S.best} · Total kills: ${S.kills}</p>`);
 }
 const SHOP = [
@@ -394,7 +407,7 @@ function showUpgrades() {
 ui.addEventListener("click", e => {
   const t = e.target.closest("[data-act]"); if (!t) return;
   switch (t.dataset.act) {
-    case "play": { const nm = document.getElementById("nm"); const ow = document.getElementById("ow"); if (nm) { S.name = (nm.value.trim() || "Gust").slice(0, 14); if (ow) S.owner = (ow.value.trim() || "Player").slice(0, 14); save(); } newRun(); break; }
+    case "practice": case "play": { const nm = document.getElementById("nm"); const ow = document.getElementById("ow"); if (nm) { S.name = (nm.value.trim() || "Gust").slice(0, 14); if (ow) S.owner = (ow.value.trim() || "Player").slice(0, 14); save(); } newRun(t.dataset.act === "practice"); break; }
     case "menu": showMenu(); break;
     case "shop": showShop(); break;
     case "buy": { const id = t.dataset.id; if (own(id)) break; if (id === "line" && !own("rod")) { showShop("Buy the Pull Stick first."); break; } if (Wallet.get() < PRICE) { showShop("Not enough coins."); break; } Wallet.add(-PRICE); S.owned[id] = 1; save(); showShop("Bought " + SHOP.find(i => i.id === id).n + "!"); break; }
