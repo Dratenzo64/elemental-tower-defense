@@ -106,7 +106,7 @@ function newRun(prac) {
   if (practice) setupPractice(); else nextWave();
 }
 const TUT = [["up", "Tap W: boost upward"], ["glide", "Hold A or D: glide sideways (speed gives lift)"], ["dive", "Hold S: dive to build speed"], ["hit", "SPACE next to a target: smash it (falls + speed = damage, hits launch you up)"], ["plat", "Land on a platform"], ["swap", "Press F: swap to your second smasher (no launch, rapid hits)"], ["pull", "Press E: the pull stick hooks the nearest target"]];
-function spawnPractice() { spawn(["drone", "shooter", "bruiser", "heavy"][Math.floor(Math.random() * 4)]); }
+function spawnPractice() { spawn(["drone", "shooter", "bruiser", "glider", "heavy"][Math.floor(Math.random() * 5)]); }
 function setupPractice() {
   wave = 0; makePlats(); enemies = []; for (let i = 0; i < 3; i++) spawnPractice();
   say("PRACTICE — nothing here can hurt you", 3);
@@ -122,7 +122,7 @@ function nextWave() {
   wave++; clearing = false; bullets = []; makePlats();
   Object.assign(P, { x: W / 2, y: 250, vx: 0, vy: 0, inv: 1.5, saved: false, charges: 2 + has("dd") });
   const boss = wave % 5 === 0, n = boss ? 3 + Math.floor(wave / 5) : Math.min(14, 3 + Math.floor(wave * 1.3));
-  const pool = ["drone"]; if (wave >= 2) pool.push("shooter"); if (wave >= 3) pool.push("bruiser", "bruiser"); if (wave >= 6) pool.push("heavy"); if (wave >= 9) pool.push("bruiser", "heavy");
+  const pool = ["drone"]; if (wave >= 2) pool.push("shooter"); if (wave >= 3) pool.push("bruiser", "bruiser"); if (wave >= 4) pool.push("glider"); if (wave >= 8) pool.push("glider"); if (wave >= 6) pool.push("heavy"); if (wave >= 9) pool.push("bruiser", "heavy");
   enemies = [];
   if (boss) spawn("boss");
   for (let i = 0; i < n; i++) spawn(boss ? "drone" : pool[Math.floor(Math.random() * pool.length)]);
@@ -130,9 +130,9 @@ function nextWave() {
 }
 function spawn(type) {
   const sm = 1 + wave * .025;
-  const D = { drone: [2, 14, 100], shooter: [3, 16, 70], bruiser: [3, 18, 110], heavy: [8, 28, 75], boss: [26 + wave * 3, 46, 60] }[type];
+  const D = { drone: [2, 14, 100], shooter: [3, 16, 70], bruiser: [3, 18, 110], glider: [3, 16, 150], heavy: [8, 28, 75], boss: [26 + wave * 3, 46, 60] }[type];
   let x, t = 0; do { x = rnd(50, W - 50); t++; } while (Math.abs(x - P.x) < 260 && t < 40);
-  enemies.push({ type, x, y: FLOOR - D[1], vx: 0, vy: 0, hp: D[0], max: D[0], r: D[1], spd: D[2] * sm, cd: rnd(1, 2.4), wind: 0, armed: false, rad: type === "heavy" ? 130 : type === "boss" ? 170 : 88, ph: rnd(0, 6), n: 0, flash: 0 });
+  enemies.push({ st: 0, type, x, y: type === "glider" ? rnd(60, 150) : FLOOR - D[1], vx: 0, vy: 0, hp: D[0], max: D[0], r: D[1], spd: D[2] * sm, cd: rnd(1, 2.4), wind: 0, armed: false, rad: type === "glider" ? 70 : type === "heavy" ? 130 : type === "boss" ? 170 : 88, ph: rnd(0, 6), n: 0, flash: 0 });
 }
 function say(t, d = 1.5) { msg = t; msgT = d; }
 
@@ -178,7 +178,7 @@ function smashDmg() { const speed = Math.hypot(P.vx, P.vy), fall = Math.max(0, P
   return 1 + k + has("heavy") + Math.floor(fall / (400 * fd)) + Math.floor(speed / 1200); }
 function hurtEnemy(e, dmg, cx, cy, burn) {
   e.hp -= dmg; e.flash = .12;
-  if (!burn) { const a = Math.atan2(e.y - cy, e.x - cx); e.vx += Math.cos(a) * 320; e.vy += Math.sin(a) * 320; e.wind = 0; }
+  if (!burn) { const a = Math.atan2(e.y - cy, e.x - cx); e.vx += Math.cos(a) * 320; e.vy += Math.sin(a) * 320; e.wind = 0; if (e.type === "glider") e.st = 3; }
   if (e.hp > 0) { puff(e.x, e.y, 6, "#fff"); return; }
   kills++; combo++; comboT = 3; if (!practice) S.kills++;
   const c = e.type === "boss" ? 25 : e.type === "heavy" ? 3 : 1; if (!practice) { Wallet.add(c); runCoins += c; }
@@ -273,10 +273,10 @@ function update(dt) {
     e.flash -= dt; e.cd -= dt; e.ph += dt;
     if (e.burn > 0) { e.burn -= dt; e.bt = (e.bt || 0) + dt; if (e.bt >= .8) { e.bt = 0; hurtEnemy(e, 1, e.x, e.y, true); } if (e.hp <= 0) continue; }
     e.x += e.vx * dt; e.vx *= Math.max(0, 1 - dt * (e.vy === 0 ? 4 : .3));
-    const eyPrev = e.y; e.vy += 1500 * dt; e.y += e.vy * dt;
+    const eyPrev = e.y; if (e.type !== "glider") e.vy += 1500 * dt; else e.vy *= Math.max(0, 1 - dt * 3); e.y += e.vy * dt;
     const gy = FLOOR - e.r; let onG = false;
     if (e.y >= gy) { e.y = gy; e.vy = 0; onG = true; e.armed = false; }
-    else if (e.vy >= 0) for (const pl of plats) if (eyPrev + e.r <= pl.y + 3 && e.y + e.r >= pl.y && e.x > pl.x && e.x < pl.x + pl.w) { e.y = pl.y - e.r; e.vy = 0; onG = true; e.armed = false; break; }
+    else if (e.vy >= 0 && e.type !== "glider") for (const pl of plats) if (eyPrev + e.r <= pl.y + 3 && e.y + e.r >= pl.y && e.x > pl.x && e.x < pl.x + pl.w) { e.y = pl.y - e.r; e.vy = 0; onG = true; e.armed = false; break; }
     e.x = Math.max(20, Math.min(W - 20, e.x));
     const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1, a = Math.atan2(dy, dx), sg = Math.sign(dx) || 1;
     const walk = s2 => { if (onG && e.wind <= 0) e.x += sg * s2 * dt; };
@@ -284,6 +284,22 @@ function update(dt) {
       walk(e.spd * 1.1);
       if (onG && e.cd <= 0 && Math.abs(dx) < 240) { e.vy = -520; e.vx = sg * 160; e.cd = rnd(1.1, 2); }
       if (d < e.r + 14) hurt(Math.cos(a) * 300, Math.sin(a) * 300 - 80, "Slain by a crawler");
+    } else if (e.type === "glider") {
+      // winged hammer fighter: circles high, telegraphs, then dives to smash you
+      if (e.st === 0) {
+        const tx = P.x + Math.cos(e.ph * .8) * 230, ty = Math.max(50, Math.min(170, P.y - 230)), ddx = tx - e.x, ddy = ty - e.y, dd = Math.hypot(ddx, ddy) || 1;
+        e.x += ddx / dd * Math.min(dd * 3, e.spd * 1.3) * dt; e.y += ddy / dd * Math.min(dd * 3, e.spd * 1.3) * dt;
+        if (e.cd <= 0 && Math.abs(e.y - ty) < 60) { e.st = 1; e.wind = .6; }
+      } else if (e.st === 1) {
+        e.wind -= dt; e.da = a;
+        if (e.wind <= 0) { e.st = 2; e.t = 0; e.dvx = Math.cos(e.da) * 640; e.dvy = Math.sin(e.da) * 640; }
+      } else if (e.st === 2) {
+        e.x += e.dvx * dt; e.y += e.dvy * dt; e.t += dt;
+        if (d < e.rad + e.r - 20) {
+          fx.push({ ring: true, x: e.x, y: e.y, r: 10, life: .35, max: e.rad, c: "#7ad8ff" }); shake = Math.max(shake, .25);
+          hurt(Math.cos(a) * 640, Math.sin(a) * 640 - 100, `${S.owner} was dive-smashed`); e.st = 3; e.cd = 2.4;
+        } else if (e.t > 1.1 || e.y > FLOOR - e.r - 6 || e.x < 10 || e.x > W - 10) { e.y = Math.min(e.y, FLOOR - e.r - 6); e.st = 3; e.cd = 2.2; }
+      } else { e.y -= 280 * dt; if (e.y < 160) e.st = 0; }
     } else if (e.type === "shooter") {
       if (Math.abs(dx) < 320) walk(-e.spd); else if (Math.abs(dx) > 520) walk(e.spd);
       if (e.cd <= 0) { e.cd = 1.7; e.n = .4; } if (e.n > 0) { e.n -= dt; if (e.n <= 0) shoot(e, a, 260, 1, 0); }
@@ -328,10 +344,11 @@ function draw() {
   for (const pl of plats) { ctx.fillStyle = "#4a6fa8"; ctx.fillRect(pl.x, pl.y, pl.w, pl.h); ctx.fillStyle = "#9fd0ff"; ctx.fillRect(pl.x, pl.y, pl.w, 4); }
   for (const e of enemies) {
     ctx.save(); ctx.translate(e.x, e.y);
-    const col = e.flash > 0 ? "#fff" : { drone: "#ff7a7a", shooter: "#ffa03a", bruiser: "#ff5ad8", heavy: "#c25aff", boss: "#ff3a7a" }[e.type];
+    const col = e.flash > 0 ? "#fff" : { drone: "#ff7a7a", shooter: "#ffa03a", bruiser: "#ff5ad8", glider: "#7ad8ff", heavy: "#c25aff", boss: "#ff3a7a" }[e.type];
     ctx.shadowColor = col; ctx.shadowBlur = 12; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, e.r, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
     ctx.fillStyle = "#14081f"; ctx.beginPath(); ctx.arc(0, 0, e.r * .55, 0, 7); ctx.fill();
-    if (e.type === "bruiser" || e.type === "heavy" || e.type === "boss") { ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(e.r * .6, -e.r * .6); ctx.lineTo(e.r * 1.4, -e.r * 1.4); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(e.r * 1.5, -e.r * 1.5, 6 + e.r * .15, 0, 7); ctx.fill(); }
+    if (e.type === "glider") { ctx.fillStyle = e.flash > 0 ? "#fff" : "#4aa8d8"; ctx.beginPath(); ctx.moveTo(-4, -2); ctx.lineTo(-34, -16 + Math.sin(tm * 12) * 5); ctx.lineTo(-30, 8); ctx.fill(); ctx.beginPath(); ctx.moveTo(4, -2); ctx.lineTo(34, -16 + Math.sin(tm * 12) * 5); ctx.lineTo(30, 8); ctx.fill(); }
+    if (e.type === "bruiser" || e.type === "glider" || e.type === "heavy" || e.type === "boss") { ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(e.r * .6, -e.r * .6); ctx.lineTo(e.r * 1.4, -e.r * 1.4); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(e.r * 1.5, -e.r * 1.5, 6 + e.r * .15, 0, 7); ctx.fill(); }
     ctx.restore();
     if (e.burn > 0) { ctx.fillStyle = `rgba(255,${120 + Math.floor(Math.random() * 80)},40,.8)`; for (let i = 0; i < 3; i++) ctx.fillRect(e.x + (Math.random() - .5) * e.r * 1.6, e.y - e.r - Math.random() * 14, 5, 8); }
     if (e.wind > 0) { ctx.strokeStyle = `rgba(255,120,90,${.4 + .4 * Math.sin(tm * 30)})`; ctx.lineWidth = 3; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.arc(e.x, e.y, e.rad, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; }
