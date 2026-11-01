@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>DRAGONBOND</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070f; color: #eaf3ff; font-family: system-ui, sans-serif; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { position: relative; width: min(100vw, 160vh); aspect-ratio: 16 / 10; }
+  canvas { width: 100%; height: 100%; display: block; background: #1c3a22; }
+  #ui { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(4,7,16,.88); overflow: auto; }
+  #ui.on { display: flex; }
+  .panel { max-width: 660px; max-height: 100%; padding: 18px; text-align: center; box-sizing: border-box; }
+  h1 { font-size: 46px; margin: 0 0 6px; letter-spacing: 3px; color: #ffb25a; text-shadow: 0 0 18px #ff6a2a; }
+  h2 { margin: 0 0 8px; }
+  .muted { color: #8fa3c8; font-size: 14px; line-height: 1.5; }
+  button { font: inherit; font-weight: 700; color: #fff; background: #2a6fe0; border: 0; border-radius: 10px; padding: 9px 18px; margin: 5px; cursor: pointer; }
+  button.red { background: #c0364a; } button.big { font-size: 20px; padding: 14px 34px; background: #d8642a; }
+  input { font: inherit; font-size: 17px; padding: 7px 12px; border-radius: 8px; border: 2px solid #3a5aa8; background: #0e1630; color: #fff; text-align: center; width: 220px; }
+  .ups { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .up { width: 180px; background: #121c3c; border: 2px solid #3a5aa8; text-align: left; font-weight: 400; font-size: 13px; line-height: 1.4; }
+  .up b { display: block; font-size: 16px; margin-bottom: 4px; }
+  #touch { position: absolute; inset: 0; display: none; pointer-events: none; }
+  body.touch.play #touch { display: block; }
+  #zl { position: absolute; left: 0; bottom: 0; width: 45%; height: 75%; touch-action: none; pointer-events: auto; }
+  .base { position: absolute; width: 22vmin; height: 22vmin; border-radius: 50%; background: rgba(255,255,255,.1); border: 2px solid rgba(255,255,255,.3); display: none; transform: translate(-50%, -50%); }
+  .knob { position: absolute; left: 50%; top: 50%; width: 9vmin; height: 9vmin; border-radius: 50%; background: rgba(255,255,255,.45); transform: translate(-50%, -50%); }
+  #touch button { position: absolute; pointer-events: auto; width: 54px; height: 54px; border-radius: 50%; opacity: .78; padding: 0; margin: 0; font-size: 12px; touch-action: none; }
+  #pauseBtn { position: absolute; left: 8px; top: 90px; display: none; background: #10182fcc; padding: 4px 10px; margin: 0; font-size: 14px; }
+  body.play #pauseBtn { display: block; }
+</style></head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="c" width="960" height="600"></canvas>
+  <div id="touch">
+    <div id="zl"><div class="base"><div class="knob"></div></div></div>
+    <button id="bA" style="right:8px;bottom:8px;width:68px;height:68px;background:#d8482e">BREATH</button>
+    <button id="bS" style="right:84px;bottom:8px;background:#7a5ac8">DASH</button>
+    <button id="bSp" style="right:140px;bottom:8px;background:#2a8ab8">SWEEP</button>
+    <button id="bQ" style="right:196px;bottom:8px;background:#2a8a6a">ROAR</button>
+    <button id="bE" style="right:84px;bottom:64px;background:#2a8a6a">SHLD</button>
+    <button id="bR" style="right:140px;bottom:64px;background:#a83a6a">NOVA</button>
+    <button id="bF" style="right:8px;bottom:84px;background:#d8862e">F</button>
+    <button id="bC" style="right:8px;bottom:140px;background:#d8862e">C</button>
+    <button id="bV" style="right:8px;bottom:196px;background:#d8862e">V</button>
+    <button id="bEl" style="right:64px;bottom:140px;background:#555">ELEM</button>
+    <button id="bK" style="right:64px;bottom:196px;background:#555">DEN</button>
+  </div>
+  <button id="pauseBtn">❚❚</button>
+  <div id="ui"></div>
+</div></div>
+<script>
+/* ===== Dratenzo wallet: ONE coin balance shared by every game (same-origin localStorage) ===== */
+const Wallet = (() => {
+  const KEY = "dratenzo-wallet-v1";
+  let mem = { coins: 0, m: {} }, loaded = false, pill = null, pop = null, popT = 0;
+  const read = () => { if (loaded) return mem; loaded = true; try { const r = localStorage.getItem(KEY); if (r) { const d = JSON.parse(r); if (d && typeof d.coins === "number") mem = { coins: d.coins, m: d.m || {} }; } } catch (e) {} return mem; };
+  const write = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) {} };
+  const css = "position:fixed;left:8px;bottom:8px;z-index:2147483000;background:rgba(15,20,35,.82);color:#ffd54a;border:1px solid rgba(255,213,74,.5);border-radius:999px;padding:4px 12px;font:700 14px system-ui,sans-serif;pointer-events:none;box-shadow:0 0 10px rgba(255,213,74,.25)";
+  function mount() {
+    if (pill || !document.body) return;
+    pill = document.createElement("div"); pill.id = "wallet-pill"; pill.style.cssText = css;
+    pop = document.createElement("div"); pop.style.cssText = css.replace("bottom:8px", "bottom:44px") + ";opacity:0;transition:opacity .3s;color:#9affb0;border-color:rgba(154,255,176,.5)";
+    document.body.appendChild(pill); document.body.appendChild(pop); api.refresh();
+  }
+  const api = {
+    get() { return Math.floor(read().coins); },
+    set(n) { read(); mem.coins = Math.max(0, Math.floor(n) || 0); write(); api.refresh(); },
+    add(n) { api.set(api.get() + n); },
+    earn(n, why) { n = Math.floor(n); if (!(n > 0)) return; api.add(n); api.pop("+" + n + " 🪙" + (why ? " " + why : "")); },
+    floor(n) { if (api.get() < n) api.set(n); },
+    migrate(game, legacy) { read(); if (mem.m[game]) return; mem.m[game] = 1; mem.coins += Math.max(0, Math.floor(legacy) || 0); write(); },
+    bind(obj, prop, game) { api.migrate(game, obj[prop]); Object.defineProperty(obj, prop, { get: () => api.get(), set: v => api.set(v), enumerable: true, configurable: true }); api.refresh(); },
+    refresh() { if (pill) pill.textContent = "🪙 " + api.get(); },
+    pop(t) { if (!pop) return; pop.textContent = t; pop.style.opacity = 1; clearTimeout(popT); popT = setTimeout(() => { pop.style.opacity = 0; }, 1400); },
+  };
+  window.addEventListener("storage", e => { if (e.key === KEY) { loaded = false; api.refresh(); } });
+  if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+  return api;
+})();
+/* ===== end wallet ===== */
+
+
+const VW = 960, VH = 600, WW = 2400, WH = 1600;
+const SAVE_KEY = "dragonbond-save-v2";
+const cv = document.getElementById("c"), ctx = cv.getContext("2d"), ui = document.getElementById("ui");
+const rnd = (a, b) => a + Math.random() * (b - a), dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- save ----------
+let S = null;
+const defaultSave = () => ({ has: false, dname: "Ember", el: "fire", start: "fire", xp: 0, lvl: 1, pts: 0, rank: {}, learned: {}, chests: {}, boss: false, kills: 0 });
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+function load() { try { const r = localStorage.getItem(SAVE_KEY); if (r) return Object.assign(defaultSave(), JSON.parse(r)); } catch (e) {} return null; }
+
+// ---------- elements ----------
+const EORDER = ["fire", "ice", "storm", "earth", "venom", "shadow", "light"];
+const ELS = {
+  fire: { n: "Fire", c: "#ff7a2a", c2: "#ffd36a", b: "Flame Breath", st: "burns enemies" },
+  ice: { n: "Ice", c: "#7ad8ff", c2: "#e8fbff", b: "Frost Breath", st: "slows enemies" },
+  storm: { n: "Storm", c: "#c28aff", c2: "#fff27a", b: "Lightning Breath", st: "chains between enemies" },
+  earth: { n: "Earth", c: "#a8803a", c2: "#d8c08a", b: "Stone Spray", st: "heavy knockback" },
+  venom: { n: "Venom", c: "#6ad84a", c2: "#d8ff8a", b: "Toxic Spit", st: "poisons enemies" },
+  shadow: { n: "Shadow", c: "#7a4ac8", c2: "#c8a8ff", b: "Shadow Flame", st: "steals life" },
+  light: { n: "Light", c: "#ffe27a", c2: "#ffffff", b: "Radiant Breath", st: "heals you, smites bosses" },
+};
+const elLevel = k => { if (k === S.start) return 1; const others = EORDER.filter(x => x !== S.start); return [2, 3, 4, 5, 6, 8][others.indexOf(k)]; };
+const elUnlocked = k => S.lvl >= elLevel(k);
+const WEAK = { goblin: { fire: 1.5, light: 1.3, earth: .7 }, wolf: { ice: 1.5, storm: 1.3, shadow: .7 }, imp: { light: 1.5, earth: 1.3, shadow: .7 }, golem: { storm: 1.5, ice: 1.3, earth: .5, venom: .7 }, boss: { light: 1.3, fire: 1.1, shadow: .6, venom: .8 } };
+
+// ---------- generic powers ----------
+const POW = {
+  breath: { n: "Breath", req: 1, key: "Click", d: "Hold to unleash your element in a stream.", cd: 0 },
+  dash: { n: "Wing Dash", req: 2, key: "Shift", d: "An invulnerable charge that hurts and applies your element.", cd: 2.5 },
+  sweep: { n: "Tail Sweep", req: 3, key: "Space", d: "A spinning elemental tail strike around you.", cd: 3 },
+  roar: { n: "Roar", req: 4, key: "Q", d: "Stuns every enemy nearby for 3 seconds.", cd: 12 },
+  shield: { n: "Scale Shield", req: 5, key: "E", d: "Scales harden and absorb all damage for a few seconds.", cd: 6 },
+  nova: { n: "Elemental Nova", req: 7, key: "R", d: "A huge explosion of your element. Costs 30 energy.", cd: 25 },
+};
+const PORD = ["breath", "dash", "sweep", "roar", "shield", "nova"];
+const SLOTS = ["f", "c", "v"], SREQ = [3, 5, 8], SCOST = [15, 20, 35];
+// signature elemental skills: [name, description, cooldown]
+const SIG = {
+  fire: [["Fireball", "A blazing fireball that explodes on impact.", 4], ["Flame Wall", "A wall of fire that burns anything crossing it.", 9], ["Meteor Rain", "Call meteors down on the cursor.", 18]],
+  ice: [["Ice Lance", "A piercing shard that freezes whoever it hits.", 4], ["Frost Ring", "A freezing burst around you that slows enemies.", 8], ["Blizzard", "A storm zone at the cursor that damages and slows.", 18]],
+  storm: [["Chain Lightning", "A bolt that jumps between up to 6 enemies.", 5], ["Thunder Strike", "Lightning smites the cursor, stunning the area.", 9], ["Storm Cloud", "A cloud follows you, zapping enemies for 7s.", 18]],
+  earth: [["Boulder", "A heavy boulder with huge knockback.", 5], ["Quake", "The ground shakes, damaging and stunning all around.", 10], ["Stone Armor", "Take 70% less damage for 6s and heal a bit.", 20]],
+  venom: [["Acid Spit", "A glob that leaves a poison puddle.", 4], ["Toxic Cloud", "A lingering poison cloud around you.", 9], ["Plague", "Poisons every enemy in a wide range.", 18]],
+  shadow: [["Shadow Bolt", "A homing bolt that steals life.", 4], ["Shadow Step", "Teleport toward the cursor with a burst.", 7], ["Eclipse", "Darkness stuns and damages all nearby enemies.", 20]],
+  light: [["Radiant Beam", "An instant beam that pierces everything in a line.", 5], ["Healing Light", "Restore 35% of your health.", 14], ["Solar Flare", "A blinding flare: big damage and a stun.", 20]],
+};
+const lvlNeed = l => 40 + 40 * (l - 1);
+const MAXL = 10;
+const canUse = id => (tr && tr.id === id) || S.lvl >= POW[id].req || !!S.learned[id];
+const rank = id => S.rank[id] || 0;
+const skUnlocked = i => S.lvl >= SREQ[i];
+const sm = i => (1 + .25 * rank(S.el + i)) * (1 + S.lvl * .07);
+
+// ---------- world ----------
+const TRAIN = { x: 80, y: 1050, w: 620, h: 470 };
+const LAIR = { x: 1760, y: 60, w: 600, h: 450 };
+const rects = [];
+const R = (x, y, w, h, k) => rects.push({ x, y, w, h, k });
+R(950, 450, 520, 380, "water"); R(1650, 1050, 520, 330, "water");
+R(0, 340, 700, 50, "cliff");
+R(1750, 60, 30, 240, "cliff"); R(1750, 400, 30, 110, "cliff"); R(1750, 480, 620, 30, "cliff");
+R(200, 40, 220, 20, "cliff"); R(200, 240, 220, 20, "cliff"); R(200, 40, 20, 220, "cliff"); R(400, 40, 20, 220, "cliff");
+for (const [x, y] of [[760, 700], [1100, 1100], [1500, 650], [540, 880], [1300, 1350], [880, 300], [2050, 900], [1900, 1480]]) R(x, y, 64, 64, "rock");
+const CHESTS = [{ id: "c1", x: 1210, y: 640 }, { id: "c2", x: 1910, y: 1215 }, { id: "c3", x: 310, y: 150 }, { id: "c4", x: 2250, y: 420 }];
+const CAMPS = [
+  ["goblin", 800, 250], ["goblin", 900, 1100], ["goblin", 1200, 1200], ["goblin", 500, 700], ["goblin", 1500, 850],
+  ["wolf", 600, 520], ["wolf", 1300, 1000], ["wolf", 1100, 250],
+  ["imp", 1500, 300], ["imp", 2000, 800], ["imp", 1500, 1450],
+  ["golem", 1650, 350], ["golem", 2050, 1500], ["golem", 1300, 1480],
+  ["boss", 2150, 280],
+];
+const PADS = [["breath", 160], ["dash", 280], ["sweep", 400], ["roar", 520], ["shield", 640]].map(([id, x]) => ({ id, x, y: 1450, r: 40 }));
+const decor = []; { let sd = 7; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let i = 0; i < 380; i++) decor.push({ x: rr() * WW, y: rr() * WH, s: 2 + rr() * 4 }); }
+const solidAt = (x, y, r) => rects.some(b => x > b.x - r && x < b.x + b.w + r && y > b.y - r && y < b.y + b.h + r);
+
+const ETYPES = {
+  goblin: { hp: 34, r: 14, spd: 95, dmg: 8, xp: 8, coin: 2, c: "#7ac24a" },
+  wolf: { hp: 28, r: 14, spd: 150, dmg: 10, xp: 10, coin: 2, c: "#9aa0b0" },
+  imp: { hp: 24, r: 12, spd: 85, dmg: 7, xp: 11, coin: 3, c: "#e0508a" },
+  golem: { hp: 150, r: 28, spd: 55, dmg: 22, xp: 34, coin: 8, c: "#8a7a6a" },
+  boss: { hp: 1100, r: 52, spd: 90, dmg: 25, xp: 400, coin: 0, c: "#6a2a9a" },
+  target: { hp: 22, r: 18, spd: 0, dmg: 0, xp: 0, coin: 0, c: "#ffd54a" },
+  walker: { hp: 999, r: 15, spd: 50, dmg: 0, xp: 0, coin: 0, c: "#c8a878" },
+};
+
+// ---------- state ----------
+let mode = "title", P = null, enemies = [], shots = [], fx = [], floats = [], zones = [], timers = [], camps = [], tr = null, msg = "", msgT = 0, tm = 0, shake = 0, flash = 0, padT = 0, padId = null, touch = false, dim = 0;
+const cam = { x: 0, y: 0 };
+const keys = new Set(), mouse = { x: VW / 2, y: VH / 2, down: false };
+let cd = {};
+const say = (t, d = 2.2) => { msg = t; msgT = d; };
+const el = () => ELS[S.el];
+const hpMax = () => 150 + 20 * S.lvl;
+const enMax = () => 100 + 8 * S.lvl;
+
+function newPlayer() {
+  P = { x: 400, y: 1250, hp: hpMax(), en: enMax(), face: 0, inv: 0, dashT: 0, ddx: 0, ddy: 0, shieldT: 0, armorT: 0, trail: [], hit: new Set(), flap: 0, elCd: 0 };
+  cd = {};
+}
+function spawnEnemy(type, x, y, extra) {
+  const T = ETYPES[type];
+  const e = Object.assign({ type, x, y, hx: x, hy: y, hp: T.hp, max: T.hp, r: T.r, cd: rnd(.5, 1.5), flash: 0, burn: 0, slow: 0, stun: 0, poison: 0, vx: 0, vy: 0, st: 0, t: 0, ph: 0 }, extra || {});
+  enemies.push(e); return e;
+}
+function setupWorld() {
+  enemies = []; shots = []; fx = []; floats = []; zones = []; timers = []; tr = null; padT = 0; padId = null;
+  camps = CAMPS.map(([type, x, y]) => ({ type, x, y, e: null, t: 0 }));
+  for (const c of camps) if (!(c.type === "boss" && S.boss)) c.e = spawnEnemy(c.type, c.x, c.y);
+}
+function startGame() { newPlayer(); setupWorld(); mode = "play"; ui.classList.remove("on"); document.body.classList.add("play"); say(`You are ${S.dname}, the ${el().n} dragon!`, 3); }
+
+// ---------- input ----------
+addEventListener("keydown", e => {
+  if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright", "tab"].includes(k)) e.preventDefault();
+  if (!e.repeat && mode === "play") {
+    if (k === "shift") dashAct(); if (k === " ") sweepAct(); if (k === "q") roarAct(); if (k === "e") shieldAct(); if (k === "r") novaAct();
+    if (k === "f") skill(0); if (k === "c") skill(1); if (k === "v") skill(2);
+    if (k === "tab") cycleEl(); if (/^[1-7]$/.test(k)) setEl(EORDER[+k - 1]);
+    if (k === "k") openDen(); if (k === "p" || k === "escape") pauseGame();
+  } else if (!e.repeat && (mode === "den" || mode === "pause") && (k === "k" || k === "escape" || k === "p")) resumeGame();
+  keys.add(k);
+});
+addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+addEventListener("blur", () => { keys.clear(); mouse.down = false; if (mode === "play") pauseGame(); });
+function setMouse(e) { const r = cv.getBoundingClientRect(); mouse.x = (e.clientX - r.left) * VW / r.width; mouse.y = (e.clientY - r.top) * VH / r.height; }
+cv.addEventListener("mousemove", setMouse);
+cv.addEventListener("mousedown", e => { setMouse(e); if (e.button === 0) mouse.down = true; });
+addEventListener("mouseup", () => { mouse.down = false; });
+cv.addEventListener("contextmenu", e => e.preventDefault());
+const joy = { l: null };
+function setupStick() {
+  const z = document.getElementById("zl"), base = z.querySelector(".base"), knob = z.querySelector(".knob");
+  z.addEventListener("pointerdown", e => { touch = true; document.body.classList.add("touch"); z.setPointerCapture(e.pointerId); const r = z.getBoundingClientRect(); joy.l = { id: e.pointerId, ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 }; base.style.display = "block"; base.style.left = (e.clientX - r.left) + "px"; base.style.top = (e.clientY - r.top) + "px"; knob.style.transform = "translate(-50%,-50%)"; });
+  z.addEventListener("pointermove", e => { if (!joy.l || joy.l.id !== e.pointerId) return; const m = 60; let dx = e.clientX - joy.l.ox, dy = e.clientY - joy.l.oy; const l = Math.hypot(dx, dy); if (l > m) { dx = dx / l * m; dy = dy / l * m; } joy.l.dx = dx / m; joy.l.dy = dy / m; knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; });
+  const end = e => { if (joy.l && joy.l.id === e.pointerId) { joy.l = null; base.style.display = "none"; } };
+  z.addEventListener("pointerup", end); z.addEventListener("pointercancel", end);
+}
+setupStick();
+function tbtn(id, down, up) { const b = document.getElementById(id); b.addEventListener("pointerdown", e => { e.preventDefault(); touch = true; document.body.classList.add("touch"); down(); }); if (up) for (const ev of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(ev, up); }
+const pl = f => () => mode === "play" && f();
+tbtn("bA", () => { mouse.down = true; }, () => { mouse.down = false; });
+tbtn("bS", pl(dashAct)); tbtn("bSp", pl(sweepAct)); tbtn("bQ", pl(roarAct)); tbtn("bE", pl(shieldAct)); tbtn("bR", pl(novaAct));
+tbtn("bF", pl(() => skill(0))); tbtn("bC", pl(() => skill(1))); tbtn("bV", pl(() => skill(2))); tbtn("bEl", pl(cycleEl)); tbtn("bK", pl(openDen));
+document.getElementById("pauseBtn").addEventListener("click", () => mode === "play" ? pauseGame() : 0);
+function aim() {
+  if (touch) { let b = null, bd = 520; for (const e of enemies) { const d = dist(e, P); if (e.type !== "walker" && d < bd) { bd = d; b = e; } } if (b) return Math.atan2(b.y - P.y, b.x - P.x); return P.face; }
+  return Math.atan2(mouse.y + cam.y - P.y, mouse.x + cam.x - P.x);
+}
+function aimPoint() { if (touch) { const a = aim(); return { x: P.x + Math.cos(a) * 240, y: P.y + Math.sin(a) * 240 }; } return { x: mouse.x + cam.x, y: mouse.y + cam.y }; }
+function inputVec() {
+  if (joy.l && Math.hypot(joy.l.dx, joy.l.dy) > .15) return { x: joy.l.dx, y: joy.l.dy, m: Math.min(1, Math.hypot(joy.l.dx, joy.l.dy)) };
+  const dx = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0), dy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
+  const l = Math.hypot(dx, dy); return l ? { x: dx / l, y: dy / l, m: 1 } : { x: 0, y: 0, m: 0 };
+}
+
+// ---------- damage / helpers ----------
+function floatText(x, y, txt, c) { floats.push({ x, y, txt, c: c || "#fff", t: .8 }); }
+function puff(x, y, n, c, sp = 200) { for (let i = 0; i < n; i++) { const a = rnd(0, 6.28), s = rnd(30, sp); fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rnd(.25, .7), c }); } }
+function ring(x, y, max, c, life = .4) { fx.push({ ring: true, x, y, r: 10, life, max, c }); }
+function line(x, y, x2, y2, c, life = .18, w = 3) { fx.push({ line: true, x, y, x2, y2, life, c, w }); }
+function hitEnemy(e, dmg, elm, kx, ky, quiet) {
+  if (e.type === "walker" || e.dead) return;
+  const w = (WEAK[e.type] && WEAK[e.type][elm]) || 1; dmg *= w;
+  e.hp -= dmg; e.flash = .1; if (kx !== undefined && e.type !== "boss") { const kk = elm === "earth" ? 2 : 1; e.vx += kx * kk; e.vy += ky * kk; }
+  if (!quiet || w !== 1) floatText(e.x, e.y - e.r - 4, Math.round(dmg) + (w > 1 ? "!" : w < 1 ? "~" : ""), w > 1 ? "#ffe27a" : w < 1 ? "#8899aa" : "#fff");
+  if (elm === "fire") e.burn = 3; if (elm === "ice") e.slow = 2; if (elm === "venom") e.poison = 4;
+  if (elm === "shadow") P.hp = Math.min(hpMax(), P.hp + dmg * .08);
+  if (elm === "light") { P.hp = Math.min(hpMax(), P.hp + .4); if (e.type === "boss") e.hp -= dmg * .15; }
+  if (elm === "storm" && Math.random() < .2) { let b = null, bd = 150; for (const o of enemies) if (o !== e && o.hp > 0 && o.type !== "walker") { const d = dist(o, e); if (d < bd) { bd = d; b = o; } } if (b) { b.hp -= dmg * .6; b.flash = .1; line(e.x, e.y, b.x, b.y, "#fff27a", .15); if (b.hp <= 0) killEnemy(b); } }
+  if (e.hp <= 0) killEnemy(e);
+}
+function killEnemy(e) {
+  if (e.dead) return; e.dead = true; e.hp = 0;
+  const T = ETYPES[e.type]; puff(e.x, e.y, e.type === "boss" ? 70 : 14, e.type === "target" ? "#ffd54a" : T.c);
+  if (e.type === "target") { if (tr) tr.prog++; return; }
+  if (e.type === "walker" || e.trialDummy) { if (tr && e.trialDummy && tr.id === "sweep") tr.prog++; return; }
+  S.kills++; gainXp(T.xp); if (T.coin) Wallet.add(T.coin);
+  if (e.type === "boss") { S.boss = true; Wallet.earn(1000, "Shadow Wyrm defeated!"); say("THE SHADOW WYRM IS DEFEATED!  The realm is safe.", 5); shake = .8; save(); }
+}
+function gainXp(n) {
+  if (S.lvl >= MAXL) return; S.xp += n; floatText(P.x, P.y - 30, "+" + n + " xp", "#9fe6ff");
+  while (S.lvl < MAXL && S.xp >= lvlNeed(S.lvl)) {
+    S.xp -= lvlNeed(S.lvl); S.lvl++; P.hp = hpMax(); Wallet.earn(20, "level up");
+    const nw = PORD.filter(id => POW[id].req === S.lvl).map(id => POW[id].n); SREQ.forEach((r, i) => { if (r === S.lvl) nw.push("skill: " + SIG[S.el][i][0]); }); EORDER.forEach(k => { if (elLevel(k) === S.lvl && k !== S.start) nw.push(ELS[k].n + " element"); });
+    say(`${S.dname} reached level ${S.lvl}!` + (nw.length ? "  New: " + nw.join(", ") : ""), 3.6); puff(P.x, P.y, 30, "#ffe27a");
+  }
+  save();
+}
+function hurtPlayer(dmg, kx = 0, ky = 0) {
+  if (P.inv > 0 || tr) return;
+  if (P.shieldT > 0) { ring(P.x, P.y, 60, "#9fe6ff", .3); P.inv = .15; return; }
+  if (P.dashT > 0) return;
+  if (P.armorT > 0) dmg *= .3;
+  P.inv = .5; flash = .25; shake = .2; P.x += kx * .02; P.y += ky * .02; P.hp -= dmg;
+  if (P.hp <= 0) faint();
+}
+function faint() { say("You were knocked out... back to the Training Grounds.", 3); P.hp = hpMax(); P.x = 400; P.y = 1250; P.inv = 2; setupWorld(); }
+
+// ---------- elements ----------
+function setEl(k) { if (!k || k === S.el || P.elCd > 0) return; if (!elUnlocked(k)) { say(`${ELS[k].n} unlocks at level ${elLevel(k)}`, 1.4); return; } S.el = k; P.elCd = .6; ring(P.x, P.y, 90, ELS[k].c, .4); puff(P.x, P.y, 26, ELS[k].c); say(`${S.dname} becomes a ${ELS[k].n} dragon`, 1.3); save(); }
+function cycleEl() { let i = EORDER.indexOf(S.el); for (let n = 0; n < 7; n++) { i = (i + 1) % 7; if (elUnlocked(EORDER[i])) { setEl(EORDER[i]); return; } } }
+
+// ---------- powers ----------
+function mult(id) { return 1 + .25 * rank(id); }
+function cdOf(id) { return POW[id].cd * (1 - .12 * rank(id)); }
+function aoe(x, y, r, dmg, elm, o = {}) {
+  ring(x, y, r, ELS[elm].c, .35); puff(x, y, 10, ELS[elm].c2);
+  for (const e of enemies) if (!e.dead && Math.hypot(e.x - x, e.y - y) < r + e.r) {
+    if (e.type === "walker" || e.trialDummy) { if (!e.dead && e.trialDummy) killEnemy(e); continue; }
+    const a = Math.atan2(e.y - y, e.x - x); hitEnemy(e, dmg, elm, Math.cos(a) * (o.kb || 300), Math.sin(a) * (o.kb || 300));
+    if (e.dead) continue; if (o.stun) e.stun = Math.max(e.stun, e.type === "boss" ? o.stun * .4 : o.stun); if (o.slow) e.slow = o.slow; if (o.poison) e.poison = o.poison;
+  }
+}
+function zone(x, y, r, life, dps, elm, o = {}) { zones.push(Object.assign({ x, y, r, life, max: life, dps, el: elm, tk: 0 }, o)); }
+function later(t, fn) { timers.push({ t, fn }); }
+function dashAct() {
+  if (!canUse("dash") || cd.dash > 0) return; cd.dash = cdOf("dash"); const a = aim(); P.dashT = .25; P.ddx = Math.cos(a) * 900; P.ddy = Math.sin(a) * 900; P.hit = new Set(); P.face = a;
+}
+function sweepAct() {
+  if (!canUse("sweep") || cd.sweep > 0) return; cd.sweep = cdOf("sweep"); shake = .2;
+  aoe(P.x, P.y, 125, (25 + S.lvl * 3) * mult("sweep"), S.el, { kb: 400 });
+}
+function roarAct() {
+  if (!canUse("roar") || cd.roar > 0) return; cd.roar = cdOf("roar"); ring(P.x, P.y, 280, "#fff", .6); shake = .3;
+  for (const e of enemies) if (dist(e, P) < 280) { if (e.type === "boss") e.stun = Math.max(e.stun, 1.2 + rank("roar") * .5); else e.stun = 3 + rank("roar"); if (tr && tr.id === "roar" && e.type === "walker" && !e.counted) { e.counted = true; tr.prog++; } hitEnemy(e, 5, null); }
+}
+function shieldAct() { if (!canUse("shield") || cd.shield > 0) return; cd.shield = cdOf("shield"); P.shieldT = 3 + rank("shield"); ring(P.x, P.y, 70, "#9fe6ff", .4); }
+function novaAct() {
+  if (!canUse("nova") || cd.nova > 0) return; if (P.en < 30) { say("Need 30 energy", 1); return; }
+  cd.nova = cdOf("nova"); P.en -= 30; shake = .6; ring(P.x, P.y, 220, el().c2, .5); aoe(P.x, P.y, 340, (90 + S.lvl * 6) * mult("nova"), S.el, { kb: 0 }); puff(P.x, P.y, 60, el().c, 450);
+}
+function breathe(dt) {
+  cd.br = (cd.br || 0) - dt; if (cd.br > 0) return; if (!tr && P.en < 1) return; cd.br = .04; const a = aim(); P.face = a;
+  const dmg = (1.6 + S.lvl * .3) * mult("breath"), b = a + rnd(-.1, .1), E = S.el;
+  shots.push({ x: P.x + Math.cos(a) * 30, y: P.y + Math.sin(a) * 30, vx: Math.cos(b) * 560, vy: Math.sin(b) * 560, life: .38, dmg, el: E, mine: true, r: 9 });
+  if (!tr) P.en -= 2.5 * .04 * 4;
+}
+function shot(o) { const a = o.a, sp = o.sp; shots.push(Object.assign({ x: P.x + Math.cos(a) * 30, y: P.y + Math.sin(a) * 30, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, mine: true, el: S.el }, o)); }
+function skill(i) {
+  if (!skUnlocked(i)) { say(`${SIG[S.el][i][0]} unlocks at level ${SREQ[i]}`, 1.2); return; }
+  const E = S.el, key = E + i, [name, , base] = SIG[E][i];
+  if ((cd[key] || 0) > 0) return; if (P.en < SCOST[i]) { say("Not enough energy", .8); return; }
+  const m = sm(i), a = aim(), pt = aimPoint(); cd[key] = base * (1 - .1 * rank(key)); P.en -= SCOST[i]; P.face = a;
+  switch (E + i) {
+    case "fire0": shot({ a, sp: 520, life: 1.1, r: 14, dmg: 20 * m, aoe: 95, aoeDmg: 30 * m }); break;
+    case "fire1": { const nx = -Math.sin(a), ny = Math.cos(a), cx = P.x + Math.cos(a) * 130, cy = P.y + Math.sin(a) * 130; for (let k = -3; k <= 3; k++) zone(cx + nx * k * 38, cy + ny * k * 38, 40, 5, 14 * m, "fire"); break; }
+    case "fire2": for (let k = 0; k < 9; k++) { const tx = pt.x + rnd(-150, 150), ty = pt.y + rnd(-150, 150); later(.5 + k * .12, () => { ring(tx, ty, 70, "#ff7a2a", .3); aoe(tx, ty, 70, 40 * m, "fire", { kb: 200 }); shake = Math.max(shake, .15); }); fx.push({ ring: true, x: tx, y: ty, r: 70, life: .5 + k * .12, max: 70, c: "rgba(255,122,42,.4)" }); } break;
+    case "ice0": shot({ a, sp: 850, life: .7, r: 12, dmg: 28 * m, pierce: true, stun: 1.2 }); break;
+    case "ice1": aoe(P.x, P.y, 190, 30 * m, "ice", { slow: 4, kb: 100 }); P.hp = Math.min(hpMax(), P.hp + 6); break;
+    case "ice2": zone(pt.x, pt.y, 165, 6, 22 * m, "ice", { slow: 3 }); break;
+    case "storm0": { let cur = null, bd = 520; for (const e of enemies) if (e.type !== "walker" && !e.dead) { const d = Math.hypot(e.x - pt.x, e.y - pt.y); if (d < bd) { bd = d; cur = e; } } if (!cur) { cd[key] = 0; P.en += SCOST[i]; break; } let px = P.x, py = P.y; const seen = new Set(); for (let j = 0; j < 6 && cur; j++) { seen.add(cur); line(px, py, cur.x, cur.y, "#fff27a", .25, 4); hitEnemy(cur, 26 * m, "storm", 0, 0); px = cur.x; py = cur.y; let nx = null, nd = 210; for (const o of enemies) if (!seen.has(o) && !o.dead && o.type !== "walker") { const d = dist(o, cur); if (d < nd) { nd = d; nx = o; } } cur = nx; } break; }
+    case "storm1": { ring(pt.x, pt.y, 90, "rgba(255,242,122,.5)", .6); later(.6, () => { line(pt.x, pt.y - 400, pt.x, pt.y, "#fff", .25, 8); shake = .3; aoe(pt.x, pt.y, 95, 60 * m, "storm", { stun: 1.5 }); }); break; }
+    case "storm2": zone(P.x, P.y, 160, 7, 20 * m, "storm", { follow: true }); break;
+    case "earth0": shot({ a, sp: 380, life: 1, r: 20, dmg: 40 * m, aoe: 60, aoeDmg: 20 * m, stun: .6, kbx: 700 }); break;
+    case "earth1": shake = .5; aoe(P.x, P.y, 240, 35 * m, "earth", { stun: 2, kb: 500 }); break;
+    case "earth2": P.armorT = 6 + rank(key); P.hp = Math.min(hpMax(), P.hp + hpMax() * .2); ring(P.x, P.y, 80, "#a8803a", .5); break;
+    case "venom0": shot({ a, sp: 460, life: 1, r: 12, dmg: 14 * m, puddle: 12 * m }); break;
+    case "venom1": zone(P.x, P.y, 135, 6, 14 * m, "venom", { poison: 4 }); break;
+    case "venom2": ring(P.x, P.y, 500, "#6ad84a", .6); for (const e of enemies) if (e.type !== "walker" && !e.dead && dist(e, P) < 500) { hitEnemy(e, 15 * m, "venom", 0, 0); e.poison = 8; } break;
+    case "shadow0": shot({ a, sp: 430, life: 1.6, r: 12, dmg: 30 * m, homing: true }); break;
+    case "shadow1": { const dx = pt.x - P.x, dy = pt.y - P.y, d = Math.min(320, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx); P.x = clamp(P.x + Math.cos(ang) * d, 10, WW - 10); P.y = clamp(P.y + Math.sin(ang) * d, 10, WH - 10); P.inv = Math.max(P.inv, .5); aoe(P.x, P.y, 95, 25 * m, "shadow", {}); break; }
+    case "shadow2": dim = 1; ring(P.x, P.y, 420, "#7a4ac8", .6); for (const e of enemies) if (e.type !== "walker" && !e.dead && dist(e, P) < 420) { hitEnemy(e, 35 * m, "shadow", 0, 0); e.stun = Math.max(e.stun, e.type === "boss" ? .8 : 2); } break;
+    case "light0": { const L = 520; line(P.x, P.y, P.x + Math.cos(a) * L, P.y + Math.sin(a) * L, "#fff", .3, 14); for (const e of enemies) if (!e.dead) { const ex = e.x - P.x, ey = e.y - P.y, t = ex * Math.cos(a) + ey * Math.sin(a), px = Math.abs(-ex * Math.sin(a) + ey * Math.cos(a)); if (t > 0 && t < L && px < e.r + 18) { if (e.type === "walker") { if (e.trialDummy) killEnemy(e); } else hitEnemy(e, 40 * m, "light", 0, 0); } } break; }
+    case "light1": P.hp = Math.min(hpMax(), P.hp + hpMax() * .35); ring(P.x, P.y, 100, "#ffe27a", .6); puff(P.x, P.y, 25, "#ffe27a", 120); floatText(P.x, P.y - 30, "HEAL", "#6ee79a"); break;
+    case "light2": flash = .5; aoe(P.x, P.y, 300, 80 * m, "light", { stun: 1.5, kb: 200 }); P.hp = Math.min(hpMax(), P.hp + hpMax() * .1); break;
+  }
+}
+
+// ---------- trials ----------
+const TR = {
+  breath: { n: "Breath Trial", goal: 6, time: 30, d: "Burn all 6 targets" },
+  dash: { n: "Wing Dash Trial", goal: 5, time: 30, d: "Dash through the 5 rings in order" },
+  sweep: { n: "Tail Sweep Trial", goal: 5, time: 25, d: "Sweep away 5 dummies" },
+  roar: { n: "Roar Trial", goal: 4, time: 25, d: "Stun 4 walkers with your roar" },
+  shield: { n: "Shield Trial", goal: 5, time: 28, d: "Block 5 falling meteors with the shield" },
+};
+function startTrial(id) {
+  const T = TR[id]; tr = { id, t: T.time, goal: T.goal, prog: 0, gates: [], met: [], mt: 0 };
+  enemies = enemies.filter(e => !e.trialDummy && e.type !== "target" && e.type !== "walker");
+  P.hp = hpMax();
+  const rx = () => rnd(TRAIN.x + 60, TRAIN.x + TRAIN.w - 60), ry = () => rnd(TRAIN.y + 60, TRAIN.y + TRAIN.h - 160);
+  if (id === "breath") for (let i = 0; i < 6; i++) spawnEnemy("target", rx(), ry());
+  if (id === "dash") tr.gates = [[200, 1150], [600, 1150], [600, 1300], [200, 1300], [400, 1220]].map(([x, y]) => ({ x, y }));
+  if (id === "sweep") for (let i = 0; i < 5; i++) spawnEnemy("walker", rx(), ry(), { spd: 0, trialDummy: true, hp: 1, max: 1 });
+  if (id === "roar") for (let i = 0; i < 4; i++) spawnEnemy("walker", TRAIN.x + 30 + i * 150, TRAIN.y + 20, {});
+  say(`${T.n}: ${T.d}`, 3);
+}
+function endTrial(win) {
+  const id = tr.id; enemies = enemies.filter(e => !e.trialDummy && e.type !== "target" && e.type !== "walker");
+  if (win) {
+    const first = !S.learned[id]; S.learned[id] = true;
+    if (first) { S.pts++; gainXp(30); Wallet.earn(25, "trial"); say(`${TR[id].n} passed! ${POW[id].n} learned  +1 mastery point`, 3.5); } else { gainXp(6); say("Trial passed!", 2); }
+    puff(P.x, P.y, 40, "#ffe27a"); save();
+  } else say("Out of time — step off the pad and back on to retry.", 2.5);
+  tr = null;
+}
+function updateTrial(dt) {
+  tr.t -= dt; P.en = enMax();
+  if (tr.id === "dash") { const g = tr.gates[tr.prog]; if (g && P.dashT > 0 && dist(g, P) < 55) { tr.prog++; puff(g.x, g.y, 12, "#ffe27a"); } }
+  if (tr.id === "shield") {
+    tr.mt -= dt; if (tr.mt <= 0 && tr.met.length < 3) { tr.mt = 1.5; tr.met.push({ x: P.x + rnd(-30, 30), y: P.y + rnd(-30, 30), t: 1.1 }); }
+    for (const m of tr.met) { m.t -= dt; if (m.t <= 0 && !m.done) { m.done = true; ring(m.x, m.y, 70, "#ff7a3a", .3); if (dist(m, P) < 70 && P.shieldT > 0) { tr.prog++; floatText(m.x, m.y - 20, "BLOCKED", "#9fe6ff"); } } }
+    tr.met = tr.met.filter(m => !m.done);
+  }
+  if (tr.prog >= tr.goal) endTrial(true); else if (tr.t <= 0) endTrial(false);
+}
+function updatePads(dt) {
+  if (tr) { padId = null; return; }
+  let on = null; for (const p of PADS) if (Math.hypot(P.x - p.x, P.y - p.y) < p.r) on = p;
+  if (!on) { padId = null; padT = 0; return; }
+  if (padId !== on.id) { padId = on.id; padT = 0; }
+  padT += dt; if (padT > .8) { startTrial(on.id); padT = -999; }
+}
+
+// ---------- update ----------
+function moveWalker(o, dx, dy, r) { const nx = clamp(o.x + dx, r, WW - r), ny = clamp(o.y + dy, r, WH - r); if (!solidAt(nx, o.y, r)) o.x = nx; if (!solidAt(o.x, ny, r)) o.y = ny; }
+function update(dt) {
+  tm += dt; if (msgT > 0) msgT -= dt;
+  for (const p of fx) { if (p.ring) p.r += (p.max - p.r) * Math.min(1, dt * 10); else if (!p.line) { p.x += p.vx * dt; p.y += p.vy * dt; } p.life -= dt; }
+  fx = fx.filter(p => p.life > 0); for (const f of floats) { f.y -= 30 * dt; f.t -= dt; } floats = floats.filter(f => f.t > 0);
+  shake = Math.max(0, shake - dt); flash = Math.max(0, flash - dt); dim = Math.max(0, dim - dt);
+  if (mode !== "play") return;
+  for (const k in cd) cd[k] -= dt; P.inv -= dt; P.elCd -= dt; P.flap += dt * 10; P.shieldT -= dt; P.armorT -= dt;
+  for (const t of timers) t.t -= dt; for (const t of timers.filter(t => t.t <= 0)) t.fn(); timers = timers.filter(t => t.t > 0);
+  const iv = inputVec();
+  if (P.dashT > 0) {
+    P.dashT -= dt; P.x = clamp(P.x + P.ddx * dt, 10, WW - 10); P.y = clamp(P.y + P.ddy * dt, 10, WH - 10); P.inv = Math.max(P.inv, .1);
+    const dmg = (20 + S.lvl * 3) * mult("dash"); for (const e of enemies) if (!P.hit.has(e) && dist(e, P) < e.r + 30) { P.hit.add(e); if (e.type === "walker" || e.trialDummy) { if (!e.dead) killEnemy(e); } else hitEnemy(e, dmg, S.el, P.ddx * .3, P.ddy * .3); }
+    fx.push({ x: P.x, y: P.y, vx: 0, vy: 0, life: .25, c: el().c });
+  } else if (iv.m) { const sp = 270; P.x = clamp(P.x + iv.x * sp * iv.m * dt, 10, WW - 10); P.y = clamp(P.y + iv.y * sp * iv.m * dt, 10, WH - 10); }
+  P.face = touch && !mouse.down ? (iv.m ? Math.atan2(iv.y, iv.x) : P.face) : aim();
+  P.trail.unshift({ x: P.x, y: P.y }); if (P.trail.length > 70) P.trail.pop();
+  P.en = Math.min(enMax(), P.en + (Math.hypot(P.x - (TRAIN.x + TRAIN.w / 2), P.y - (TRAIN.y + TRAIN.h / 2)) < 420 ? 26 : 13) * dt);
+  P.hp = Math.min(hpMax(), P.hp + .6 * dt);
+  if (mouse.down) breathe(dt);
+  if (tr) updateTrial(dt); else updatePads(dt);
+  for (const c of CHESTS) if (!S.chests[c.id] && Math.hypot(P.x - c.x, P.y - c.y) < 34) { S.chests[c.id] = true; Wallet.earn(60, "treasure!"); gainXp(40); puff(c.x, c.y, 30, "#ffd54a"); say("Treasure found!", 2); save(); }
+  // zones
+  for (const z of zones) {
+    z.life -= dt; if (z.follow) { z.x = P.x; z.y = P.y; } z.tk -= dt;
+    if (z.tk <= 0) { z.tk = .25; for (const e of enemies) if (!e.dead && e.type !== "walker" && Math.hypot(e.x - z.x, e.y - z.y) < z.r + e.r) { hitEnemy(e, z.dps * .25, z.el, undefined, undefined, true); if (!e.dead && z.slow) e.slow = z.slow; if (!e.dead && z.poison) e.poison = z.poison; } if (z.follow || z.el === "storm") { let b = null, bd = z.r; for (const e of enemies) if (!e.dead && e.type !== "walker") { const d = Math.hypot(e.x - z.x, e.y - z.y); if (d < bd) { bd = d; b = e; } } if (b && z.follow) { line(z.x, z.y - 120, b.x, b.y, "#fff27a", .15, 3); hitEnemy(b, z.dps * .25, "storm", 0, 0, true); } } }
+  }
+  zones = zones.filter(z => z.life > 0);
+  // enemies
+  const inSafe = e => e.x > TRAIN.x - 20 && e.x < TRAIN.x + TRAIN.w + 20 && e.y > TRAIN.y - 20 && e.y < TRAIN.y + TRAIN.h + 20;
+  for (const e of enemies) {
+    e.flash -= dt; e.cd -= dt; e.t += dt;
+    if (e.burn > 0) { e.burn -= dt; e.bt = (e.bt || 0) + dt; if (e.bt >= .5) { e.bt = 0; e.hp -= 2 + S.lvl * .4; e.flash = .08; if (e.hp <= 0) killEnemy(e); } }
+    if (e.poison > 0 && !e.dead) { e.poison -= dt; e.pt = (e.pt || 0) + dt; if (e.pt >= .5) { e.pt = 0; e.hp -= 2.5 + S.lvl * .5; e.flash = .08; if (e.hp <= 0) killEnemy(e); } }
+    if (e.dead) continue;
+    e.slow -= dt;
+    if (e.vx || e.vy) { moveWalker(e, e.vx * dt, e.vy * dt, e.r); e.vx *= Math.max(0, 1 - dt * 6); e.vy *= Math.max(0, 1 - dt * 6); }
+    if (e.stun > 0) { e.stun -= dt; continue; }
+    const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, sp = ETYPES[e.type].spd * (e.slow > 0 ? .5 : 1);
+    if (e.type === "target") continue;
+    if (e.type === "walker") { if (sp > 0) moveWalker(e, ux * sp * dt, uy * sp * dt, e.r); continue; }
+    const aggro = !tr && !inSafe(P) && d < (e.type === "boss" ? 700 : 420), home = Math.hypot(e.x - e.hx, e.y - e.hy);
+    if (!aggro) { if (home > 12) { const hx = e.hx - e.x, hy = e.hy - e.y, hl = Math.hypot(hx, hy); moveWalker(e, hx / hl * sp * dt, hy / hl * sp * dt, e.r); } continue; }
+    const T = ETYPES[e.type];
+    if (e.type === "goblin") { if (d > e.r + 16) moveWalker(e, ux * sp * dt, uy * sp * dt, e.r); else if (e.cd <= 0) { e.cd = 1; hurtPlayer(T.dmg, ux * 300, uy * 300); } }
+    else if (e.type === "wolf") {
+      if (e.st === 1) { moveWalker(e, e.lx * dt, e.ly * dt, e.r); e.lt -= dt; if (e.lt <= 0) e.st = 0; if (d < e.r + 16 && e.cd <= 0) { e.cd = .8; hurtPlayer(T.dmg, ux * 300, uy * 300); e.st = 0; } }
+      else { if (d > e.r + 16) moveWalker(e, ux * sp * dt, uy * sp * dt, e.r); else if (e.cd <= 0) { e.cd = .8; hurtPlayer(T.dmg, ux * 300, uy * 300); } if (e.cd <= 0 && d < 260 && d > 90) { e.st = 1; e.lt = .3; e.lx = ux * 460; e.ly = uy * 460; e.cd = 2.5; } }
+    }
+    else if (e.type === "imp") { if (d > 330) moveWalker(e, ux * sp * dt, uy * sp * dt, e.r); else if (d < 200) moveWalker(e, -ux * sp * dt, -uy * sp * dt, e.r); if (e.cd <= 0) { e.cd = 2; shots.push({ x: e.x, y: e.y, vx: ux * 290, vy: uy * 290, life: 2.4, dmg: T.dmg, mine: false, r: 7, c: "#ff6aa0" }); } }
+    else if (e.type === "golem") {
+      if (e.wind > 0) { e.wind -= dt; if (e.wind <= 0) { ring(e.x, e.y, 95, "#c8a878", .35); shake = Math.max(shake, .2); if (dist(e, P) < 107) hurtPlayer(T.dmg, ux * 300, uy * 300); e.cd = 1.8; } }
+      else if (d > 80) moveWalker(e, ux * sp * dt, uy * sp * dt, e.r); else if (e.cd <= 0) e.wind = .55;
+    }
+    else if (e.type === "boss") bossAI(e, dt, d, ux, uy);
+    if (inSafe(e)) { e.x += (e.x < TRAIN.x + TRAIN.w / 2 ? -1 : 1) * 80 * dt; }
+  }
+  enemies = enemies.filter(e => !e.dead);
+  for (const c of camps) { if (c.e && !enemies.includes(c.e)) { if (c.type === "boss") { c.e = null; continue; } c.e = null; c.t = 35; } if (!c.e && c.type !== "boss") { c.t -= dt; if (c.t <= 0 && Math.hypot(P.x - c.x, P.y - c.y) > 500) c.e = spawnEnemy(c.type, c.x, c.y); } }
+  // shots
+  const gone = [];
+  for (const s of shots) {
+    if (s.homing && s.mine) { let b = null, bd = 400; for (const e of enemies) if (!e.dead && e.type !== "walker") { const d = dist(e, s); if (d < bd) { bd = d; b = e; } } if (b) { const sp = Math.hypot(s.vx, s.vy), cur = Math.atan2(s.vy, s.vx); let df = Math.atan2(b.y - s.y, b.x - s.x) - cur; df = Math.atan2(Math.sin(df), Math.cos(df)); const na = cur + clamp(df, -1, 1) * 5 * dt; s.vx = Math.cos(na) * sp; s.vy = Math.sin(na) * sp; } }
+    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+    if (s.x < 0 || s.y < 0 || s.x > WW || s.y > WH) s.life = 0;
+    if (s.mine) {
+      s.seen = s.seen || new Set();
+      for (const e of enemies) if (!e.dead && !s.seen.has(e) && dist(e, s) < e.r + s.r) {
+        if (e.type === "walker") { if (e.trialDummy) killEnemy(e); s.life = 0; break; }
+        hitEnemy(e, s.dmg, s.el, s.vx * (s.kbx ? s.kbx / 700 : .02), s.vy * (s.kbx ? s.kbx / 700 : .02), !!s.aoe || s.dmg < 3); if (s.stun && !e.dead) e.stun = Math.max(e.stun, e.type === "boss" ? s.stun * .4 : s.stun);
+        if (s.pierce) { s.seen.add(e); } else { s.life = 0; break; }
+      }
+    } else if (dist(s, P) < 14 + s.r) { hurtPlayer(s.dmg, s.vx, s.vy); s.life = 0; }
+    if (s.life <= 0) gone.push(s);
+  }
+  for (const s of gone) { if (s.aoe) aoe(s.x, s.y, s.aoe, s.aoeDmg, s.el, { kb: 250 }); if (s.puddle) zone(s.x, s.y, 62, 4, s.puddle, "venom", { poison: 4 }); }
+  shots = shots.filter(s => s.life > 0);
+}
+function bossAI(e, dt, d, ux, uy) {
+  const T = ETYPES.boss, enr = e.hp < e.max / 2;
+  if (e.st === 0) { if (d > e.r + 40) moveWalker(e, ux * (enr ? 120 : 90) * (e.slow > 0 ? .5 : 1) * dt, uy * (enr ? 120 : 90) * (e.slow > 0 ? .5 : 1) * dt, 20); if (e.cd <= 0) { e.ph++; const m = e.ph % 4; e.st = m === 1 ? 1 : m === 2 ? 2 : m === 3 ? 3 : 4; e.t = 0; e.lx = ux; e.ly = uy; } }
+  else if (e.st === 1) { e.t += dt; if (e.t > .7) { moveWalker(e, e.lx * 520 * dt, e.ly * 520 * dt, 20); if (d < e.r + 16) hurtPlayer(T.dmg, ux * 400, uy * 400); } if (e.t > 1.3) { e.st = 0; e.cd = enr ? 1.2 : 2; } }
+  else if (e.st === 2) { if (e.t === 0) { for (let i = -3; i <= 3; i++) { const a = Math.atan2(uy, ux) + i * .22; shots.push({ x: e.x, y: e.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300, life: 3, dmg: 10, mine: false, r: 8, c: "#ff7a3a" }); } } e.t += dt; if (e.t > .5) { e.st = 0; e.cd = enr ? 1 : 1.8; } }
+  else if (e.st === 3) { e.t += dt; if (e.t > .8 && !e.sl) { e.sl = true; ring(e.x, e.y, 170, "#b04aff", .4); shake = .4; if (d < 184) hurtPlayer(T.dmg, ux * 400, uy * 400); } if (e.t > 1.1) { e.sl = false; e.st = 0; e.cd = enr ? 1.2 : 2; } }
+  else if (e.st === 4) { if (enr && enemies.filter(o => o.type === "goblin").length < 4) { spawnEnemy("goblin", e.x + rnd(-60, 60), e.y + 60); spawnEnemy("goblin", e.x + rnd(-60, 60), e.y - 60); } e.st = 0; e.cd = 1.5; }
+}
+
+// ---------- draw ----------
+function drawDragon(x, y, face, scale, el0, trail, flap) {
+  const c = ELS[el0];
+  if (trail && trail.length > 8) for (let i = 7; i >= 0; i--) { const t = trail[Math.min(trail.length - 1, i * 5 + 4)]; ctx.fillStyle = i % 2 ? c.c : "#26324a"; ctx.beginPath(); ctx.arc(t.x, t.y, (24 - i * 1.7) * scale, 0, 7); ctx.fill(); }
+  ctx.save(); ctx.translate(x, y); ctx.rotate(face);
+  const w = Math.sin(flap) * .5;
+  ctx.fillStyle = c.c2; ctx.globalAlpha *= .85;
+  ctx.beginPath(); ctx.moveTo(-4 * scale, 0); ctx.lineTo(-34 * scale, (-34 - w * 22) * scale); ctx.lineTo(-18 * scale, -4 * scale); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-4 * scale, 0); ctx.lineTo(-34 * scale, (34 + w * 22) * scale); ctx.lineTo(-18 * scale, 4 * scale); ctx.fill(); ctx.globalAlpha /= .85;
+  ctx.fillStyle = c.c; ctx.beginPath(); ctx.arc(0, 0, 22 * scale, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(18 * scale, -12 * scale); ctx.lineTo(44 * scale, -6 * scale); ctx.lineTo(44 * scale, 6 * scale); ctx.lineTo(18 * scale, 12 * scale); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(22 * scale, -7 * scale, 3.2 * scale, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(22 * scale, 7 * scale, 3.2 * scale, 0, 7); ctx.fill();
+  ctx.strokeStyle = c.c2; ctx.lineWidth = 3 * scale; ctx.beginPath(); ctx.moveTo(14 * scale, -16 * scale); ctx.lineTo(8 * scale, -28 * scale); ctx.moveTo(14 * scale, 16 * scale); ctx.lineTo(8 * scale, 28 * scale); ctx.stroke(); ctx.lineWidth = 1;
+  ctx.restore();
+}
+function draw() {
+  cam.x = clamp(P ? P.x - VW / 2 : 0, 0, WW - VW); cam.y = clamp(P ? P.y - VH / 2 : 0, 0, WH - VH);
+  const sh = shake > 0 ? shake * 10 : 0; ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#1c3a22"; ctx.fillRect(0, 0, VW, VH);
+  if (!P) return;
+  ctx.setTransform(1, 0, 0, 1, -cam.x + (Math.random() - .5) * sh, -cam.y + (Math.random() - .5) * sh);
+  ctx.fillStyle = "#2f5a34"; ctx.fillRect(0, 0, WW, WH);
+  ctx.fillStyle = "#274a3a"; ctx.fillRect(1600, 500, 800, 1100);
+  ctx.fillStyle = "#5a5a66"; ctx.fillRect(0, 0, 700, 340);
+  ctx.fillStyle = "#26163a"; ctx.fillRect(LAIR.x, LAIR.y, LAIR.w, LAIR.h);
+  ctx.fillStyle = "#8a7550"; ctx.fillRect(TRAIN.x, TRAIN.y, TRAIN.w, TRAIN.h); ctx.strokeStyle = "#d8c08a"; ctx.lineWidth = 4; ctx.strokeRect(TRAIN.x, TRAIN.y, TRAIN.w, TRAIN.h); ctx.lineWidth = 1;
+  ctx.fillStyle = "rgba(0,0,0,.12)"; for (const d of decor) ctx.fillRect(d.x, d.y, d.s, d.s * 2);
+  for (const b of rects) { if (b.k === "water") { ctx.fillStyle = "#245a96"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = "rgba(255,255,255,.12)"; for (let i = 0; i < 12; i++) ctx.fillRect(b.x + ((i * 97 + tm * 20) % b.w), b.y + (i * 53) % b.h, 24, 3); } else { ctx.fillStyle = b.k === "rock" ? "#6a6a72" : "#4a4a58"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = "#9a9aa8"; ctx.strokeRect(b.x + .5, b.y + .5, b.w - 1, b.h - 1); } }
+  for (const z of zones) { ctx.globalAlpha = .25 + .15 * Math.sin(tm * 8); ctx.fillStyle = ELS[z.el].c; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, 7); ctx.fill(); ctx.globalAlpha = .7; ctx.strokeStyle = ELS[z.el].c2; ctx.stroke(); ctx.globalAlpha = 1; }
+  for (const c of CHESTS) if (!S.chests[c.id]) { ctx.fillStyle = "#c8902a"; ctx.fillRect(c.x - 14, c.y - 10, 28, 20); ctx.fillStyle = "#ffe27a"; ctx.fillRect(c.x - 14, c.y - 2, 28, 4); ctx.fillRect(c.x - 3, c.y - 4, 6, 8); }
+  for (const p of PADS) { const done = S.learned[p.id]; ctx.fillStyle = done ? "rgba(110,231,154,.35)" : "rgba(255,226,122,.3)"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); ctx.strokeStyle = done ? "#6ee79a" : "#ffe27a"; ctx.lineWidth = 3; ctx.stroke(); ctx.lineWidth = 1; ctx.fillStyle = "#fff"; ctx.font = "bold 12px system-ui"; ctx.textAlign = "center"; ctx.fillText(POW[p.id].n, p.x, p.y + 60); ctx.fillText(done ? "✔ learned" : "trial", p.x, p.y + 74); if (padId === p.id && padT > 0) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 6, -1.57, -1.57 + 6.28 * padT / .8); ctx.stroke(); ctx.lineWidth = 1; } }
+  ctx.fillStyle = "#fff"; ctx.font = "bold 16px system-ui"; ctx.textAlign = "center"; ctx.fillText("TRAINING GROUNDS — stand on a pad to begin a trial", TRAIN.x + TRAIN.w / 2, TRAIN.y + 24); ctx.fillText("SHADOW WYRM'S LAIR", LAIR.x + LAIR.w / 2, LAIR.y + 26);
+  if (tr) { if (tr.id === "dash") tr.gates.forEach((g, i) => { if (i < tr.prog) return; ctx.strokeStyle = i === tr.prog ? "#ffe27a" : "rgba(255,255,255,.3)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(g.x, g.y, 46, 0, 7); ctx.stroke(); ctx.lineWidth = 1; ctx.fillStyle = "#fff"; ctx.fillText(i + 1, g.x, g.y + 5); }); for (const m of tr.met) { ctx.strokeStyle = "rgba(255,122,58,.8)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(m.x, m.y, 70 * (1 - m.t / 1.1) + 10, 0, 7); ctx.stroke(); ctx.lineWidth = 1; } }
+  for (const e of enemies) {
+    const T = ETYPES[e.type]; ctx.globalAlpha = e.stun > 0 ? .6 : 1;
+    ctx.fillStyle = e.flash > 0 ? "#fff" : T.c; ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, 7); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(e.x - e.r * .3, e.y - e.r * .2, e.r * .14, 0, 7); ctx.arc(e.x + e.r * .3, e.y - e.r * .2, e.r * .14, 0, 7); ctx.fill();
+    if (e.type === "wolf") { ctx.fillStyle = T.c; ctx.beginPath(); ctx.moveTo(e.x - 10, e.y - 10); ctx.lineTo(e.x - 6, e.y - 22); ctx.lineTo(e.x, e.y - 12); ctx.fill(); ctx.beginPath(); ctx.moveTo(e.x + 10, e.y - 10); ctx.lineTo(e.x + 6, e.y - 22); ctx.lineTo(e.x, e.y - 12); ctx.fill(); }
+    if (e.type === "boss") { ctx.fillStyle = "#ff3a5a"; ctx.beginPath(); ctx.moveTo(e.x - 30, e.y - 40); ctx.lineTo(e.x - 18, e.y - 70); ctx.lineTo(e.x - 6, e.y - 44); ctx.moveTo(e.x + 30, e.y - 40); ctx.lineTo(e.x + 18, e.y - 70); ctx.lineTo(e.x + 6, e.y - 44); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    if (e.burn > 0) { ctx.fillStyle = "#ff9a3a"; ctx.fillRect(e.x - 4 + Math.random() * 8, e.y - e.r - 6 - Math.random() * 8, 4, 6); } if (e.poison > 0) { ctx.fillStyle = "#6ad84a"; ctx.fillRect(e.x - 6 + Math.random() * 12, e.y - e.r - 4 - Math.random() * 8, 3, 3); } if (e.slow > 0) { ctx.strokeStyle = "#9fe6ff"; ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4, 0, 7); ctx.stroke(); } if (e.stun > 0) { ctx.fillStyle = "#ffe27a"; ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.fillText("✦ ✦", e.x, e.y - e.r - 6); }
+    if (e.wind > 0 || (e.type === "boss" && e.st === 3)) { ctx.strokeStyle = "rgba(255,90,60,.7)"; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(e.x, e.y, e.type === "boss" ? 170 : 95, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+    if (e.max > 30 && e.type !== "walker") { ctx.fillStyle = "#000"; ctx.fillRect(e.x - e.r, e.y - e.r - 12, e.r * 2, 5); ctx.fillStyle = "#e44"; ctx.fillRect(e.x - e.r, e.y - e.r - 12, e.r * 2 * Math.max(0, e.hp / e.max), 5); }
+  }
+  for (const s of shots) { ctx.globalAlpha = s.mine ? .85 : 1; ctx.fillStyle = s.mine ? (Math.random() < .5 ? ELS[s.el].c : ELS[s.el].c2) : (s.c || "#ff7a7a"); ctx.beginPath(); ctx.arc(s.x, s.y, s.r * (s.mine && s.dmg < 6 ? (.6 + s.life * 1.2) : 1), 0, 7); ctx.fill(); } ctx.globalAlpha = 1;
+  ctx.globalAlpha = P.inv > 0 && Math.floor(P.inv * 16) % 2 ? .45 : 1;
+  drawDragon(P.x, P.y, P.face, 1, S.el, P.trail, P.flap);
+  if (P.shieldT > 0) { ctx.strokeStyle = "rgba(159,230,255,.9)"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(P.x, P.y, 46, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+  if (P.armorT > 0) { ctx.strokeStyle = "rgba(168,128,58,.9)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(P.x, P.y, 40, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+  ctx.globalAlpha = 1; ctx.fillStyle = "#cfe4ff"; ctx.font = "12px system-ui"; ctx.textAlign = "center"; ctx.fillText(S.dname, P.x, P.y - 34);
+  for (const p of fx) { ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); if (p.line) { ctx.strokeStyle = p.c; ctx.lineWidth = p.w || 3; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x2, p.y2); ctx.stroke(); ctx.lineWidth = 1; } else if (p.ring) { ctx.strokeStyle = p.c; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.stroke(); ctx.lineWidth = 1; } else { ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 4, 4); } } ctx.globalAlpha = 1;
+  ctx.font = "bold 14px system-ui"; ctx.textAlign = "center"; for (const f of floats) { ctx.globalAlpha = Math.min(1, f.t * 2); ctx.fillStyle = f.c; ctx.fillText(f.txt, f.x, f.y); } ctx.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (dim > 0) { ctx.fillStyle = `rgba(20,0,40,${dim * .6})`; ctx.fillRect(0, 0, VW, VH); }
+  if (flash > 0) { ctx.fillStyle = `rgba(255,${S.el === "light" ? 255 : 40},${S.el === "light" ? 200 : 40},${flash * .6})`; ctx.fillRect(0, 0, VW, VH); }
+  hud();
+}
+function bar(x, y, w, h, f, c, label) { ctx.fillStyle = "#000a"; ctx.fillRect(x, y, w, h); ctx.fillStyle = c; ctx.fillRect(x, y, w * clamp(f, 0, 1), h); ctx.strokeStyle = "#fff4"; ctx.strokeRect(x + .5, y + .5, w - 1, h - 1); if (label) { ctx.fillStyle = "#fff"; ctx.font = "11px system-ui"; ctx.textAlign = "left"; ctx.fillText(label, x + 4, y + h - 3); } }
+function hud() {
+  bar(14, 14, 220, 16, P.hp / hpMax(), "#e44a5a", S.dname + "  HP " + Math.ceil(P.hp));
+  bar(14, 34, 220, 12, P.en / enMax(), "#4aa8ff", "Energy " + Math.floor(P.en));
+  bar(14, 50, 220, 10, S.lvl >= MAXL ? 1 : S.xp / lvlNeed(S.lvl), "#ffd54a"); ctx.fillStyle = "#fff"; ctx.font = "bold 13px system-ui"; ctx.textAlign = "left"; ctx.fillText(`Lv ${S.lvl}${S.pts ? "   ★ " + S.pts + " mastery pt (K)" : ""}`, 14, 76);
+  // element row
+  EORDER.forEach((k, i) => { const x = 14 + i * 32, ok = elUnlocked(k); ctx.fillStyle = ok ? ELS[k].c : "#333"; ctx.globalAlpha = k === S.el ? 1 : .55; ctx.beginPath(); ctx.arc(x + 13, 98, 12, 0, 7); ctx.fill(); ctx.globalAlpha = 1; if (k === S.el) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1; } ctx.fillStyle = ok ? "#111" : "#888"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "center"; ctx.fillText(ok ? i + 1 : "L" + elLevel(k), x + 13, 102); });
+  // abilities
+  const list = PORD.map(id => [id, POW[id].key, id]).concat(SLOTS.map((s, i) => ["s" + i, s.toUpperCase(), i]));
+  const bw = 56, x0 = VW / 2 - list.length * bw / 2;
+  list.forEach((a, i) => {
+    const x = x0 + i * bw, y = VH - 62, sk = typeof a[2] === "number", id = a[0]; let ok, c, mx, label;
+    if (sk) { ok = skUnlocked(a[2]); c = cd[S.el + a[2]] || 0; mx = SIG[S.el][a[2]][2]; label = SIG[S.el][a[2]][0].split(" ").pop(); } else { ok = canUse(id); c = cd[id] || 0; mx = cdOf(id) || .01; label = POW[id].n.split(" ").pop(); }
+    ctx.fillStyle = ok ? "#16203aee" : "#222a"; ctx.fillRect(x, y, bw - 5, 50); ctx.strokeStyle = ok ? (sk ? el().c2 : el().c) : "#555"; ctx.strokeRect(x + .5, y + .5, bw - 6, 49);
+    if (ok && c > 0) { ctx.fillStyle = "#000b"; ctx.fillRect(x, y, bw - 5, 50 * clamp(c / mx, 0, 1)); }
+    ctx.fillStyle = ok ? "#fff" : "#888"; ctx.font = "bold 10px system-ui"; ctx.textAlign = "center"; ctx.fillText(label, x + (bw - 5) / 2, y + 22); ctx.fillStyle = ok ? "#9fe6ff" : "#ffd54a"; ctx.fillText(ok ? a[1] : "Lv " + (sk ? SREQ[a[2]] : POW[id].req), x + (bw - 5) / 2, y + 40);
+  });
+  ctx.fillStyle = "#fff9"; ctx.font = "12px system-ui"; ctx.textAlign = "center"; ctx.fillText("1-7 / Tab = change element · F C V = " + el().n + " skills", VW / 2, VH - 70);
+  if (tr) { ctx.fillStyle = "#000a"; ctx.fillRect(VW / 2 - 170, 14, 340, 54); ctx.fillStyle = "#ffe27a"; ctx.font = "bold 16px system-ui"; ctx.fillText(TR[tr.id].n + "  " + tr.prog + "/" + tr.goal, VW / 2, 36); ctx.fillStyle = "#fff"; ctx.font = "12px system-ui"; ctx.fillText(TR[tr.id].d + "  •  " + Math.ceil(tr.t) + "s", VW / 2, 56); }
+  else if (padId && padT > 0) { ctx.fillStyle = "#fff"; ctx.font = "bold 18px system-ui"; ctx.fillText("Hold still… " + TR[padId].n, VW / 2, 90); }
+  const mw = 140, mh = mw * WH / WW, mx0 = VW - mw - 10, my0 = 10; ctx.fillStyle = "#3a6a40"; ctx.fillRect(mx0, my0, mw, mh);
+  for (const b of rects) { ctx.fillStyle = b.k === "water" ? "#245a96" : "#666"; ctx.fillRect(mx0 + b.x / WW * mw, my0 + b.y / WH * mh, Math.max(1, b.w / WW * mw), Math.max(1, b.h / WH * mh)); }
+  ctx.fillStyle = "#c8a85a"; ctx.fillRect(mx0 + TRAIN.x / WW * mw, my0 + TRAIN.y / WH * mh, TRAIN.w / WW * mw, TRAIN.h / WH * mh); ctx.fillStyle = "#6a3a9a"; ctx.fillRect(mx0 + LAIR.x / WW * mw, my0 + LAIR.y / WH * mh, LAIR.w / WW * mw, LAIR.h / WH * mh);
+  ctx.fillStyle = "#ffd54a"; for (const c of CHESTS) if (!S.chests[c.id]) ctx.fillRect(mx0 + c.x / WW * mw - 1, my0 + c.y / WH * mh - 1, 3, 3);
+  ctx.fillStyle = "#f55"; for (const e of enemies) if (e.type !== "walker" && e.type !== "target") ctx.fillRect(mx0 + e.x / WW * mw - 1, my0 + e.y / WH * mh - 1, 2, 2); ctx.fillStyle = "#fff"; ctx.fillRect(mx0 + P.x / WW * mw - 2, my0 + P.y / WH * mh - 2, 4, 4);
+  ctx.fillStyle = "#fff8"; ctx.textAlign = "right"; ctx.font = "11px system-ui"; ctx.fillText("K = Dragon Den · P = pause", VW - 10, my0 + mh + 14);
+  const boss = enemies.find(e => e.type === "boss"); if (boss && dist(boss, P) < 800) { bar(VW / 2 - 200, VH - 96, 400, 12, boss.hp / boss.max, "#a03ad8", "Shadow Wyrm"); }
+  if (msgT > 0) { ctx.textAlign = "center"; ctx.font = "bold 24px system-ui"; ctx.fillStyle = "#fff"; ctx.globalAlpha = Math.min(1, msgT); ctx.fillText(msg, VW / 2, 130); ctx.globalAlpha = 1; }
+}
+
+// ---------- menus ----------
+function show(html) { ui.innerHTML = `<div class="panel">${html}</div>`; ui.classList.add("on"); }
+function showTitle() {
+  mode = "title"; document.body.classList.remove("play"); const sv = load();
+  show(`<h1>DRAGONBOND</h1><p class="muted">You <b>are</b> the dragon. Master seven elements, learn their powers through training and battle, and face the Shadow Wyrm.</p>
+  ${sv && sv.has ? `<button class="big" data-act="cont">Continue — ${sv.dname} (Lv ${sv.lvl} ${ELS[sv.el].n})</button><br>` : ""}
+  <button class="${sv && sv.has ? "" : "big"}" data-act="new">${sv && sv.has ? "New game" : "Begin"}</button>
+  <p class="muted" style="margin-top:14px">WASD fly · mouse aim · hold click to breathe · Shift wing dash · Space tail sweep · Q roar · E shield · R nova · <b>F / C / V</b> elemental skills · <b>1-7 / Tab</b> change element · <b>K</b> Dragon Den · P pause</p>`);
+}
+function showHatch() {
+  mode = "title";
+  show(`<h2>Your egg is hatching…</h2><p class="muted">Pick your starting element (the others unlock as you level up) and name yourself.</p>
+  <div class="ups">${EORDER.map(k => `<button class="up" data-act="el" data-id="${k}" id="el_${k}" style="border-color:${ELS[k].c};width:140px"><b style="color:${ELS[k].c}">${ELS[k].n}</b>${ELS[k].b}: ${ELS[k].st}</button>`).join("")}</div>
+  <p>Dragon's name:<br><input id="dn" maxlength="14" value="Ember"></p><button class="big" data-act="hatch">Hatch!</button>`);
+  window._el = "fire"; setTimeout(() => pickEl("fire"), 0);
+}
+function pickEl(k) { window._el = k; for (const x of EORDER) { const b = document.getElementById("el_" + x); if (b) b.style.background = x === k ? "#2a3a6a" : ""; } }
+function pauseGame() { if (mode !== "play") return; mode = "pause"; keys.clear(); mouse.down = false; show(`<h1 style="font-size:30px">PAUSED</h1><button class="big" data-act="resume">Resume</button> <button data-act="den">Dragon Den</button> <button class="red" data-act="title">Quit to title</button>`); }
+function resumeGame() { mode = "play"; ui.classList.remove("on"); keys.clear(); }
+function openDen() {
+  mode = "den"; keys.clear(); mouse.down = false;
+  const rowFor = (key, nm, key2, d, ok, lockTxt, by) => { const r = rank(key); return `<div style="margin:6px 0;padding:8px 10px;border:1px solid ${ok ? el().c : "#444"};border-radius:8px;opacity:${ok ? 1 : .6}"><b>${nm}</b> <span class="muted">[${key2}]</span> ${ok ? "" : `<span style="color:#ffd54a">— ${lockTxt}</span>`}<br><span class="muted">${d}</span><br>Rank ${"●".repeat(r)}${"○".repeat(3 - r)} ${ok && r < 3 && S.pts > 0 ? `<button data-act="rank" data-id="${key}">Rank up (1★)</button>` : ""}${ok && by ? ` <span class="muted">(${by})</span>` : ""}</div>`; };
+  show(`<h2>🐉 Dragon Den — ${S.dname}</h2><p class="muted">Level ${S.lvl} · <b style="color:#ffe27a">★ ${S.pts} mastery points</b> (earned from first-time trials). Powers unlock by <b>level</b> or by passing their <b>trial</b>.</p>
+  <div>${EORDER.map((k, i) => elUnlocked(k) ? `<button data-act="setel" data-id="${k}" style="background:${ELS[k].c};color:#111;${k === S.el ? "outline:3px solid #fff" : ""}">${i + 1} ${ELS[k].n}</button>` : `<button disabled style="background:#333;opacity:.6">${ELS[k].n} (Lv ${elLevel(k)})</button>`).join("")}</div>
+  <h3 style="margin:10px 0 0;color:${el().c}">${el().n} skills</h3><div style="text-align:left">${SIG[S.el].map((s, i) => rowFor(S.el + i, s[0], SLOTS[i].toUpperCase(), s[1], skUnlocked(i), "reach level " + SREQ[i], "")).join("")}</div>
+  <h3 style="margin:10px 0 0">Core powers</h3><div style="text-align:left">${PORD.map(id => rowFor(id, POW[id].n, POW[id].key, POW[id].d, canUse(id), "reach level " + POW[id].req + (id !== "breath" && id !== "nova" ? " or pass its trial" : ""), S.learned[id] ? "learned in training" : "level " + POW[id].req)).join("")}</div>
+  <button class="big" data-act="resume">Back</button>`);
+}
+ui.addEventListener("click", e => {
+  const t = e.target.closest("[data-act]"); if (!t) return;
+  switch (t.dataset.act) {
+    case "cont": S = load(); startGame(); break;
+    case "new": showHatch(); break;
+    case "el": pickEl(t.dataset.id); break;
+    case "hatch": S = defaultSave(); S.has = true; S.el = S.start = window._el || "fire"; S.dname = (document.getElementById("dn").value.trim() || "Ember").slice(0, 14); save(); startGame(); break;
+    case "resume": resumeGame(); break;
+    case "den": openDen(); break;
+    case "setel": S.el = t.dataset.id; save(); openDen(); break;
+    case "rank": { const id = t.dataset.id; if (S.pts > 0 && rank(id) < 3) { S.pts--; S.rank[id] = rank(id) + 1; save(); } openDen(); break; }
+    case "title": save(); showTitle(); break;
+  }
+});
+let last = 0;
+function loop(now) { const dt = Math.min(.033, (now - last) / 1000 || 0); last = now; if (S) update(dt); draw(); requestAnimationFrame(loop); }
+document.addEventListener("visibilitychange", () => { if (document.hidden && mode === "play") pauseGame(); });
+showTitle(); requestAnimationFrame(loop);
+
+</script>
+</body></html>
