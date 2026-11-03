@@ -107,7 +107,7 @@ const ELS = {
 };
 const elLevel = k => { if (k === "cosmic") return 99; if (k === S.start) return 1; const others = EORDER.filter(x => x !== S.start && x !== "cosmic"); return [2, 3, 4, 5, 6, 8][others.indexOf(k)]; };
 const elUnlocked = k => k === "cosmic" ? !!S.cosmic : (!!S.cosmic || S.lvl >= elLevel(k));
-const WEAK = { magmaking: { ice: 1.6, fire: .3, venom: .8 }, leviathan: { storm: 1.6, earth: 1.2, ice: .5 }, celestial: { shadow: 1.4, cosmic: 1.1, light: .4 }, frostlord: { fire: 1.5, ice: .4, light: 1.2 }, stardevourer: { cosmic: .8, shadow: .7, light: 1.2 }, wraith: { light: 1.5, fire: 1.2, shadow: .5 }, drake: { ice: 1.5, storm: 1.2, fire: .5 }, tyrant: { light: 1.3, shadow: .6, venom: .8 }, voidwyrm: { light: 1.3, shadow: .5, venom: .7 }, goblin: { fire: 1.5, light: 1.3, earth: .7 }, wolf: { ice: 1.5, storm: 1.3, shadow: .7 }, imp: { light: 1.5, earth: 1.3, shadow: .7 }, golem: { storm: 1.5, ice: 1.3, earth: .5, venom: .7 }, boss: { light: 1.3, fire: 1.1, shadow: .6, venom: .8 } };
+const WEAK = { hydra: { fire: 1.7, venom: .2, earth: .8 }, automaton: { storm: 1.7, earth: 1.3, shadow: .6 }, lunarch: { shadow: 1.5, cosmic: 1.2, light: .5 }, oblivion: { light: 1.5, cosmic: 1.3, shadow: .2 }, magmaking: { ice: 1.6, fire: .3, venom: .8 }, leviathan: { storm: 1.6, earth: 1.2, ice: .5 }, celestial: { shadow: 1.4, cosmic: 1.1, light: .4 }, frostlord: { fire: 1.5, ice: .4, light: 1.2 }, stardevourer: { cosmic: .8, shadow: .7, light: 1.2 }, wraith: { light: 1.5, fire: 1.2, shadow: .5 }, drake: { ice: 1.5, storm: 1.2, fire: .5 }, tyrant: { light: 1.3, shadow: .6, venom: .8 }, voidwyrm: { light: 1.3, shadow: .5, venom: .7 }, goblin: { fire: 1.5, light: 1.3, earth: .7 }, wolf: { ice: 1.5, storm: 1.3, shadow: .7 }, imp: { light: 1.5, earth: 1.3, shadow: .7 }, golem: { storm: 1.5, ice: 1.3, earth: .5, venom: .7 }, boss: { light: 1.3, fire: 1.1, shadow: .6, venom: .8 } };
 
 // ---------- generic powers ----------
 const POW = {
@@ -132,13 +132,13 @@ const SIG = {
   light: [["Radiant Beam", "An instant beam that pierces everything in a line.", 5], ["Healing Light", "Restore 35% of your health.", 14], ["Solar Flare", "A blinding flare: big damage and a stun.", 20]],
 };
 const lvlNeed = l => 40 + 40 * (l - 1);
-const maxL = () => (S && S.boss ? 15 : 10), rankMax = () => (S && S.boss ? 5 : 3);
+const maxL = () => (S && S.def && S.def.celestial ? 20 : S && S.boss ? 15 : 10), rankMax = () => (S && S.boss ? 5 : 3);
 const canUse = id => (tr && tr.id === id) || !!S.cosmic || S.lvl >= POW[id].req || !!S.learned[id];
 const rank = id => S.rank[id] || 0;
 const skUnlocked = i => !!S.cosmic || S.lvl >= SREQ[i];
-const BOSSES = new Set(["boss", "voidwyrm", "tyrant", "frostlord", "stardevourer", "magmaking", "leviathan", "celestial"]);
-const BOSS_A = new Set(["boss", "tyrant", "frostlord", "magmaking"]), BOSS_V = new Set(["voidwyrm", "stardevourer", "leviathan", "celestial"]);
-const BOSSOF = { 2: "frostlord", 3: "stardevourer", 4: "magmaking", 5: "leviathan", 6: "celestial" };
+const BOSSES = new Set(["boss", "voidwyrm", "tyrant", "frostlord", "stardevourer", "magmaking", "leviathan", "celestial", "hydra", "automaton", "lunarch", "oblivion"]);
+const BOSS_A = new Set(["boss", "tyrant", "frostlord", "magmaking", "hydra"]), BOSS_V = new Set(["voidwyrm", "stardevourer", "leviathan", "celestial", "automaton", "lunarch", "oblivion"]);
+const BOSSOF = { 2: "frostlord", 3: "stardevourer", 4: "magmaking", 5: "leviathan", 6: "celestial", 7: "hydra", 8: "automaton", 9: "lunarch", 10: "oblivion" };
 
 // ---------- worlds ----------
 const rects = [];
@@ -175,6 +175,26 @@ const WORLDS = {
     rects: [[800, 480, 300, 30, "cliff"], [1300, 480, 300, 30, "cliff"], [800, 40, 30, 440, "cliff"], [1570, 40, 30, 440, "cliff"], [300, 700, 500, 250, "water"], [1700, 700, 500, 250, "water"], ...[[200, 300], [2100, 300], [600, 1100], [1800, 1100], [400, 1350], [2000, 1350], [1000, 650], [1350, 650]].map(([x, y]) => [x, y, 70, 70, "rock"])],
     chests: [{ id: "w6a", x: 550, y: 825 }, { id: "w6b", x: 1950, y: 825 }, { id: "w6c", x: 150, y: 150 }, { id: "w6d", x: 2250, y: 150 }, { id: "w6e", x: 150, y: 1450 }, { id: "w6f", x: 2250, y: 1450 }],
     camps: [["goblin", 300, 400], ["goblin", 2000, 400], ["goblin", 700, 1250], ["goblin", 1700, 1250], ["wolf", 500, 600], ["wolf", 1900, 600], ["wolf", 1000, 850], ["wolf", 1400, 850], ["imp", 250, 1100], ["imp", 2150, 1100], ["imp", 1200, 650], ["golem", 600, 1000], ["golem", 1800, 1000], ["golem", 1200, 750], ["boss", 1200, 220]] },
+  7: { id: 7, name: "Whispering Jungle", ground: "#12301a", zones: [["#1a4a22", 0, 400, 2400, 400]], lairColor: "#0a2a12", trainColor: "#6a7a4a", water: "#1a5a4a", cliff: "#2a4a2a", rock: "#3a5a3a", decorColor: "rgba(120,255,140,.3)", trainLabel: "TREEHOUSE CAMP — safe ground", lairLabel: "THE HYDRA'S NEST", seed: 71, chestCoin: 1500, chestXp: 800,
+    spawn: { x: 1200, y: 1180 }, train: { x: 1000, y: 1000, w: 420, h: 350 }, lair: { x: 80, y: 60, w: 700, h: 450 }, gate: { x: 1330, y: 1290, r: 44 },
+    rects: [[900, 400, 400, 300, "water"], [1700, 300, 500, 400, "water"], [300, 800, 400, 300, "water"], [1700, 1000, 500, 300, "water"], [780, 60, 30, 200, "cliff"], [780, 360, 30, 150, "cliff"], [80, 500, 700, 30, "cliff"], ...[[1500, 800], [900, 900], [2250, 900], [500, 1300], [1500, 1300], [1000, 150], [1400, 150], [300, 650]].map(([x, y]) => [x, y, 70, 70, "rock"])],
+    chests: [{ id: "w7a", x: 1100, y: 550 }, { id: "w7b", x: 1950, y: 500 }, { id: "w7c", x: 500, y: 950 }, { id: "w7d", x: 1950, y: 1150 }, { id: "w7e", x: 2250, y: 100 }],
+    camps: [["goblin", 1100, 150], ["goblin", 1900, 200], ["goblin", 700, 700], ["goblin", 2200, 800], ["wolf", 1500, 600], ["wolf", 800, 1200], ["wolf", 2100, 1400], ["wolf", 400, 1450], ["imp", 1500, 1100], ["imp", 900, 800], ["imp", 2250, 400], ["golem", 1300, 800], ["golem", 800, 1050], ["golem", 1900, 1450], ["boss", 420, 280]] },
+  8: { id: 8, name: "Clockwork Citadel", ground: "#2a2a30", zones: [["#34343c", 0, 0, 2400, 600]], lairColor: "#1a1a22", trainColor: "#8a8a6a", water: "#4a4a5a", cliff: "#5a5a6a", rock: "#7a7a8a", decorColor: "rgba(255,200,100,.3)", trainLabel: "GEARWORKS CAMP — safe ground", lairLabel: "THE SOVEREIGN'S FOUNDRY", seed: 83, chestCoin: 2000, chestXp: 1000,
+    spawn: { x: 300, y: 300 }, train: { x: 100, y: 100, w: 420, h: 380 }, lair: { x: 1650, y: 1000, w: 700, h: 500 }, gate: { x: 460, y: 420, r: 44 },
+    rects: [[800, 300, 500, 300, "water"], [1400, 700, 500, 300, "water"], [400, 900, 500, 350, "water"], [1640, 1000, 30, 200, "cliff"], [1640, 1300, 30, 200, "cliff"], [1640, 990, 710, 30, "cliff"], ...[[700, 750], [1200, 1000], [2000, 500], [1500, 150], [2250, 800], [1000, 1400], [300, 700], [1700, 600]].map(([x, y]) => [x, y, 70, 70, "rock"])],
+    chests: [{ id: "w8a", x: 1050, y: 450 }, { id: "w8b", x: 1650, y: 850 }, { id: "w8c", x: 650, y: 1075 }, { id: "w8d", x: 2250, y: 150 }, { id: "w8e", x: 150, y: 1450 }],
+    camps: [["goblin", 800, 150], ["goblin", 1400, 400], ["goblin", 1000, 1100], ["goblin", 2100, 300], ["wolf", 700, 600], ["wolf", 1500, 1050], ["wolf", 2250, 650], ["wolf", 300, 1250], ["imp", 1200, 700], ["imp", 2000, 800], ["imp", 500, 800], ["golem", 1100, 1200], ["golem", 1900, 250], ["golem", 700, 1450], ["boss", 2000, 1250]] },
+  9: { id: 9, name: "Shattered Moon", ground: "#9a9ab0", zones: [["#8888a0", 0, 0, 2400, 500]], lairColor: "#222238", trainColor: "#c8c8d8", water: "#2a2a4a", cliff: "#5a5a78", rock: "#7a7a98", decorColor: "rgba(255,255,255,.5)", trainLabel: "LUNAR BASE — safe ground", lairLabel: "THE LUNARCH'S CRATER", seed: 97, chestCoin: 3000, chestXp: 1400,
+    spawn: { x: 2100, y: 300 }, train: { x: 1900, y: 100, w: 400, h: 350 }, lair: { x: 100, y: 1050, w: 760, h: 450 }, gate: { x: 2220, y: 400, r: 44 },
+    rects: [[800, 500, 500, 350, "water"], [300, 400, 400, 300, "water"], [1400, 900, 500, 400, "water"], [100, 1040, 300, 30, "cliff"], [560, 1040, 300, 30, "cliff"], [100, 1040, 30, 460, "cliff"], ...[[1000, 1000], [1500, 400], [1900, 700], [600, 800], [2200, 1000], [1200, 1300], [900, 150], [2000, 1350]].map(([x, y]) => [x, y, 70, 70, "rock"])],
+    chests: [{ id: "w9a", x: 1050, y: 675 }, { id: "w9b", x: 500, y: 550 }, { id: "w9c", x: 1650, y: 1100 }, { id: "w9d", x: 2250, y: 1450 }, { id: "w9e", x: 150, y: 150 }],
+    camps: [["goblin", 1200, 150], ["goblin", 600, 250], ["goblin", 1700, 700], ["goblin", 1000, 1200], ["wolf", 1300, 450], ["wolf", 700, 950], ["wolf", 2100, 800], ["wolf", 1500, 1450], ["imp", 400, 850], ["imp", 2000, 1050], ["imp", 2250, 600], ["golem", 1100, 950], ["golem", 1600, 250], ["golem", 2000, 1200], ["boss", 480, 1300]] },
+  10: { id: 10, name: "The Final Void", ground: "#05020f", zones: [["#0a0518", 0, 0, 2400, 800]], lairColor: "#1a0a30", trainColor: "#2a1a4a", water: "#000000", cliff: "#3a1a5a", rock: "#4a2a6a", decorColor: "rgba(255,255,255,.6)", trainLabel: "LAST LIGHT — safe ground", lairLabel: "THE HEART OF OBLIVION", seed: 113, chestCoin: 5000, chestXp: 2500,
+    spawn: { x: 1200, y: 1300 }, train: { x: 1000, y: 1100, w: 420, h: 350 }, lair: { x: 700, y: 40, w: 1000, h: 480 }, gate: { x: 1330, y: 1400, r: 44 },
+    rects: [[700, 520, 400, 30, "cliff"], [1300, 520, 400, 30, "cliff"], [700, 40, 30, 480, "cliff"], [1670, 40, 30, 480, "cliff"], [200, 600, 500, 300, "water"], [1800, 600, 400, 300, "water"], [300, 1000, 500, 350, "water"], [1700, 1000, 500, 350, "water"], ...[[1000, 700], [1350, 700], [850, 900], [1500, 900], [150, 400], [2200, 300], [1200, 900], [200, 1450]].map(([x, y]) => [x, y, 70, 70, "rock"])],
+    chests: [{ id: "w10a", x: 450, y: 750 }, { id: "w10b", x: 2000, y: 750 }, { id: "w10c", x: 550, y: 1175 }, { id: "w10d", x: 1950, y: 1175 }, { id: "w10e", x: 150, y: 150 }, { id: "w10f", x: 2250, y: 150 }],
+    camps: [["goblin", 400, 200], ["goblin", 2000, 200], ["goblin", 900, 800], ["goblin", 1500, 800], ["wolf", 300, 500], ["wolf", 2100, 500], ["wolf", 900, 1350], ["wolf", 1600, 1350], ["imp", 600, 300], ["imp", 1800, 300], ["imp", 1200, 650], ["golem", 800, 780], ["golem", 1700, 780], ["golem", 150, 1250], ["boss", 1200, 260]] },
 };
 function loadWorld(id) {
   WD = WORLDS[id]; S.world = id; S.visited[id] = true;
@@ -182,8 +202,8 @@ function loadWorld(id) {
   TRAIN = WD.train; LAIR = WD.lair; CHESTS = WD.chests; CAMPS = WD.camps; PADS = WD.pads || []; RIFTPAD = WD.riftpad || null; GATE = WD.gate; ALTAR = WD.altar || null; NOTE = WD.note || null;
   decor = []; let sd = WD.seed; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let i = 0; i < 380; i++) decor.push({ x: rr() * WW, y: rr() * WH, s: 2 + rr() * 4 });
 }
-const worldUnlocked = id => id === 1 || (id === 2 && !!S.boss) || (id === 3 && !!S.cosmic) || (id === 4 && !!S.def.frostlord) || (id === 5 && !!S.def.magmaking) || (id === 6 && !!S.def.leviathan);
-const LOCKTXT = { 2: "Locked — defeat the Shadow Wyrm", 3: "Locked — awaken the cosmos", 4: "Locked — defeat the Frost Lord", 5: "Locked — defeat the Magma King", 6: "Locked — defeat the Abyssal Leviathan" };
+const worldUnlocked = id => id === 1 || (id === 2 && !!S.boss) || (id === 3 && !!S.cosmic) || (id === 4 && !!S.def.frostlord) || (id === 5 && !!S.def.magmaking) || (id === 6 && !!S.def.leviathan) || (id === 7 && !!S.def.celestial) || (id === 8 && !!S.def.hydra) || (id === 9 && !!S.def.automaton) || (id === 10 && !!S.def.lunarch);
+const LOCKTXT = { 2: "Locked — defeat the Shadow Wyrm", 3: "Locked — awaken the cosmos", 4: "Locked — defeat the Frost Lord", 5: "Locked — defeat the Magma King", 6: "Locked — defeat the Abyssal Leviathan", 7: "Locked — defeat the Celestial Judge", 8: "Locked — defeat the Jungle Hydra", 9: "Locked — defeat the Clockwork Sovereign", 10: "Locked — defeat the Lunarch" };
 const solidAt = (x, y, r) => rects.some(b => x > b.x - r && x < b.x + b.w + r && y > b.y - r && y < b.y + b.h + r);
 
 const ETYPES = {
@@ -202,6 +222,10 @@ const ETYPES = {
   magmaking: { hp: 4200, r: 60, spd: 100, dmg: 30, xp: 1800, coin: 0, c: "#ff5a1a" },
   leviathan: { hp: 7000, r: 68, spd: 105, dmg: 34, xp: 3500, coin: 0, c: "#1a5a8a" },
   celestial: { hp: 11500, r: 74, spd: 110, dmg: 38, xp: 6000, coin: 0, c: "#ffe8a0" },
+  hydra: { hp: 12000, r: 72, spd: 105, dmg: 40, xp: 9000, coin: 0, c: "#3aa84a" },
+  automaton: { hp: 18000, r: 76, spd: 110, dmg: 44, xp: 14000, coin: 0, c: "#c8a85a" },
+  lunarch: { hp: 26000, r: 78, spd: 112, dmg: 48, xp: 22000, coin: 0, c: "#c8c8f0" },
+  oblivion: { hp: 40000, r: 86, spd: 118, dmg: 56, xp: 40000, coin: 0, c: "#0a0a1a" },
   walker: { hp: 999, r: 15, spd: 50, dmg: 0, xp: 0, coin: 0, c: "#c8a878" },
 };
 
@@ -220,24 +244,22 @@ function newPlayer() {
   cd = {};
 }
 function defaultEs(type, extra) {
-  if (type === "target" || type === "walker" || (extra && extra.trialDummy) || BOSSES.has(type)) return { hp: 1, dmg: 1, spd: 1 };
-  if (WD.id === 2) return { hp: 2.4, dmg: 1.7, spd: 1.15 };
-  if (WD.id === 3) return { hp: 3.5, dmg: 2.2, spd: 1.2 };
-  if (WD.id === 4) return { hp: 4.5, dmg: 2.6, spd: 1.22 };
-  if (WD.id === 5) return { hp: 6, dmg: 3.1, spd: 1.25 };
-  if (WD.id === 6) return { hp: 8, dmg: 3.8, spd: 1.3 };
-  return S.boss ? { hp: 2, dmg: 1.5, spd: 1.15 } : { hp: 1, dmg: 1, spd: 1 };
+  if (type === "target" || type === "walker" || (extra && extra.trialDummy)) return { hp: 1, dmg: 1, spd: 1 };
+  if (BOSSES.has(type)) return { hp: 1.3, dmg: 1.2, spd: 1 };
+  const T = { 1: S.boss ? [2.2, 1.7, 1.15] : [1.2, 1.25, 1.05], 2: [2.8, 1.9, 1.18], 3: [4, 2.4, 1.22], 4: [5.2, 2.8, 1.25], 5: [7, 3.4, 1.28], 6: [10, 4.2, 1.32], 7: [13, 5, 1.35], 8: [17, 5.8, 1.38], 9: [22, 6.8, 1.4], 10: [30, 8, 1.45] }[WD.id];
+  return { hp: T[0], dmg: T[1], spd: T[2] };
 }
 function spawnEnemy(type, x, y, extra) {
   const T = ETYPES[type];
   const es = (extra && extra.es) || defaultEs(type, extra);
-  const e = Object.assign({ type, x, y, hx: x, hy: y, hp: T.hp * es.hp, max: T.hp * es.hp, dm: T.dmg * es.dmg, sm: es.spd, elite: es.hp > 1, r: T.r, cd: rnd(.5, 1.5), flash: 0, burn: 0, slow: 0, stun: 0, poison: 0, vx: 0, vy: 0, st: 0, t: 0, ph: 0 }, extra || {});
+  const e = Object.assign({ type, x, y, hx: x, hy: y, hp: T.hp * es.hp, max: T.hp * es.hp, dm: T.dmg * es.dmg, sm: es.spd, elite: es.hp > 1.5, r: T.r, cd: rnd(.5, 1.5), flash: 0, burn: 0, slow: 0, stun: 0, poison: 0, vx: 0, vy: 0, st: 0, t: 0, ph: 0 }, extra || {});
   enemies.push(e); return e;
 }
 function actType(t) {
   if (WD.id === 1) { if (!S.boss) return t; if (t === "goblin") return Math.random() < .5 ? "wraith" : "goblin"; if (t === "wolf") return Math.random() < .5 ? "drake" : "wolf"; if (t === "imp") return "wraith"; if (t === "boss") return "voidwyrm"; return t; }
   if (WD.id === 2) { if (t === "goblin") return Math.random() < .4 ? "wraith" : "goblin"; if (t === "wolf") return Math.random() < .4 ? "drake" : "wolf"; if (t === "imp") return Math.random() < .5 ? "wraith" : "imp"; if (t === "boss") return "frostlord"; return t; }
   if (t === "boss") return BOSSOF[WD.id];
+  if (WD.id === 7 || WD.id === 8) { if (t === "goblin") return Math.random() < .5 ? "drake" : "wraith"; if (t === "wolf") return "drake"; if (t === "imp") return "wraith"; return t; }
   if (WD.id === 4) { if (t === "goblin") return Math.random() < .5 ? "drake" : "goblin"; if (t === "wolf") return "drake"; if (t === "imp") return "wraith"; return t; }
   if (t === "goblin" || t === "imp") return "wraith"; if (t === "wolf") return "drake"; return t;
 }
@@ -328,7 +350,7 @@ function killEnemy(e) {
   if (e.type === "boss") { const first = !S.boss; S.boss = true; Wallet.earn(1000, "Shadow Wyrm defeated!"); shake = .8; save(); if (first) { say("The Wyrm falls... but the sky TEARS open. The VOID spreads!", 6); later(5, () => { const c = camps.find(c => c.type === "boss"); if (c && !S.final) { c.e = spawnEnemy("voidwyrm", c.x, c.y); say("THE VOID WYRM AWAKENS!", 3); shake = .8; } }); } }
   if (e.type === "voidwyrm") { S.final = true; Wallet.earn(5000, "The Void is sealed!"); say("THE VOID WYRM IS DEFEATED! Ascended... the Void Rift is now open.", 6); shake = 1; hazards = []; save(); }
   if (e.type === "frostlord") { S.def.frostlord = true; Wallet.earn(2500, "Frost Lord defeated!"); say("THE FROST LORD FALLS! Seek the mysterious note... and the Altar.", 5); shake = .9; save(); }
-  const NB = { magmaking: [5000, "Magma King defeated!", "THE MAGMA KING IS EXTINGUISHED! The Sunken Abyss opens."], leviathan: [8000, "Leviathan defeated!", "THE LEVIATHAN SINKS! The Celestial Spire opens."], celestial: [20000, "Celestial Judge defeated!", "THE CELESTIAL JUDGE FALLS — you are the master of every world!"] };
+  const NB = { magmaking: [5000, "Magma King defeated!", "THE MAGMA KING IS EXTINGUISHED! The Sunken Abyss opens."], leviathan: [8000, "Leviathan defeated!", "THE LEVIATHAN SINKS! The Celestial Spire opens."], hydra: [30000, "Hydra defeated!", "THE HYDRA FALLS! The Clockwork Citadel opens."], automaton: [40000, "Sovereign defeated!", "THE CLOCKWORK SOVEREIGN STOPS! The Shattered Moon opens."], lunarch: [60000, "Lunarch defeated!", "THE LUNARCH SHATTERS! The Final Void opens."], oblivion: [100000, "OBLIVION defeated!", "OBLIVION IS DEFEATED — you are the legend of every world!"], celestial: [20000, "Celestial Judge defeated!", "THE CELESTIAL JUDGE FALLS! Four deeper worlds open, and your power grows (level cap 20)."] };
   if (NB[e.type]) { S.def[e.type] = true; Wallet.earn(NB[e.type][0], NB[e.type][1]); say(NB[e.type][2], 6); shake = 1; save(); }
   if (e.type === "stardevourer") { S.def.stardevourer = true; Wallet.earn(10000, "Star Devourer defeated!"); say("THE STAR DEVOURER IS NO MORE — you have mastered the worlds!", 7); shake = 1; save(); }
   if (e.type === "tyrant") { Wallet.earn(100 + 20 * (rift ? rift.wave : 0), "Void Tyrant"); }
@@ -551,7 +573,7 @@ function update(dt) {
   P.face = touch && !mouse.down ? (iv.m ? Math.atan2(iv.y, iv.x) : P.face) : aim();
   P.trail.unshift({ x: P.x, y: P.y }); if (P.trail.length > 70) P.trail.pop();
   P.en = Math.min(enMax(), P.en + (Math.hypot(P.x - (TRAIN.x + TRAIN.w / 2), P.y - (TRAIN.y + TRAIN.h / 2)) < 420 ? 26 : 13) * dt);
-  P.hp = Math.min(hpMax(), P.hp + .6 * dt);
+  P.hp = Math.min(hpMax(), P.hp + .3 * dt);
   if (mouse.down) breathe(dt);
   if (tr) updateTrial(dt); else updatePads(dt);
   updateRift(dt);
@@ -559,8 +581,8 @@ function update(dt) {
   if (P.warp > 0 && Math.random() < .3) puff(P.x + rnd(-300, 300), P.y + rnd(-200, 200), 1, "#6af0ff", 20);
   if (S.el === "cosmic" && Math.random() < .5) fx.push({ x: P.x + rnd(-20, 20), y: P.y + rnd(-20, 20), vx: rnd(-30, 30), vy: rnd(-30, 30), life: .6, c: Math.random() < .5 ? "#6af0ff" : "#ff5ad8" });
   // void storms (after the Shadow Wyrm)
-  if ((S.boss || WD.id > 1) && !tr && !(P.x > TRAIN.x && P.x < TRAIN.x + TRAIN.w && P.y > TRAIN.y && P.y < TRAIN.y + TRAIN.h)) { hzT -= dt; if (hzT <= 0) { hzT = WD.id >= 3 ? Math.max(2, 4.2 - WD.id * .3) : (S.final ? 7 : 4.5); const a = rnd(0, 6.28), r0 = rnd(0, 200); addHazard(P.x + Math.cos(a) * r0, P.y + Math.sin(a) * r0); } }
-  for (const h of hazards) { if (h.warn > 0) h.warn -= dt; else { h.life -= dt; h.tk -= dt; if (h.tk <= 0) { h.tk = .5; if (Math.hypot(P.x - h.x, P.y - h.y) < h.r + 10) hurtPlayer(10, 0, 0); } } }
+  if ((S.boss || WD.id > 1) && !tr && !(P.x > TRAIN.x && P.x < TRAIN.x + TRAIN.w && P.y > TRAIN.y && P.y < TRAIN.y + TRAIN.h)) { hzT -= dt; if (hzT <= 0) { hzT = WD.id >= 3 ? Math.max(1.4, 3.6 - WD.id * .25) : (S.final ? 5.5 : 3.6); const a = rnd(0, 6.28), r0 = rnd(0, 200); addHazard(P.x + Math.cos(a) * r0, P.y + Math.sin(a) * r0); } }
+  for (const h of hazards) { if (h.warn > 0) h.warn -= dt; else { h.life -= dt; h.tk -= dt; if (h.tk <= 0) { h.tk = .5; if (Math.hypot(P.x - h.x, P.y - h.y) < h.r + 10) hurtPlayer(14, 0, 0); } } }
   hazards = hazards.filter(h => h.life > 0);
   for (const c of CHESTS) if (!S.chests[c.id] && Math.hypot(P.x - c.x, P.y - c.y) < 34) { S.chests[c.id] = true; Wallet.earn(WD.chestCoin, "treasure!"); gainXp(WD.chestXp); puff(c.x, c.y, 30, "#ffd54a"); say("Treasure found!", 2); save(); }
   // zones
@@ -573,7 +595,7 @@ function update(dt) {
   // enemies
   const inSafe = e => e.x > TRAIN.x - 20 && e.x < TRAIN.x + TRAIN.w + 20 && e.y > TRAIN.y - 20 && e.y < TRAIN.y + TRAIN.h + 20;
   for (const e of enemies) {
-    e.flash -= dt; e.cd -= dt; e.t += dt;
+    e.flash -= dt; e.cd -= dt * 1.25; e.t += dt;
     if (e.burn > 0) { e.burn -= dt; e.bt = (e.bt || 0) + dt; if (e.bt >= .5) { e.bt = 0; e.hp -= 2 + S.lvl * .4; e.flash = .08; if (e.hp <= 0) killEnemy(e); } }
     if (e.poison > 0 && !e.dead) { e.poison -= dt; e.pt = (e.pt || 0) + dt; if (e.pt >= .5) { e.pt = 0; e.hp -= 2.5 + S.lvl * .5; e.flash = .08; if (e.hp <= 0) killEnemy(e); } }
     if (e.dead) continue;
@@ -583,7 +605,7 @@ function update(dt) {
     const dx = P.x - e.x, dy = P.y - e.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d, sp = ETYPES[e.type].spd * (e.sm || 1) * (e.slow > 0 ? .5 : 1);
     if (e.type === "target") continue;
     if (e.type === "walker") { if (sp > 0) moveWalker(e, ux * sp * dt, uy * sp * dt, e.r); continue; }
-    const aggro = e.rift || (!tr && !inSafe(P) && d < (BOSSES.has(e.type) ? 700 : 420)), home = Math.hypot(e.x - e.hx, e.y - e.hy);
+    const aggro = e.rift || (!tr && !inSafe(P) && d < (BOSSES.has(e.type) ? 800 : 520)), home = Math.hypot(e.x - e.hx, e.y - e.hy);
     if (!aggro) { if (home > 12) { const hx = e.hx - e.x, hy = e.hy - e.y, hl = Math.hypot(hx, hy); moveWalker(e, hx / hl * sp * dt, hy / hl * sp * dt, e.r); } continue; }
     const T = ETYPES[e.type];
     if (e.type === "goblin") { if (d > e.r + 16) moveWalker(e, ux * sp * dt, uy * sp * dt, e.r); else if (e.cd <= 0) { e.cd = 1; hurtPlayer(e.dm, ux * 300, uy * 300); } }
@@ -767,7 +789,7 @@ function hud() {
   ctx.fillStyle = "#ffd54a"; for (const c of CHESTS) if (!S.chests[c.id]) ctx.fillRect(mx0 + c.x / WW * mw - 1, my0 + c.y / WH * mh - 1, 3, 3);
   ctx.fillStyle = "#f55"; for (const e of enemies) if (e.type !== "walker" && e.type !== "target") ctx.fillRect(mx0 + e.x / WW * mw - 1, my0 + e.y / WH * mh - 1, 2, 2); ctx.fillStyle = "#fff"; ctx.fillRect(mx0 + P.x / WW * mw - 2, my0 + P.y / WH * mh - 2, 4, 4);
   ctx.fillStyle = "#fff8"; ctx.textAlign = "right"; ctx.font = "11px system-ui"; ctx.fillText("K = Dragon Den · P = pause", VW - 10, my0 + mh + 14);
-  const boss = enemies.find(e => BOSSES.has(e.type)); if (boss && dist(boss, P) < 900) { bar(VW / 2 - 200, VH - 96, 400, 12, boss.hp / boss.max, "#a03ad8", ({ boss: "Shadow Wyrm", voidwyrm: "THE VOID WYRM", tyrant: "Void Tyrant", frostlord: "THE FROST LORD", stardevourer: "THE STAR DEVOURER", magmaking: "THE MAGMA KING", leviathan: "THE ABYSSAL LEVIATHAN", celestial: "THE CELESTIAL JUDGE" })[boss.type]); }
+  const boss = enemies.find(e => BOSSES.has(e.type)); if (boss && dist(boss, P) < 900) { bar(VW / 2 - 200, VH - 96, 400, 12, boss.hp / boss.max, "#a03ad8", ({ boss: "Shadow Wyrm", voidwyrm: "THE VOID WYRM", tyrant: "Void Tyrant", frostlord: "THE FROST LORD", stardevourer: "THE STAR DEVOURER", magmaking: "THE MAGMA KING", leviathan: "THE ABYSSAL LEVIATHAN", celestial: "THE CELESTIAL JUDGE", hydra: "THE JUNGLE HYDRA", automaton: "THE CLOCKWORK SOVEREIGN", lunarch: "THE LUNARCH", oblivion: "OBLIVION" })[boss.type]); }
   if (S.boss || WD.id > 1) { ctx.fillStyle = "#d08aff"; ctx.font = "bold 12px system-ui"; ctx.textAlign = "center"; ctx.fillText(rift ? `VOID RIFT — wave ${rift.wave}  (best ${S.rift || 0})` : WD.id === 1 ? "ASCENDED REALM — the Void spreads" : WD.name.toUpperCase(), VW / 2, 118); }
   if (msgT > 0) { ctx.textAlign = "center"; ctx.font = "bold 24px system-ui"; ctx.fillStyle = "#fff"; ctx.globalAlpha = Math.min(1, msgT); ctx.fillText(msg, VW / 2, 130); ctx.globalAlpha = 1; }
 }
