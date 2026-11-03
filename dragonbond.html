@@ -107,7 +107,7 @@ const ELS = {
 };
 const elLevel = k => { if (k === "cosmic") return 99; if (k === S.start) return 1; const others = EORDER.filter(x => x !== S.start && x !== "cosmic"); return [2, 3, 4, 5, 6, 8][others.indexOf(k)]; };
 const elUnlocked = k => k === "cosmic" ? !!S.cosmic : (!!S.cosmic || S.lvl >= elLevel(k));
-const WEAK = { frostlord: { fire: 1.5, ice: .4, light: 1.2 }, stardevourer: { cosmic: .8, shadow: .7, light: 1.2 }, wraith: { light: 1.5, fire: 1.2, shadow: .5 }, drake: { ice: 1.5, storm: 1.2, fire: .5 }, tyrant: { light: 1.3, shadow: .6, venom: .8 }, voidwyrm: { light: 1.3, shadow: .5, venom: .7 }, goblin: { fire: 1.5, light: 1.3, earth: .7 }, wolf: { ice: 1.5, storm: 1.3, shadow: .7 }, imp: { light: 1.5, earth: 1.3, shadow: .7 }, golem: { storm: 1.5, ice: 1.3, earth: .5, venom: .7 }, boss: { light: 1.3, fire: 1.1, shadow: .6, venom: .8 } };
+const WEAK = { magmaking: { ice: 1.6, fire: .3, venom: .8 }, leviathan: { storm: 1.6, earth: 1.2, ice: .5 }, celestial: { shadow: 1.4, cosmic: 1.1, light: .4 }, frostlord: { fire: 1.5, ice: .4, light: 1.2 }, stardevourer: { cosmic: .8, shadow: .7, light: 1.2 }, wraith: { light: 1.5, fire: 1.2, shadow: .5 }, drake: { ice: 1.5, storm: 1.2, fire: .5 }, tyrant: { light: 1.3, shadow: .6, venom: .8 }, voidwyrm: { light: 1.3, shadow: .5, venom: .7 }, goblin: { fire: 1.5, light: 1.3, earth: .7 }, wolf: { ice: 1.5, storm: 1.3, shadow: .7 }, imp: { light: 1.5, earth: 1.3, shadow: .7 }, golem: { storm: 1.5, ice: 1.3, earth: .5, venom: .7 }, boss: { light: 1.3, fire: 1.1, shadow: .6, venom: .8 } };
 
 // ---------- generic powers ----------
 const POW = {
@@ -136,7 +136,9 @@ const maxL = () => (S && S.boss ? 15 : 10), rankMax = () => (S && S.boss ? 5 : 3
 const canUse = id => (tr && tr.id === id) || !!S.cosmic || S.lvl >= POW[id].req || !!S.learned[id];
 const rank = id => S.rank[id] || 0;
 const skUnlocked = i => !!S.cosmic || S.lvl >= SREQ[i];
-const BOSSES = new Set(["boss", "voidwyrm", "tyrant", "frostlord", "stardevourer"]);
+const BOSSES = new Set(["boss", "voidwyrm", "tyrant", "frostlord", "stardevourer", "magmaking", "leviathan", "celestial"]);
+const BOSS_A = new Set(["boss", "tyrant", "frostlord", "magmaking"]), BOSS_V = new Set(["voidwyrm", "stardevourer", "leviathan", "celestial"]);
+const BOSSOF = { 2: "frostlord", 3: "stardevourer", 4: "magmaking", 5: "leviathan", 6: "celestial" };
 
 // ---------- worlds ----------
 const rects = [];
@@ -157,7 +159,22 @@ const WORLDS = {
     spawn: { x: 1200, y: 800 }, train: { x: 1000, y: 650, w: 400, h: 300 }, lair: { x: 800, y: 40, w: 800, h: 420 }, gate: { x: 1300, y: 880, r: 44 },
     rects: [[800, 460, 300, 30, "cliff"], [1300, 460, 300, 30, "cliff"], [800, 40, 30, 420, "cliff"], [1570, 40, 30, 420, "cliff"], ...[[300, 600], [600, 900], [1700, 600], [2000, 900], [400, 1250], [1000, 1150], [1500, 1200], [2050, 1350], [250, 300], [2100, 300], [700, 600], [1800, 1000]].map(([x, y]) => [x, y, 70, 70, "rock"])],
     chests: [{ id: "w3a", x: 150, y: 150 }, { id: "w3b", x: 2250, y: 150 }, { id: "w3c", x: 150, y: 1450 }, { id: "w3d", x: 2250, y: 1450 }, { id: "w3e", x: 1200, y: 1450 }],
-    camps: [["goblin", 300, 300], ["goblin", 2000, 300], ["goblin", 300, 1300], ["goblin", 2000, 1300], ["wolf", 500, 750], ["wolf", 1900, 750], ["wolf", 900, 1350], ["wolf", 1500, 1350], ["imp", 200, 850], ["imp", 2200, 850], ["imp", 700, 1100], ["imp", 1700, 1100], ["golem", 400, 1000], ["golem", 2000, 1000], ["golem", 1200, 1300], ["golem", 1200, 560], ["boss", 1200, 220]] },
+    camps: [["goblin", 420, 220], ["goblin", 2000, 300], ["goblin", 300, 1300], ["goblin", 2000, 1300], ["wolf", 500, 750], ["wolf", 1900, 750], ["wolf", 900, 1350], ["wolf", 1500, 1350], ["imp", 200, 850], ["imp", 2200, 850], ["imp", 700, 1100], ["imp", 1700, 1100], ["golem", 400, 1000], ["golem", 2000, 1000], ["golem", 1200, 1300], ["golem", 1200, 560], ["boss", 1200, 220]] },
+  4: { id: 4, name: "Cinder Depths", ground: "#2a1410", zones: [["#3a1a10", 0, 500, 2400, 300]], lairColor: "#3a0a0a", trainColor: "#5a4a3a", water: "#e04a10", cliff: "#3a2a2a", rock: "#5a3a2a", decorColor: "rgba(255,120,40,.35)", trainLabel: "EMBER CAMP — safe ground", lairLabel: "THE MAGMA THRONE", seed: 31, chestCoin: 250, chestXp: 160,
+    spawn: { x: 380, y: 1300 }, train: { x: 100, y: 1100, w: 560, h: 420 }, lair: { x: 1700, y: 60, w: 640, h: 460 }, gate: { x: 560, y: 1180, r: 44 },
+    rects: [[900, 400, 450, 350, "water"], [300, 500, 400, 300, "water"], [1500, 900, 500, 350, "water"], [1690, 60, 30, 200, "cliff"], [1690, 360, 30, 160, "cliff"], [1690, 500, 660, 30, "cliff"], ...[[800, 1000], [1100, 1300], [1400, 700], [2200, 800], [700, 1300], [1000, 150], [2100, 1300], [1300, 1100]].map(([x, y]) => [x, y, 70, 70, "rock"])],
+    chests: [{ id: "w4a", x: 1125, y: 575 }, { id: "w4b", x: 500, y: 650 }, { id: "w4c", x: 1750, y: 1075 }, { id: "w4d", x: 2250, y: 1450 }],
+    camps: [["goblin", 900, 150], ["goblin", 1400, 400], ["goblin", 800, 900], ["goblin", 2200, 700], ["wolf", 700, 1150], ["wolf", 1300, 800], ["wolf", 2100, 1060], ["wolf", 1100, 1450], ["imp", 500, 300], ["imp", 1700, 700], ["imp", 2250, 1200], ["golem", 1200, 150], ["golem", 900, 1300], ["golem", 1800, 1400], ["boss", 2050, 280]] },
+  5: { id: 5, name: "Sunken Abyss", ground: "#0a2a3a", zones: [["#0e3a4a", 0, 0, 2400, 400]], lairColor: "#0a1a3a", trainColor: "#3a6a7a", water: "#0a1a5a", cliff: "#3a6a5a", rock: "#2a5a6a", decorColor: "rgba(160,220,255,.35)", trainLabel: "AIR POCKET CAMP — safe ground", lairLabel: "THE LEVIATHAN'S DEEP", seed: 47, chestCoin: 500, chestXp: 300,
+    spawn: { x: 1200, y: 850 }, train: { x: 1000, y: 700, w: 420, h: 300 }, lair: { x: 60, y: 1050, w: 700, h: 480 }, gate: { x: 1320, y: 930, r: 44 },
+    rects: [[300, 300, 500, 300, "water"], [1500, 300, 600, 350, "water"], [1700, 1000, 500, 400, "water"], [900, 1250, 500, 250, "water"], [60, 1040, 700, 30, "cliff"], [750, 1050, 30, 200, "cliff"], [750, 1350, 30, 180, "cliff"], ...[[1000, 400], [500, 800], [1500, 800], [2200, 700], [900, 1100], [1450, 1100], [200, 700]].map(([x, y]) => [x, y, 70, 70, "rock"])],
+    chests: [{ id: "w5a", x: 550, y: 450 }, { id: "w5b", x: 1800, y: 475 }, { id: "w5c", x: 1950, y: 1200 }, { id: "w5d", x: 1150, y: 1375 }, { id: "w5e", x: 2250, y: 100 }],
+    camps: [["goblin", 900, 150], ["goblin", 1500, 1000], ["goblin", 300, 900], ["goblin", 2200, 600], ["wolf", 1000, 500], ["wolf", 1800, 800], ["wolf", 800, 1200], ["wolf", 2250, 1400], ["imp", 600, 150], ["imp", 1300, 1200], ["imp", 2000, 150], ["golem", 500, 700], ["golem", 1700, 740], ["golem", 1200, 1150], ["boss", 420, 1300]] },
+  6: { id: 6, name: "Celestial Spire", ground: "#d8d0f0", zones: [["#c8bcf0", 0, 0, 2400, 500]], lairColor: "#2a2050", trainColor: "#fff0c8", water: "#ffd86a", cliff: "#a898d0", rock: "#b8a8e0", decorColor: "rgba(255,255,255,.8)", trainLabel: "SUNLIT LANDING — safe ground", lairLabel: "THE JUDGEMENT HALL", seed: 63, chestCoin: 900, chestXp: 500,
+    spawn: { x: 1200, y: 1300 }, train: { x: 1000, y: 1100, w: 420, h: 350 }, lair: { x: 800, y: 40, w: 800, h: 440 }, gate: { x: 1330, y: 1380, r: 44 },
+    rects: [[800, 480, 300, 30, "cliff"], [1300, 480, 300, 30, "cliff"], [800, 40, 30, 440, "cliff"], [1570, 40, 30, 440, "cliff"], [300, 700, 500, 250, "water"], [1700, 700, 500, 250, "water"], ...[[200, 300], [2100, 300], [600, 1100], [1800, 1100], [400, 1350], [2000, 1350], [1000, 650], [1350, 650]].map(([x, y]) => [x, y, 70, 70, "rock"])],
+    chests: [{ id: "w6a", x: 550, y: 825 }, { id: "w6b", x: 1950, y: 825 }, { id: "w6c", x: 150, y: 150 }, { id: "w6d", x: 2250, y: 150 }, { id: "w6e", x: 150, y: 1450 }, { id: "w6f", x: 2250, y: 1450 }],
+    camps: [["goblin", 300, 400], ["goblin", 2000, 400], ["goblin", 700, 1250], ["goblin", 1700, 1250], ["wolf", 500, 600], ["wolf", 1900, 600], ["wolf", 1000, 850], ["wolf", 1400, 850], ["imp", 250, 1100], ["imp", 2150, 1100], ["imp", 1200, 650], ["golem", 600, 1000], ["golem", 1800, 1000], ["golem", 1200, 750], ["boss", 1200, 220]] },
 };
 function loadWorld(id) {
   WD = WORLDS[id]; S.world = id; S.visited[id] = true;
@@ -165,7 +182,8 @@ function loadWorld(id) {
   TRAIN = WD.train; LAIR = WD.lair; CHESTS = WD.chests; CAMPS = WD.camps; PADS = WD.pads || []; RIFTPAD = WD.riftpad || null; GATE = WD.gate; ALTAR = WD.altar || null; NOTE = WD.note || null;
   decor = []; let sd = WD.seed; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647; for (let i = 0; i < 380; i++) decor.push({ x: rr() * WW, y: rr() * WH, s: 2 + rr() * 4 });
 }
-const worldUnlocked = id => id === 1 || (id === 2 && !!S.boss) || (id === 3 && !!S.cosmic);
+const worldUnlocked = id => id === 1 || (id === 2 && !!S.boss) || (id === 3 && !!S.cosmic) || (id === 4 && !!S.def.frostlord) || (id === 5 && !!S.def.magmaking) || (id === 6 && !!S.def.leviathan);
+const LOCKTXT = { 2: "Locked — defeat the Shadow Wyrm", 3: "Locked — awaken the cosmos", 4: "Locked — defeat the Frost Lord", 5: "Locked — defeat the Magma King", 6: "Locked — defeat the Abyssal Leviathan" };
 const solidAt = (x, y, r) => rects.some(b => x > b.x - r && x < b.x + b.w + r && y > b.y - r && y < b.y + b.h + r);
 
 const ETYPES = {
@@ -181,6 +199,9 @@ const ETYPES = {
   voidwyrm: { hp: 3400, r: 62, spd: 100, dmg: 30, xp: 1500, coin: 0, c: "#1a0a30" },
   frostlord: { hp: 2600, r: 58, spd: 95, dmg: 26, xp: 900, coin: 0, c: "#7ad8ff" },
   stardevourer: { hp: 6500, r: 72, spd: 105, dmg: 34, xp: 3000, coin: 0, c: "#2a1a6a" },
+  magmaking: { hp: 4200, r: 60, spd: 100, dmg: 30, xp: 1800, coin: 0, c: "#ff5a1a" },
+  leviathan: { hp: 7000, r: 68, spd: 105, dmg: 34, xp: 3500, coin: 0, c: "#1a5a8a" },
+  celestial: { hp: 11500, r: 74, spd: 110, dmg: 38, xp: 6000, coin: 0, c: "#ffe8a0" },
   walker: { hp: 999, r: 15, spd: 50, dmg: 0, xp: 0, coin: 0, c: "#c8a878" },
 };
 
@@ -199,9 +220,12 @@ function newPlayer() {
   cd = {};
 }
 function defaultEs(type, extra) {
-  if (type === "target" || type === "walker" || (extra && extra.trialDummy) || ["voidwyrm", "frostlord", "stardevourer", "boss", "tyrant"].includes(type)) return { hp: 1, dmg: 1, spd: 1 };
+  if (type === "target" || type === "walker" || (extra && extra.trialDummy) || BOSSES.has(type)) return { hp: 1, dmg: 1, spd: 1 };
   if (WD.id === 2) return { hp: 2.4, dmg: 1.7, spd: 1.15 };
   if (WD.id === 3) return { hp: 3.5, dmg: 2.2, spd: 1.2 };
+  if (WD.id === 4) return { hp: 4.5, dmg: 2.6, spd: 1.22 };
+  if (WD.id === 5) return { hp: 6, dmg: 3.1, spd: 1.25 };
+  if (WD.id === 6) return { hp: 8, dmg: 3.8, spd: 1.3 };
   return S.boss ? { hp: 2, dmg: 1.5, spd: 1.15 } : { hp: 1, dmg: 1, spd: 1 };
 }
 function spawnEnemy(type, x, y, extra) {
@@ -213,9 +237,11 @@ function spawnEnemy(type, x, y, extra) {
 function actType(t) {
   if (WD.id === 1) { if (!S.boss) return t; if (t === "goblin") return Math.random() < .5 ? "wraith" : "goblin"; if (t === "wolf") return Math.random() < .5 ? "drake" : "wolf"; if (t === "imp") return "wraith"; if (t === "boss") return "voidwyrm"; return t; }
   if (WD.id === 2) { if (t === "goblin") return Math.random() < .4 ? "wraith" : "goblin"; if (t === "wolf") return Math.random() < .4 ? "drake" : "wolf"; if (t === "imp") return Math.random() < .5 ? "wraith" : "imp"; if (t === "boss") return "frostlord"; return t; }
-  if (t === "goblin" || t === "imp") return "wraith"; if (t === "wolf") return "drake"; if (t === "boss") return "stardevourer"; return t;
+  if (t === "boss") return BOSSOF[WD.id];
+  if (WD.id === 4) { if (t === "goblin") return Math.random() < .5 ? "drake" : "goblin"; if (t === "wolf") return "drake"; if (t === "imp") return "wraith"; return t; }
+  if (t === "goblin" || t === "imp") return "wraith"; if (t === "wolf") return "drake"; return t;
 }
-const bossDone = () => WD.id === 1 ? !!S.final : WD.id === 2 ? !!S.def.frostlord : !!S.def.stardevourer;
+const bossDone = () => WD.id === 1 ? !!S.final : !!S.def[BOSSOF[WD.id]];
 function setupWorld() {
   enemies = []; shots = []; fx = []; floats = []; zones = []; timers = []; hazards = []; rift = null; tr = null; padT = 0; padId = null; hzT = 4;
   camps = CAMPS.map(([type, x, y]) => ({ type, x, y, e: null, t: 0 }));
@@ -302,6 +328,8 @@ function killEnemy(e) {
   if (e.type === "boss") { const first = !S.boss; S.boss = true; Wallet.earn(1000, "Shadow Wyrm defeated!"); shake = .8; save(); if (first) { say("The Wyrm falls... but the sky TEARS open. The VOID spreads!", 6); later(5, () => { const c = camps.find(c => c.type === "boss"); if (c && !S.final) { c.e = spawnEnemy("voidwyrm", c.x, c.y); say("THE VOID WYRM AWAKENS!", 3); shake = .8; } }); } }
   if (e.type === "voidwyrm") { S.final = true; Wallet.earn(5000, "The Void is sealed!"); say("THE VOID WYRM IS DEFEATED! Ascended... the Void Rift is now open.", 6); shake = 1; hazards = []; save(); }
   if (e.type === "frostlord") { S.def.frostlord = true; Wallet.earn(2500, "Frost Lord defeated!"); say("THE FROST LORD FALLS! Seek the mysterious note... and the Altar.", 5); shake = .9; save(); }
+  const NB = { magmaking: [5000, "Magma King defeated!", "THE MAGMA KING IS EXTINGUISHED! The Sunken Abyss opens."], leviathan: [8000, "Leviathan defeated!", "THE LEVIATHAN SINKS! The Celestial Spire opens."], celestial: [20000, "Celestial Judge defeated!", "THE CELESTIAL JUDGE FALLS — you are the master of every world!"] };
+  if (NB[e.type]) { S.def[e.type] = true; Wallet.earn(NB[e.type][0], NB[e.type][1]); say(NB[e.type][2], 6); shake = 1; save(); }
   if (e.type === "stardevourer") { S.def.stardevourer = true; Wallet.earn(10000, "Star Devourer defeated!"); say("THE STAR DEVOURER IS NO MORE — you have mastered the worlds!", 7); shake = 1; save(); }
   if (e.type === "tyrant") { Wallet.earn(100 + 20 * (rift ? rift.wave : 0), "Void Tyrant"); }
 }
@@ -531,7 +559,7 @@ function update(dt) {
   if (P.warp > 0 && Math.random() < .3) puff(P.x + rnd(-300, 300), P.y + rnd(-200, 200), 1, "#6af0ff", 20);
   if (S.el === "cosmic" && Math.random() < .5) fx.push({ x: P.x + rnd(-20, 20), y: P.y + rnd(-20, 20), vx: rnd(-30, 30), vy: rnd(-30, 30), life: .6, c: Math.random() < .5 ? "#6af0ff" : "#ff5ad8" });
   // void storms (after the Shadow Wyrm)
-  if ((S.boss || WD.id > 1) && !tr && !(P.x > TRAIN.x && P.x < TRAIN.x + TRAIN.w && P.y > TRAIN.y && P.y < TRAIN.y + TRAIN.h)) { hzT -= dt; if (hzT <= 0) { hzT = WD.id === 3 ? 3.5 : (S.final ? 7 : 4.5); const a = rnd(0, 6.28), r0 = rnd(0, 200); addHazard(P.x + Math.cos(a) * r0, P.y + Math.sin(a) * r0); } }
+  if ((S.boss || WD.id > 1) && !tr && !(P.x > TRAIN.x && P.x < TRAIN.x + TRAIN.w && P.y > TRAIN.y && P.y < TRAIN.y + TRAIN.h)) { hzT -= dt; if (hzT <= 0) { hzT = WD.id >= 3 ? Math.max(2, 4.2 - WD.id * .3) : (S.final ? 7 : 4.5); const a = rnd(0, 6.28), r0 = rnd(0, 200); addHazard(P.x + Math.cos(a) * r0, P.y + Math.sin(a) * r0); } }
   for (const h of hazards) { if (h.warn > 0) h.warn -= dt; else { h.life -= dt; h.tk -= dt; if (h.tk <= 0) { h.tk = .5; if (Math.hypot(P.x - h.x, P.y - h.y) < h.r + 10) hurtPlayer(10, 0, 0); } } }
   hazards = hazards.filter(h => h.life > 0);
   for (const c of CHESTS) if (!S.chests[c.id] && Math.hypot(P.x - c.x, P.y - c.y) < 34) { S.chests[c.id] = true; Wallet.earn(WD.chestCoin, "treasure!"); gainXp(WD.chestXp); puff(c.x, c.y, 30, "#ffd54a"); say("Treasure found!", 2); save(); }
@@ -579,8 +607,8 @@ function update(dt) {
         if (e.cd <= 0 && d < 300 && d > 100) { e.st = 1; e.t = 0; e.lx = ux; e.ly = uy; } else if (e.cd <= 0 && d >= 300) { e.cd = 3; for (let i = -3; i <= 3; i++) { const a2 = Math.atan2(uy, ux) + i * .14; shots.push({ x: e.x, y: e.y, vx: Math.cos(a2) * 380, vy: Math.sin(a2) * 380, life: 1.2, dmg: e.dm * .55, mine: false, r: 7, c: "#ff8a3a" }); } } }
       else if (e.st === 1) { e.t += dt; if (e.t > .5) { moveWalker(e, e.lx * 520 * dt, e.ly * 520 * dt, e.r); if (d < e.r + 16) { hurtPlayer(e.dm, ux * 300, uy * 300); e.st = 0; e.cd = 2.2; } } if (e.t > .95) { e.st = 0; e.cd = 2.2; } }
     }
-    else if (e.type === "boss" || e.type === "tyrant" || e.type === "frostlord") bossAI(e, dt, d, ux, uy);
-    else if (e.type === "voidwyrm" || e.type === "stardevourer") voidAI(e, dt, d, ux, uy);
+    else if (BOSS_A.has(e.type)) bossAI(e, dt, d, ux, uy);
+    else if (BOSS_V.has(e.type)) voidAI(e, dt, d, ux, uy);
     if (inSafe(e)) { e.x += (e.x < TRAIN.x + TRAIN.w / 2 ? -1 : 1) * 80 * dt; }
   }
   enemies = enemies.filter(e => !e.dead);
@@ -667,7 +695,7 @@ function draw() {
   for (const [c, x, y, w, h] of WD.zones) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
   ctx.fillStyle = WD.lairColor; ctx.fillRect(LAIR.x, LAIR.y, LAIR.w, LAIR.h);
   ctx.fillStyle = WD.trainColor; ctx.fillRect(TRAIN.x, TRAIN.y, TRAIN.w, TRAIN.h); ctx.strokeStyle = "rgba(255,240,200,.7)"; ctx.lineWidth = 4; ctx.strokeRect(TRAIN.x, TRAIN.y, TRAIN.w, TRAIN.h); ctx.lineWidth = 1;
-  ctx.fillStyle = WD.decorColor; for (const d of decor) ctx.fillRect(d.x, d.y, d.s, WD.id === 3 ? d.s : d.s * 2);
+  ctx.fillStyle = WD.decorColor; for (const d of decor) ctx.fillRect(d.x, d.y, d.s, WD.id >= 3 ? d.s : d.s * 2);
   for (const b of rects) { if (b.k === "water") { ctx.fillStyle = WD.water; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = "rgba(255,255,255,.12)"; for (let i = 0; i < 12; i++) ctx.fillRect(b.x + ((i * 97 + tm * 20) % b.w), b.y + (i * 53) % b.h, 24, 3); } else { ctx.fillStyle = b.k === "rock" ? WD.rock : WD.cliff; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = "#9a9aa8"; ctx.strokeRect(b.x + .5, b.y + .5, b.w - 1, b.h - 1); } }
   for (const z of zones) { ctx.globalAlpha = .25 + .15 * Math.sin(tm * 8); ctx.fillStyle = ELS[z.el].c; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, 7); ctx.fill(); ctx.globalAlpha = .7; ctx.strokeStyle = ELS[z.el].c2; ctx.stroke(); if (z.spin) { for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (.3 + k * .25), tm * 3 + k, tm * 3 + k + 3.2); ctx.stroke(); } } ctx.globalAlpha = 1; }
   if (S.final && RIFTPAD) { ctx.strokeStyle = rift ? "#ff5aff" : "#a07aff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(RIFTPAD.x, RIFTPAD.y, RIFTPAD.r + Math.sin(tm * 4) * 3, 0, 7); ctx.stroke(); ctx.lineWidth = 1; ctx.fillStyle = "rgba(160,122,255,.3)"; ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "bold 12px system-ui"; ctx.textAlign = "center"; ctx.fillText("VOID RIFT", RIFTPAD.x, RIFTPAD.y + 62); ctx.fillText(rift ? "wave " + rift.wave : "best: " + (S.rift || 0), RIFTPAD.x, RIFTPAD.y + 76); if (padId === "rift" && padT > 0) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(RIFTPAD.x, RIFTPAD.y, RIFTPAD.r + 8, -1.57, -1.57 + 6.28 * padT); ctx.stroke(); ctx.lineWidth = 1; } }
@@ -687,9 +715,9 @@ function draw() {
     if (BOSSES.has(e.type)) { ctx.fillStyle = e.type === "voidwyrm" ? "#ff5aff" : "#ff3a5a"; ctx.beginPath(); ctx.moveTo(e.x - 30, e.y - 40); ctx.lineTo(e.x - 18, e.y - 70); ctx.lineTo(e.x - 6, e.y - 44); ctx.moveTo(e.x + 30, e.y - 40); ctx.lineTo(e.x + 18, e.y - 70); ctx.lineTo(e.x + 6, e.y - 44); ctx.fill(); }
     ctx.globalAlpha = 1;
     if (e.elite) { ctx.strokeStyle = "#d08aff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
-    if ((e.type === "voidwyrm" || e.type === "stardevourer") && e.st === 15 && e.t < .95) { ctx.strokeStyle = "rgba(255,90,255,.5)"; ctx.lineWidth = 40; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(e.ba) * 900, e.y + Math.sin(e.ba) * 900); ctx.stroke(); ctx.lineWidth = 1; }
+    if (BOSS_V.has(e.type) && e.st === 15 && e.t < .95) { ctx.strokeStyle = "rgba(255,90,255,.5)"; ctx.lineWidth = 40; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(e.ba) * 900, e.y + Math.sin(e.ba) * 900); ctx.stroke(); ctx.lineWidth = 1; }
     if (e.burn > 0) { ctx.fillStyle = "#ff9a3a"; ctx.fillRect(e.x - 4 + Math.random() * 8, e.y - e.r - 6 - Math.random() * 8, 4, 6); } if (e.poison > 0) { ctx.fillStyle = "#6ad84a"; ctx.fillRect(e.x - 6 + Math.random() * 12, e.y - e.r - 4 - Math.random() * 8, 3, 3); } if (e.slow > 0) { ctx.strokeStyle = "#9fe6ff"; ctx.beginPath(); ctx.arc(e.x, e.y, e.r + 4, 0, 7); ctx.stroke(); } if (e.stun > 0) { ctx.fillStyle = "#ffe27a"; ctx.font = "14px system-ui"; ctx.textAlign = "center"; ctx.fillText("✦ ✦", e.x, e.y - e.r - 6); }
-    if (e.wind > 0 || (e.type === "boss" && e.st === 3) || ((e.type === "tyrant" || e.type === "frostlord") && e.st === 3) || ((e.type === "voidwyrm" || e.type === "stardevourer") && e.st === 13)) { ctx.strokeStyle = "rgba(255,90,60,.7)"; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(e.x, e.y, e.type === "voidwyrm" || e.type === "stardevourer" ? 230 : e.type === "boss" || e.type === "tyrant" || e.type === "frostlord" ? 170 : 95, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+    if (e.wind > 0 || (BOSS_A.has(e.type) && e.st === 3) || (BOSS_V.has(e.type) && e.st === 13)) { ctx.strokeStyle = "rgba(255,90,60,.7)"; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(e.x, e.y, BOSS_V.has(e.type) ? 230 : BOSS_A.has(e.type) ? 170 : 95, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
     if (e.max > 30 && e.type !== "walker") { ctx.fillStyle = "#000"; ctx.fillRect(e.x - e.r, e.y - e.r - 12, e.r * 2, 5); ctx.fillStyle = "#e44"; ctx.fillRect(e.x - e.r, e.y - e.r - 12, e.r * 2 * Math.max(0, e.hp / e.max), 5); }
   }
   for (const s of shots) { ctx.globalAlpha = s.mine ? .85 : 1; ctx.fillStyle = s.mine ? (Math.random() < .5 ? ELS[s.el].c : ELS[s.el].c2) : (s.c || "#ff7a7a"); ctx.beginPath(); ctx.arc(s.x, s.y, s.r * (s.mine && s.dmg < 6 ? (.6 + s.life * 1.2) : 1), 0, 7); ctx.fill(); } ctx.globalAlpha = 1;
@@ -739,7 +767,7 @@ function hud() {
   ctx.fillStyle = "#ffd54a"; for (const c of CHESTS) if (!S.chests[c.id]) ctx.fillRect(mx0 + c.x / WW * mw - 1, my0 + c.y / WH * mh - 1, 3, 3);
   ctx.fillStyle = "#f55"; for (const e of enemies) if (e.type !== "walker" && e.type !== "target") ctx.fillRect(mx0 + e.x / WW * mw - 1, my0 + e.y / WH * mh - 1, 2, 2); ctx.fillStyle = "#fff"; ctx.fillRect(mx0 + P.x / WW * mw - 2, my0 + P.y / WH * mh - 2, 4, 4);
   ctx.fillStyle = "#fff8"; ctx.textAlign = "right"; ctx.font = "11px system-ui"; ctx.fillText("K = Dragon Den · P = pause", VW - 10, my0 + mh + 14);
-  const boss = enemies.find(e => BOSSES.has(e.type)); if (boss && dist(boss, P) < 900) { bar(VW / 2 - 200, VH - 96, 400, 12, boss.hp / boss.max, "#a03ad8", ({ boss: "Shadow Wyrm", voidwyrm: "THE VOID WYRM", tyrant: "Void Tyrant", frostlord: "THE FROST LORD", stardevourer: "THE STAR DEVOURER" })[boss.type]); }
+  const boss = enemies.find(e => BOSSES.has(e.type)); if (boss && dist(boss, P) < 900) { bar(VW / 2 - 200, VH - 96, 400, 12, boss.hp / boss.max, "#a03ad8", ({ boss: "Shadow Wyrm", voidwyrm: "THE VOID WYRM", tyrant: "Void Tyrant", frostlord: "THE FROST LORD", stardevourer: "THE STAR DEVOURER", magmaking: "THE MAGMA KING", leviathan: "THE ABYSSAL LEVIATHAN", celestial: "THE CELESTIAL JUDGE" })[boss.type]); }
   if (S.boss || WD.id > 1) { ctx.fillStyle = "#d08aff"; ctx.font = "bold 12px system-ui"; ctx.textAlign = "center"; ctx.fillText(rift ? `VOID RIFT — wave ${rift.wave}  (best ${S.rift || 0})` : WD.id === 1 ? "ASCENDED REALM — the Void spreads" : WD.name.toUpperCase(), VW / 2, 118); }
   if (msgT > 0) { ctx.textAlign = "center"; ctx.font = "bold 24px system-ui"; ctx.fillStyle = "#fff"; ctx.globalAlpha = Math.min(1, msgT); ctx.fillText(msg, VW / 2, 130); ctx.globalAlpha = 1; }
 }
@@ -801,7 +829,7 @@ function speakCode(fromVault) {
 }
 function openTravel() {
   mode = "travel"; keys.clear(); mouse.down = false;
-  show(`<h2>🌍 World Gate</h2><p class="muted">Travel to any world you have unlocked.</p><div class="ups">${[1, 2, 3].map(id => { const w = WORLDS[id], ok = worldUnlocked(id), here = WD.id === id, seen = S.visited[id]; return `<button class="up" data-act="goto" data-id="${id}" ${!ok || here ? "disabled style='opacity:.5'" : ""}><b>${w.name}</b>${here ? "You are here" : !ok ? (id === 2 ? "Locked — defeat the Shadow Wyrm" : "Locked — awaken the cosmos") : seen ? "Visited" : "<span style='color:#ffe27a'>New!</span>"}</button>`; }).join("")}</div><p><button data-act="resume">Cancel</button></p>`);
+  show(`<h2>🌍 World Gate</h2><p class="muted">Travel to any world you have unlocked.</p><div class="ups">${Object.keys(WORLDS).map(Number).map(id => { const w = WORLDS[id], ok = worldUnlocked(id), here = WD.id === id, seen = S.visited[id]; return `<button class="up" data-act="goto" data-id="${id}" ${!ok || here ? "disabled style='opacity:.5'" : ""}><b>${w.name}</b>${here ? "You are here" : !ok ? LOCKTXT[id] : seen ? "Visited" : "<span style='color:#ffe27a'>New!</span>"}</button>`; }).join("")}</div><p><button data-act="resume">Cancel</button></p>`);
 }
 function travel(id) {
   if (!worldUnlocked(id)) return; loadWorld(id); P.x = WD.spawn.x; P.y = WD.spawn.y; P.inv = 2; setupWorld(); mode = "play"; ui.classList.remove("on"); keys.clear(); say("Entered " + WD.name, 3); save();
