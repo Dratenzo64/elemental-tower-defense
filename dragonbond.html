@@ -43,6 +43,7 @@
     <button id="bC" style="right:8px;bottom:140px;background:#d8862e">C</button>
     <button id="bV" style="right:8px;bottom:196px;background:#d8862e">V</button>
     <button id="bG" style="right:196px;bottom:64px;background:#b04aff">ASC</button>
+    <button id="bY1" style="right:308px;bottom:8px;background:#e0307a;display:none">ULT</button><button id="bY2" style="right:308px;bottom:64px;background:#e0b030;display:none">IMM</button><button id="bY3" style="right:308px;bottom:120px;background:#e07030;display:none">COMB</button>
     <button id="bX" style="right:252px;bottom:8px;background:#c03aa0;display:none">X</button>
     <button id="bEl" style="right:64px;bottom:140px;background:#555">ELEM</button>
     <button id="bK" style="right:64px;bottom:196px;background:#555">DEN</button>
@@ -89,7 +90,7 @@ const rnd = (a, b) => a + Math.random() * (b - a), dist = (a, b) => Math.hypot(a
 
 // ---------- save ----------
 let S = null;
-const defaultSave = () => ({ has: false, dname: "Ember", el: "fire", start: "fire", xp: 0, lvl: 1, pts: 0, rank: {}, learned: {}, chests: {}, boss: false, kills: 0, world: 1, visited: { 1: true }, def: {}, note: false, cosmic: false, bind: null });
+const defaultSave = () => ({ has: false, dname: "Ember", el: "fire", start: "fire", xp: 0, lvl: 1, pts: 0, rank: {}, learned: {}, chests: {}, boss: false, yogi: false, kills: 0, world: 1, visited: { 1: true }, def: {}, note: false, cosmic: false, bind: null });
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 function load() { try { const r = localStorage.getItem(SAVE_KEY); if (r) return Object.assign(defaultSave(), JSON.parse(r)); } catch (e) {} return null; }
 
@@ -282,6 +283,7 @@ addEventListener("keydown", e => {
     else {
       if (k === "shift") dashAct(); if (k === " ") sweepAct(); if (k === "q") roarAct(); if (k === "e") shieldAct(); if (k === "r") novaAct();
       if (k === "g") ascendAct(); if (k === "f") skill(0); if (k === "c") skill(1); if (k === "v") skill(2);
+      if (S.yogi) { if (k === "z") useMove("yult"); if (k === "b") useMove("yimm"); if (k === "n") useMove("ycomb"); }
     }
     if (k === "tab") cycleEl(); if (/^[1-8]$/.test(k)) setEl(EORDER[+k - 1]);
     if (k === "k") openDen(); if (k === "p" || k === "escape") pauseGame();
@@ -310,7 +312,8 @@ const pl = f => () => mode === "play" && f();
 tbtn("bA", () => { mouse.down = true; }, () => { mouse.down = false; });
 const tb = (i, f) => pl(() => (S.cosmic ? useMove(S.bind[i].move) : f()));
 tbtn("bS", tb(0, dashAct)); tbtn("bSp", tb(1, sweepAct)); tbtn("bQ", tb(2, roarAct)); tbtn("bE", tb(3, shieldAct)); tbtn("bR", tb(4, novaAct)); tbtn("bX", tb(9, () => {}));
-function syncTouch() { document.getElementById("bX").style.display = S && S.cosmic ? "block" : "none"; }
+function syncTouch() { document.getElementById("bX").style.display = S && S.cosmic ? "block" : "none"; for (const id of ["bY1", "bY2", "bY3"]) document.getElementById(id).style.display = S && S.yogi ? "block" : "none"; }
+tbtn("bY1", pl(() => useMove("yult"))); tbtn("bY2", pl(() => useMove("yimm"))); tbtn("bY3", pl(() => useMove("ycomb")));
 tbtn("bF", tb(5, () => skill(0))); tbtn("bC", tb(6, () => skill(1))); tbtn("bV", tb(7, () => skill(2))); tbtn("bG", tb(8, ascendAct)); tbtn("bEl", pl(cycleEl)); tbtn("bK", pl(openDen));
 document.getElementById("pauseBtn").addEventListener("click", () => mode === "play" ? pauseGame() : 0);
 function aim() {
@@ -331,7 +334,7 @@ function ring(x, y, max, c, life = .4) { fx.push({ ring: true, x, y, r: 10, life
 function line(x, y, x2, y2, c, life = .18, w = 3) { fx.push({ line: true, x, y, x2, y2, life, c, w }); }
 function hitEnemy(e, dmg, elm, kx, ky, quiet) {
   if (e.type === "walker" || e.dead) return;
-  const w = (WEAK[e.type] && WEAK[e.type][elm]) || 1; dmg *= w * (P.asc > 0 ? 1.8 : 1) * (1 + .08 * Math.max(0, S.lvl - 12));
+  const w = (WEAK[e.type] && WEAK[e.type][elm]) || 1; dmg *= w * (P.asc > 0 ? 1.8 : 1) * (1 + .08 * Math.max(0, S.lvl - 12)) * (S.yogi ? 3 : 1);
   e.hp -= dmg; e.flash = .1; if (kx !== undefined && e.type !== "boss") { const kk = elm === "earth" ? 2 : 1; e.vx += kx * kk; e.vy += ky * kk; }
   if (!quiet || w !== 1) floatText(e.x, e.y - e.r - 4, Math.round(dmg) + (w > 1 ? "!" : w < 1 ? "~" : ""), w > 1 ? "#ffe27a" : w < 1 ? "#8899aa" : "#fff");
   if (elm === "fire") e.burn = 3; if (elm === "ice") e.slow = 2; if (elm === "venom") e.poison = 4;
@@ -365,7 +368,7 @@ function gainXp(n) {
   save();
 }
 function hurtPlayer(dmg, kx = 0, ky = 0) {
-  if (P.inv > 0 || tr || P.cprot > 0) return;
+  if (P.inv > 0 || tr || P.cprot > 0 || P.imm > 0) return;
   if (P.shieldT > 0) { ring(P.x, P.y, 60, "#9fe6ff", .3); P.inv = .15; return; }
   if (P.dashT > 0) return;
   if (P.armorT > 0) dmg *= .3;
@@ -465,15 +468,22 @@ const CMOVES = {
   timewarp: ["Time Warp", "Slows every enemy nearby; your cooldowns recharge twice as fast.", 28, 40],
   astral: ["Astral Dash", "Instantly blink forward, hurting everything you pass through.", 6, 15],
 };
+const YM = {
+  yult: ["Ultimate Cosmic Destruction", "5x the damage and 5x the radius of Cosmic Destruction.", 60, 100],
+  yimm: ["Cosmic Immortality", "Nothing can hurt you for 8 seconds.", 45, 40],
+  ycomb: ["Cosmic Combustion", "Everything in the world — you included — drops to half its current health.", 40, 30],
+};
 const CORE = { dash: "Wing Dash", sweep: "Tail Sweep", roar: "Roar", shield: "Scale Shield", nova: "Elemental Nova", ascend: "Ascend" };
-const defaultBinds = () => [["shift", "dash"], ["space", "sweep"], ["q", "roar"], ["e", "shield"], ["r", "nova"], ["f", "sk0"], ["c", "sk1"], ["v", "sk2"], ["g", "ascend"], ["x", "cosmic:0"]].map(([key, move]) => ({ key: key === "space" ? " " : key, move }));
+const defaultBinds = () => { const b = [["shift", "dash"], ["space", "sweep"], ["q", "roar"], ["e", "shield"], ["r", "nova"], ["f", "sk0"], ["c", "sk1"], ["v", "sk2"], ["g", "ascend"], ["x", "cosmic:0"]].map(([key, move]) => ({ key: key === "space" ? " " : key, move })); if (S && S.yogi) b.push({ key: "z", move: "yult" }, { key: "b", move: "yimm" }, { key: "n", move: "ycomb" }); return b; };
 const keyName = k => k === " " ? "SPACE" : k === "shift" ? "SHIFT" : k.toUpperCase();
 function moveName(id) {
+  if (YM[id]) return "Yogi: " + YM[id][0];
   if (CORE[id]) return CORE[id]; const m = /^sk(\d)$/.exec(id); if (m) return `Element Skill ${["I", "II", "III"][+m[1]]} (current element)`;
   if (CMOVES[id]) return "Cosmic: " + CMOVES[id][0]; const q = /^(\w+):(\d)$/.exec(id); if (q) return `${ELS[q[1]].n}: ${SIG[q[1]][+q[2]][0]}`; return id;
 }
-function moveList() { const L = Object.keys(CORE).concat(["sk0", "sk1", "sk2"]); for (const E of EORDER) for (let i = 0; i < 3; i++) L.push(E + ":" + i); return L.concat(Object.keys(CMOVES)); }
+function moveList() { const L = Object.keys(CORE).concat(["sk0", "sk1", "sk2"]); for (const E of EORDER) for (let i = 0; i < 3; i++) L.push(E + ":" + i); return L.concat(Object.keys(CMOVES), S.yogi ? Object.keys(YM) : []); }
 function moveInfo(id) {
+  if (YM[id]) return { c: cd[id] || 0, mx: YM[id][2], label: YM[id][0] };
   if (CORE[id]) { const k = id === "ascend" ? "asc" : id; return { c: cd[k] || 0, mx: id === "ascend" ? 45 : cdOf(id) || .01, label: CORE[id] }; }
   let m = /^sk(\d)$/.exec(id); if (m) { const i = +m[1]; return { c: cd[S.el + i] || 0, mx: SIG[S.el][i][2], label: SIG[S.el][i][0] }; }
   if (CMOVES[id]) return { c: cd[id] || 0, mx: CMOVES[id][2], label: CMOVES[id][0] };
@@ -481,10 +491,24 @@ function moveInfo(id) {
   return { c: 0, mx: 1, label: id };
 }
 function useMove(id) {
+  if (YM[id]) return yogiMove(id);
   if (CORE[id]) return ({ dash: dashAct, sweep: sweepAct, roar: roarAct, shield: shieldAct, nova: novaAct, ascend: ascendAct })[id]();
   let m = /^sk(\d)$/.exec(id); if (m) return skillFor(S.el, +m[1]);
   if (CMOVES[id]) return cosmicMove(id);
   m = /^(\w+):(\d)$/.exec(id); if (m) return skillFor(m[1], +m[2]);
+}
+function yogiMove(id) {
+  if (!S.yogi) return; const [, , base, cost] = YM[id]; if ((cd[id] || 0) > 0) return; if (P.en < cost) { say("Not enough energy", .8); return; }
+  cd[id] = base; P.en -= cost; CE = "cosmic";
+  if (id === "yult") {
+    const m = (1 + .25 * rank("cosmic0")) * (1 + S.lvl * .07), px = P.x, py = P.y; ring(px, py, 2100, "rgba(255,90,216,.6)", 1.4); say("ULTIMATE COSMIC DESTRUCTION", 1.6); shake = .5;
+    later(1.3, () => { shake = 1.5; flash = .8; aoe(px, py, 2100, 1100 * m, "cosmic", { stun: 3, kb: 800 }); ring(px, py, 2100, "#6af0ff", .9); puff(px, py, 150, "#ff5ad8", 900); });
+  } else if (id === "yimm") { P.imm = 8; ring(P.x, P.y, 160, "#ffe27a", .8); puff(P.x, P.y, 40, "#ffe27a", 300); say("COSMIC IMMORTALITY", 1.2); }
+  else if (id === "ycomb") {
+    for (const e of enemies) if (!e.dead && e.type !== "walker" && e.type !== "target") { e.hp = Math.max(1, e.hp / 2); e.flash = .3; puff(e.x, e.y, 8, "#ffb04a"); floatText(e.x, e.y - e.r - 6, "½", "#ffb04a"); }
+    if (!(P.imm > 0)) P.hp = Math.max(1, P.hp / 2);
+    ring(P.x, P.y, 1800, "#ffb04a", 1); shake = 1; flash = .5; say("COSMIC COMBUSTION", 1.2);
+  }
 }
 function cosmicMove(id) {
   const [, , base, cost] = CMOVES[id]; if ((cd[id] || 0) > 0) return; if (P.en < cost) { say("Not enough energy", .8); return; }
@@ -562,7 +586,7 @@ function update(dt) {
   fx = fx.filter(p => p.life > 0); for (const f of floats) { f.y -= 30 * dt; f.t -= dt; } floats = floats.filter(f => f.t > 0);
   shake = Math.max(0, shake - dt); flash = Math.max(0, flash - dt); dim = Math.max(0, dim - dt);
   if (mode !== "play") return;
-  P.asc = (P.asc || 0) - dt; P.cprot = (P.cprot || 0) - dt; P.warp = (P.warp || 0) - dt; for (const k in cd) cd[k] -= dt * (P.asc > 0 && k !== "asc" ? 3 : P.warp > 0 ? 2 : 1); P.inv -= dt; P.elCd -= dt; P.flap += dt * 10; P.shieldT -= dt; P.armorT -= dt;
+  P.asc = (P.asc || 0) - dt; P.cprot = (P.cprot || 0) - dt; P.imm = (P.imm || 0) - dt; P.warp = (P.warp || 0) - dt; for (const k in cd) cd[k] -= dt * (P.asc > 0 && k !== "asc" ? 3 : P.warp > 0 ? 2 : 1); P.inv -= dt; P.elCd -= dt; P.flap += dt * 10; P.shieldT -= dt; P.armorT -= dt;
   for (const t of timers) t.t -= dt; for (const t of timers.filter(t => t.t <= 0)) t.fn(); timers = timers.filter(t => t.t > 0);
   const iv = inputVec();
   if (P.dashT > 0) {
@@ -747,6 +771,7 @@ function draw() {
   drawDragon(P.x, P.y, P.face, 1, S.el, P.trail, P.flap);
   if (P.asc > 0) { ctx.strokeStyle = el().c2; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(P.x, P.y, 54 + Math.sin(tm * 14) * 4, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
   if (P.shieldT > 0) { ctx.strokeStyle = "rgba(159,230,255,.9)"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(P.x, P.y, 46, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
+  if (P.imm > 0) { ctx.strokeStyle = `rgba(255,226,122,${.6 + .4 * Math.sin(tm * 20)})`; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(P.x, P.y, 70 + Math.sin(tm * 10) * 5, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
   if (P.cprot > 0) { ctx.strokeStyle = "rgba(106,240,255,.9)"; ctx.fillStyle = "rgba(255,90,216,.15)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(P.x, P.y, 62 + Math.sin(tm * 12) * 3, 0, 7); ctx.fill(); ctx.stroke(); ctx.lineWidth = 1; }
   if (P.armorT > 0) { ctx.strokeStyle = "rgba(168,128,58,.9)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(P.x, P.y, 40, 0, 7); ctx.stroke(); ctx.lineWidth = 1; }
   ctx.globalAlpha = 1; ctx.fillStyle = "#cfe4ff"; ctx.font = "12px system-ui"; ctx.textAlign = "center"; ctx.fillText(S.dname, P.x, P.y - 34);
@@ -766,7 +791,7 @@ function hud() {
   EORDER.forEach((k, i) => { const x = 14 + i * 32, ok = elUnlocked(k); ctx.fillStyle = ok ? ELS[k].c : "#333"; ctx.globalAlpha = k === S.el ? 1 : .55; ctx.beginPath(); ctx.arc(x + 13, 98, 12, 0, 7); ctx.fill(); ctx.globalAlpha = 1; if (k === S.el) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1; } ctx.fillStyle = ok ? "#111" : "#888"; ctx.font = "bold 11px system-ui"; ctx.textAlign = "center"; ctx.fillText(ok ? i + 1 : "L" + elLevel(k), x + 13, 102); });
   // abilities
   if (S.cosmic) {
-    const bw = 54, x0 = VW / 2 - 10 * bw / 2;
+    const nb = S.bind.length, bw = nb > 10 ? 50 : 54, x0 = VW / 2 - nb * bw / 2;
     S.bind.forEach((b, i) => { const x = x0 + i * bw, y = VH - 62, inf = moveInfo(b.move); ctx.fillStyle = "#16203aee"; ctx.fillRect(x, y, bw - 4, 50); ctx.strokeStyle = "#ff5ad8"; ctx.strokeRect(x + .5, y + .5, bw - 5, 49); if (inf.c > 0) { ctx.fillStyle = "#000b"; ctx.fillRect(x, y, bw - 4, 50 * clamp(inf.c / inf.mx, 0, 1)); } ctx.fillStyle = "#fff"; ctx.font = "bold 9px system-ui"; ctx.textAlign = "center"; ctx.fillText(inf.label.length > 11 ? inf.label.split(" ").pop() : inf.label, x + (bw - 4) / 2, y + 22); ctx.fillStyle = "#6af0ff"; ctx.font = "bold 11px system-ui"; ctx.fillText(keyName(b.key), x + (bw - 4) / 2, y + 40); });
     ctx.fillStyle = "#fff9"; ctx.font = "12px system-ui"; ctx.textAlign = "center"; ctx.fillText("COSMIC BEING · 1-8 / Tab = element · K → Cosmic Loadout to change keys & moves", VW / 2, VH - 70);
   } else {
@@ -780,6 +805,7 @@ function hud() {
     ctx.fillStyle = ok ? "#fff" : "#888"; ctx.font = "bold 10px system-ui"; ctx.textAlign = "center"; ctx.fillText(label, x + (bw - 5) / 2, y + 22); ctx.fillStyle = ok ? "#9fe6ff" : "#ffd54a"; ctx.fillText(ok ? a[1] : "Lv " + (sk ? SREQ[a[2]] : POW[id].req), x + (bw - 5) / 2, y + 40);
   });
   ctx.fillStyle = "#fff9"; ctx.font = "12px system-ui"; ctx.textAlign = "center"; ctx.fillText("1-8 / Tab = change element · F C V = " + el().n + " skills", VW / 2, VH - 70);
+  if (S.yogi) ["yult", "yimm", "ycomb"].forEach((id, i) => { const x = VW / 2 + 268 + i * 52, y = VH - 62, inf = moveInfo(id); ctx.fillStyle = "#2a1030ee"; ctx.fillRect(x, y, 48, 50); ctx.strokeStyle = "#ffe27a"; ctx.strokeRect(x + .5, y + .5, 47, 49); if (inf.c > 0) { ctx.fillStyle = "#000b"; ctx.fillRect(x, y, 48, 50 * clamp(inf.c / inf.mx, 0, 1)); } ctx.fillStyle = "#fff"; ctx.font = "bold 9px system-ui"; ctx.textAlign = "center"; ctx.fillText(inf.label.split(" ").pop(), x + 24, y + 22); ctx.fillStyle = "#ffe27a"; ctx.font = "bold 11px system-ui"; ctx.fillText(["Z", "B", "N"][i], x + 24, y + 40); });
   }
   if (tr) { ctx.fillStyle = "#000a"; ctx.fillRect(VW / 2 - 170, 14, 340, 54); ctx.fillStyle = "#ffe27a"; ctx.font = "bold 16px system-ui"; ctx.fillText(TR[tr.id].n + "  " + tr.prog + "/" + tr.goal, VW / 2, 36); ctx.fillStyle = "#fff"; ctx.font = "12px system-ui"; ctx.fillText(TR[tr.id].d + "  •  " + Math.ceil(tr.t) + "s", VW / 2, 56); }
   else if (padId && padT > 0) { ctx.fillStyle = "#fff"; ctx.font = "bold 18px system-ui"; ctx.fillText("Hold still… " + (padId === "rift" ? "Void Rift" : padId === "gate" ? "World Gate" : padId === "altar" ? "Starfall Altar" : TR[padId].n), VW / 2, 90); }
@@ -839,13 +865,21 @@ function openAltar() {
 }
 function openVault() {
   mode = "vault"; keys.clear(); mouse.down = false;
-  if (S.cosmic) { show(`<h2>🔒 Vault</h2><p class="muted">The vault is open. You are already a Cosmic Being.</p><button class="big" data-act="resume">Close</button>`); return; }
-  show(`<h2>🔒 Vault</h2><p class="muted">Enter the code to open the vault.</p><input id="vcode" maxlength="12" placeholder="?????" style="text-transform:uppercase;letter-spacing:6px"><p id="vmsg" class="muted"></p><button class="big" data-act="vspeak">Open</button> ${S.note ? `<button data-act="note">📜 Read the note</button>` : ""} <button data-act="resume">Close</button>`);
+  if (S.cosmic && S.yogi) { show(`<h2>🔒 Vault</h2><p class="muted">The vault is empty — you have opened everything.</p><button class="big" data-act="resume">Close</button>`); return; }
+  show(`<h2>🔒 Vault</h2><p class="muted">Enter a code to open the vault.</p><input id="vcode" maxlength="14" placeholder="?????" style="text-transform:uppercase;letter-spacing:6px"><p id="vmsg" class="muted"></p><button class="big" data-act="vspeak">Open</button> ${S.note ? `<button data-act="note">📜 Read the note</button>` : ""} <button data-act="resume">Close</button>`);
   const inp = document.getElementById("vcode"); if (inp) inp.addEventListener("keydown", ev => { if (ev.key === "Enter") ui.querySelector('[data-act="vspeak"]').click(); });
 }
+function unlockYogi() {
+  S.yogi = true; if (S.cosmic && S.bind && S.bind.length === 10) S.bind.push({ key: "z", move: "yult" }, { key: "b", move: "yimm" }, { key: "n", move: "ycomb" });
+  save(); syncTouch(); shake = 1; flash = .6; puff(P.x, P.y, 80, "#ffe27a", 600);
+  show(`<h1 style="color:#ffe27a;font-size:34px">YOGISPANG</h1><p>Your power surges.</p><div style="text-align:left" class="muted">✦ <b>Triple damage</b> on everything you do.<br>✦ <b>3 new moves</b>: <b>Z</b> Ultimate Cosmic Destruction (5× the damage and radius), <b>B</b> Cosmic Immortality (8 seconds untouchable), <b>N</b> Cosmic Combustion (everything, you included, drops to half its current health).${S.cosmic ? "<br>They have been added as 3 extra slots in your Cosmic Loadout." : ""}</div><button class="big" data-act="resume">Let's go</button>`);
+}
 function speakCode(fromVault) {
-  const v = (document.getElementById(fromVault ? "vcode" : "code").value || "").trim().toUpperCase();
-  if (v !== "NOMAD") { document.getElementById(fromVault ? "vmsg" : "cmsg").textContent = fromVault ? "The vault stays sealed." : "The stars do not answer."; return; }
+  const v = (document.getElementById(fromVault ? "vcode" : "code").value || "").trim().toUpperCase().replace(/\s+/g, "");
+  const msg = document.getElementById(fromVault ? "vmsg" : "cmsg");
+  if (v === "YOGISPANG") { if (S.yogi) { msg.textContent = "Already unlocked."; return; } unlockYogi(); return; }
+  if (v === "NOMAD" && S.cosmic) { msg.textContent = "Already unlocked."; return; }
+  if (v !== "NOMAD") { msg.textContent = fromVault ? "The vault stays sealed." : "The stars do not answer."; return; }
   S.cosmic = true; S.bind = defaultBinds(); S.pts += 3; S.el = "cosmic"; save(); syncTouch(); shake = 1; flash = .6; puff(P.x, P.y, 80, "#ff5ad8", 600);
   show(`<h1 style="color:#ff5ad8;font-size:36px">COSMIC AWAKENED</h1><p>${S.dname} becomes a <b>Cosmic Being</b>.</p><div style="text-align:left" class="muted">✦ <b>Know any move</b> — every power and every element's skills are yours, with no level or trial needed.<br>✦ <b>Choose your 10</b> — open the Dragon Den (K) → Cosmic loadout to pick any 10 moves and rebind their keys.<br>✦ <b>The hardest element, Cosmic</b> — Star Beam breath, Cosmic Destruction, Cosmic Protection, Whirlpool, and the extra moves Black Hole, Supernova, Starfall, Gravity Crush, Time Warp and Astral Dash.<br>✦ A new world opens at the World Gate: the Starfall Expanse.<br>✦ +3 mastery points.</div><button class="big" data-act="resume">Embrace the stars</button>`);
 }
