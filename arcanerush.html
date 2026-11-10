@@ -63,16 +63,17 @@ const SP={
  heal:{n:"Mend",d:"Restore health.",price:150,mana:35,cd:8,col:"#6aff9a"},
  lightning:{n:"Chain Lightning",d:"Strikes several nearby enemies.",price:200,mana:28,cd:3,col:"#e6d84a"},
  ward:{n:"Ward",d:"Absorbs damage for a few seconds.",price:200,mana:30,cd:12,col:"#c0a0ff"},
- gust:{n:"Gust",d:"Wind burst: blasts nearby enemies away and launches you upward — dive after it for a huge smash.",price:250,mana:20,cd:3,col:"#bff0ff"},
  meteor:{n:"Meteor",d:"Huge delayed explosion at your cursor.",price:400,mana:55,cd:10,col:"#ff5a3a"},
 };
 const POW={fly:{n:"Flight",d:"Press the fly key to take off. WASD moves freely; jump does nothing while flying.",price:1500},
  smash:{n:"Smasher",d:"Melee slam. In the air it becomes a dive — the faster you go, the harder it hits.",price:1000},
  spear:{n:"Spear",d:"Lunging thrust toward your cursor. The faster you move, the more damage.",price:1000}};
 const ACT_NAMES={fly:"Fly / land",smash:"Smasher",spear:"Spear"};
-const defaultBinds=()=>({fly:"q",smash:"e",spear:"r",fireball:"1",frost:"2",lightning:"3",heal:"4",blink:"5",ward:"6",meteor:"7",gust:"8"});
-const defaultSave=()=>({spells:{},smash:0,spear:0,fly:false,binds:defaultBinds(),best:0});
+const defaultBinds=()=>({fly:"q",smash:"e",spear:"r",fireball:"1",frost:"2",lightning:"3",heal:"4",blink:"5",ward:"6",meteor:"7"});
+const defaultSave=()=>({spells:{},smash:0,spear:0,fly:false,binds:defaultBinds(),best:0,wb:false,wbOn:true});
 let S=(()=>{try{const r=localStorage.getItem(SAVE_KEY);if(r){const o=JSON.parse(r),d=defaultSave();return Object.assign(d,o,{binds:Object.assign(d.binds,o.binds||{})})}}catch(e){}return defaultSave()})();
+delete S.binds.gust;delete S.spells.gust;
+if(S.wb===undefined){S.wb=false;S.wbOn=true}
 const save=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}};
 const coins=()=>Wallet.get();
 const spend=n=>{if(coins()<n)return false;Wallet.add(-n);return true};
@@ -118,10 +119,13 @@ const cx=()=>P.x+P.w/2,cy=()=>P.y+P.h/2;
 function doAction(a){
  if(a==="fly"){if(!S.fly)return say("Buy Flight in the shop",1.5);P.fly=!P.fly;if(P.fly)P.vy=Math.min(P.vy,-120);return}
  if(a==="smash"){if(!S.smash)return say("Buy the Smasher in the shop",1.5);if(P.smCd>0)return;P.smCd=.8;
-  if(!P.onG){P.dive=true;P.vx*=.2;P.vy=1100;P.lunge=0}else{const d=smashDmg(),r=95+10*S.smash;aoe(cx(),cy(),r,d,"#ffd06a",true);fx.push({k:"ring",x:cx(),y:cy(),r,t:.25,max:.25,c:"#ffd06a"});shake=Math.max(shake,.15)}return}
+  if(!P.onG){P.dive=true;P.vx*=.2;P.vy=1100;P.lunge=0}else{const d=smashDmg(),r=95+10*S.smash;aoe(cx(),cy(),r,d,"#ffd06a",true);fx.push({k:"ring",x:cx(),y:cy(),r,t:.25,max:.25,c:"#ffd06a"});shake=Math.max(shake,.15);if(S.wb&&S.wbOn)windBurst()}return}
  if(a==="spear"){if(!S.spear)return say("Buy the Spear in the shop",1.5);if(P.spCd>0)return;P.spCd=.6;P.lunge=.22;P.lhit=new Set();P.dive=false;
   let dx=mouse.x-cx(),dy=mouse.y-cy(),l=hyp(dx,dy)||1;P.ldx=dx/l;P.ldy=dy/l;P.vx=P.ldx*750;P.vy=P.ldy*750;return}
  if(SP[a])cast(a)}
+function windBurst(){const x=cx(),y=cy(),r=170;for(const e of enemies)if(!e.dead){const dx=e.x+e.w/2-x,dy=e.y+e.h/2-y,l=hyp(dx,dy);if(l<r+e.w/2){const f=e.type==="boss"?.4:1;e.vx+=dx/(l||1)*760*f;e.vy=-300*f}}
+ for(const q of shots)if(!q.own&&hyp(q.x-x,q.y-y)<r){const dx=q.x-x,dy=q.y-y,l=hyp(dx,dy)||1;q.vx=dx/l*320;q.vy=dy/l*320;q.own=1;q.dmg=Math.max(q.dmg,6);q.aoe=0}
+ P.vy=-900;P.onG=false;fx.push({k:"ring",x,y,r,t:.4,max:.4,c:"#bff0ff"});fx.push({k:"ring",x,y:y+20,r:r*.6,t:.3,max:.3,c:"#fff"})}
 const smashDmg=()=>30*(1+.25*(S.smash-1))*speedMult(P.dive?1100:spd());
 function aoe(x,y,r,d,col,knock){for(const e of enemies)if(!e.dead&&hyp(e.x+e.w/2-x,e.y+e.h/2-y)<r+e.w/2){hit(e,d);if(knock){e.vy=-260;e.vx+=(e.x>x?1:-1)*220}}}
 function hit(e,d){if(e.dead)return;e.hp-=d;e.flash=.1;if(d>=3)floats.push({x:e.x+e.w/2,y:e.y,t:.7,txt:Math.round(d),c:"#fff"});if(e.hp<=0)kill(e)}
@@ -134,12 +138,9 @@ function cast(id){const lv=lvlOf(id);if(!lv)return;const s=SP[id];if((P.cds[id]|
  else if(id==="heal"){P.hp=Math.min(100,P.hp+35+12*lv);fx.push({k:"ring",x,y,r:50,t:.4,max:.4,c:s.col})}
  else if(id==="blink"){const dx=mouse.x-x,dy=mouse.y-y,l=hyp(dx,dy)||1,m=Math.min(l,220+30*lv);fx.push({k:"ring",x,y,r:30,t:.3,max:.3,c:s.col});P.x=clamp(P.x+dx/l*m,0,W-P.w);P.y=clamp(P.y+dy/l*m,0,GY-P.h);P.vy=0;P.inv=Math.max(P.inv,.3);fx.push({k:"ring",x:cx(),y:cy(),r:30,t:.3,max:.3,c:s.col})}
  else if(id==="ward"){P.shield=40+25*lv;P.shT=8;fx.push({k:"ring",x,y,r:50,t:.4,max:.4,c:s.col})}
- else if(id==="gust"){const r=150+15*lv;for(const e of enemies)if(!e.dead){const dx=e.x+e.w/2-x,dy=e.y+e.h/2-y,l=hyp(dx,dy);if(l<r+e.w/2){hit(e,12*k);const f=(e.type==="boss"?.4:1);e.vx+=dx/(l||1)*(700+60*lv)*f;e.vy=-260*f-Math.max(0,dy)*0;if(e.type==="flyer")e.vy=dy/(l||1)*500}}
-  for(const q of shots)if(!q.own&&hyp(q.x-x,q.y-y)<r){const dx=q.x-x,dy=q.y-y,l=hyp(dx,dy)||1;q.vx=dx/l*320;q.vy=dy/l*320;q.own=1;q.dmg=Math.max(q.dmg,6);q.aoe=0}
-  P.dive=false;P.lunge=0;P.vy=-(820+60*lv);P.onG=false;fx.push({k:"ring",x,y,r,t:.4,max:.4,c:s.col});fx.push({k:"ring",x,y:y+20,r:r*.6,t:.3,max:.3,c:"#fff"});shake=Math.max(shake,.15)}
  else if(id==="meteor"){delayed.push({x:mouse.x,y:mouse.y,t:.8,max:.8,r:120+10*lv,dmg:110*k})}}
 function hurt(d){if(P.inv>0)return;P.inv=.5;P.hitFx=.3;shake=Math.max(shake,.12);if(P.shield>0){const a=Math.min(P.shield,d);P.shield-=a;d-=a}P.hp-=d;if(P.hp<=0&&mode==="play")gameOver()}
-function impact(){const r=120+12*S.smash;aoe(cx(),P.y+P.h,r,smashDmg(),"#ffd06a",true);fx.push({k:"ring",x:cx(),y:P.y+P.h,r,t:.35,max:.35,c:"#ffd06a"});shake=.4;P.dive=false}
+function impact(){const r=120+12*S.smash;aoe(cx(),P.y+P.h,r,smashDmg(),"#ffd06a",true);fx.push({k:"ring",x:cx(),y:P.y+P.h,r,t:.35,max:.35,c:"#ffd06a"});shake=.4;P.dive=false;if(S.wb&&S.wbOn)windBurst()}
 
 // ---------- update ----------
 function update(dt){
@@ -231,7 +232,7 @@ function openShop(from){onKeys=false;shopFrom=from;if(mode==="play")mode="shop";
  const c=coins();
  const pw=Object.keys(POW).map(id=>{const d=POW[id],lv=pwrLvl(id);let btn;if(id==="fly")btn=lv?`<b>Owned</b>`:`<button class="green" data-a="buy" data-id="fly" ${c>=d.price?"":"disabled"}>Buy ${d.price} 🪙</button>`;
   else{const up=Math.round(d.price*.5*(lv||1)*(lv?1:2));btn=!lv?`<button class="green" data-a="buy" data-id="${id}" ${c>=d.price?"":"disabled"}>Buy ${d.price} 🪙</button>`:lv>=5?`<b>MAX</b>`:`Lv ${lv} <button class="green" data-a="up" data-id="${id}" ${c>=up?"":"disabled"}>Upgrade ${up} 🪙</button>`}
-  return `<div class="row"><span><b>${d.n}</b><br><span class="muted">${d.d}</span></span><span>${btn}</span></div>`}).join("");
+  return `<div class="row"><span><b>${d.n}</b><br><span class="muted">${d.d}</span></span><span>${btn}</span></div>`}).join("")+(S.smash?`<div class="row"><span><b>Smasher Enchant: Wind Burst</b><br><span class="muted">Every smash blasts enemies and enemy shots away and launches you upward — chain it into a dive.</span></span><span>${S.wb?`<button data-a="wbtoggle">${S.wbOn?"On":"Off"}</button>`:`<button class="green" data-a="buy" data-id="wb" ${c>=600?"":"disabled"}>Buy 600 🪙</button>`}</span></div>`:"");
  const sp=Object.keys(SP).map(id=>{const d=SP[id],lv=lvlOf(id),up=Math.round(d.price*.8*lv);const btn=!lv?`<button class="green" data-a="buy" data-id="${id}" ${c>=d.price?"":"disabled"}>Buy ${d.price} 🪙</button>`:lv>=5?`<b>MAX</b>`:`Lv ${lv} <button class="green" data-a="up" data-id="${id}" ${c>=up?"":"disabled"}>Upgrade ${up} 🪙</button>`;
   return `<div class="row"><span><b>${d.n}</b> <span class="muted">· ${d.mana} mana</span><br><span class="muted">${d.d}</span></span><span>${btn}</span></div>`}).join("");
  const bl=Object.keys(S.binds).filter(a=>!SP[a]||lvlOf(a)).filter(a=>a!=="fly"||S.fly).filter(a=>a!=="smash"||S.smash).filter(a=>a!=="spear"||S.spear).map(a=>`<div class="row"><span>${ACT_NAMES[a]||SP[a].n}</span><button class="key" data-a="bind" data-id="${a}">${capturing===a?"press a key…":keyLabel(S.binds[a])}</button></div>`).join("");
@@ -245,6 +246,8 @@ function pauseGame(){if(mode!=="play")return;mode="pause";mouse.down=false;pause
 function pauseMenu(){show(`<h1 style="font-size:30px">PAUSED</h1><button class="big" data-a="resume">Resume</button> <button data-a="shop1">Shop</button> <button data-a="keys1">Edit Keybinds</button> <button data-a="title">Quit run</button>`)}
 function resume(){mode="play";ui.classList.remove("on")}
 ui.addEventListener("click",e=>{const t=e.target.closest("[data-a]");if(!t)return;const a=t.dataset.a,id=t.dataset.id;
+ if(a==="wbtoggle"){S.wbOn=!S.wbOn;save();return openShop(shopFrom)}
+ if(a==="buy"&&id==="wb"){if(!S.smash||!spend(600))return;S.wb=true;S.wbOn=true;save();return openShop(shopFrom)}
  if(a==="buy"){const d=POW[id]||SP[id];if(!spend(d.price))return;if(id==="fly")S.fly=true;else if(POW[id])S[id]=1;else S.spells[id]=1;save();return openShop(shopFrom)}
  if(a==="up"){const lv=pwrLvl(id)||lvlOf(id),cost=POW[id]?Math.round(POW[id].price*.5*lv):Math.round(SP[id].price*.8*lv);if(!spend(cost))return;if(POW[id])S[id]++;else S.spells[id]++;save();return openShop(shopFrom)}
  if(a==="bind"){capturing=id;return refresh()}
