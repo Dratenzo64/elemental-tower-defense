@@ -119,7 +119,7 @@ const cx=()=>P.x+P.w/2,cy=()=>P.y+P.h/2;
 function doAction(a){
  if(a==="fly"){if(!S.fly)return say("Buy Flight in the shop",1.5);P.fly=!P.fly;if(P.fly)P.vy=Math.min(P.vy,-120);return}
  if(a==="smash"){if(!S.smash)return say("Buy the Smasher in the shop",1.5);if(P.smCd>0)return;P.smCd=.8;
-  if(!P.onG){P.dive=true;P.vx*=.2;P.vy=1100;P.lunge=0}else{const d=smashDmg(),r=95+10*S.smash;aoe(cx(),cy(),r,d,"#ffd06a",true);fx.push({k:"ring",x:cx(),y:cy(),r,t:.25,max:.25,c:"#ffd06a"});shake=Math.max(shake,.15);if(S.wb&&S.wbOn)windBurst()}return}
+  if(!P.onG){P.dive=true;P.vx*=.2;P.vy=1100;P.lunge=0}else{const d=smashDmg(),r=95+10*S.smash;aoe(cx(),cy(),r,d,"#ffd06a",true);fx.push({k:"ring",x:cx(),y:cy(),r,t:.25,max:.25,c:"#ffd06a"});shake=Math.max(shake,.15);if(S.wb)windBurst()}return}
  if(a==="spear"){if(!S.spear)return say("Buy the Spear in the shop",1.5);if(P.spCd>0)return;P.spCd=.6;P.lunge=.22;P.lhit=new Set();P.dive=false;
   let dx=mouse.x-cx(),dy=mouse.y-cy(),l=hyp(dx,dy)||1;P.ldx=dx/l;P.ldy=dy/l;P.vx=P.ldx*750;P.vy=P.ldy*750;return}
  if(SP[a])cast(a)}
@@ -140,7 +140,7 @@ function cast(id){const lv=lvlOf(id);if(!lv)return;const s=SP[id];if((P.cds[id]|
  else if(id==="ward"){P.shield=40+25*lv;P.shT=8;fx.push({k:"ring",x,y,r:50,t:.4,max:.4,c:s.col})}
  else if(id==="meteor"){delayed.push({x:mouse.x,y:mouse.y,t:.8,max:.8,r:120+10*lv,dmg:110*k})}}
 function hurt(d){if(P.inv>0)return;P.inv=.5;P.hitFx=.3;shake=Math.max(shake,.12);if(P.shield>0){const a=Math.min(P.shield,d);P.shield-=a;d-=a}P.hp-=d;if(P.hp<=0&&mode==="play")gameOver()}
-function impact(){const r=120+12*S.smash;aoe(cx(),P.y+P.h,r,smashDmg(),"#ffd06a",true);fx.push({k:"ring",x:cx(),y:P.y+P.h,r,t:.35,max:.35,c:"#ffd06a"});shake=.4;P.dive=false;if(S.wb&&S.wbOn)windBurst()}
+function impact(){const r=120+12*S.smash;aoe(cx(),P.y+P.h,r,smashDmg(),"#ffd06a",true);fx.push({k:"ring",x:cx(),y:P.y+P.h,r,t:.35,max:.35,c:"#ffd06a"});shake=.4;P.dive=false;if(S.wb)windBurst()}
 
 // ---------- update ----------
 function update(dt){
@@ -232,7 +232,7 @@ function openShop(from){onKeys=false;shopFrom=from;if(mode==="play")mode="shop";
  const c=coins();
  const pw=Object.keys(POW).map(id=>{const d=POW[id],lv=pwrLvl(id);let btn;if(id==="fly")btn=lv?`<b>Owned</b>`:`<button class="green" data-a="buy" data-id="fly" ${c>=d.price?"":"disabled"}>Buy ${d.price} 🪙</button>`;
   else{const up=Math.round(d.price*.5*(lv||1)*(lv?1:2));btn=!lv?`<button class="green" data-a="buy" data-id="${id}" ${c>=d.price?"":"disabled"}>Buy ${d.price} 🪙</button>`:lv>=5?`<b>MAX</b>`:`Lv ${lv} <button class="green" data-a="up" data-id="${id}" ${c>=up?"":"disabled"}>Upgrade ${up} 🪙</button>`}
-  return `<div class="row"><span><b>${d.n}</b><br><span class="muted">${d.d}</span></span><span>${btn}</span></div>`}).join("")+(S.smash?`<div class="row"><span><b>Smasher Enchant: Wind Burst</b><br><span class="muted">Every smash blasts enemies and enemy shots away and launches you upward — chain it into a dive.</span></span><span>${S.wb?`<button data-a="wbtoggle">${S.wbOn?"On":"Off"}</button>`:`<button class="green" data-a="buy" data-id="wb" ${c>=600?"":"disabled"}>Buy 600 🪙</button>`}</span></div>`:"");
+  return `<div class="row"><span><b>${d.n}</b><br><span class="muted">${d.d}</span></span><span>${btn}</span></div>`}).join("")+(S.smash?`<div class="row"><span><b>Smasher Enchant: Wind Burst</b><br><span class="muted">Automatic on every smash: blasts enemies and enemy shots away and launches you upward — chain it into a dive.</span></span><span>${S.wb?`<b>Owned — automatic</b>`:`<button class="green" data-a="buy" data-id="wb" ${c>=600?"":"disabled"}>Buy 600 🪙</button>`}</span></div>`:"");
  const sp=Object.keys(SP).map(id=>{const d=SP[id],lv=lvlOf(id),up=Math.round(d.price*.8*lv);const btn=!lv?`<button class="green" data-a="buy" data-id="${id}" ${c>=d.price?"":"disabled"}>Buy ${d.price} 🪙</button>`:lv>=5?`<b>MAX</b>`:`Lv ${lv} <button class="green" data-a="up" data-id="${id}" ${c>=up?"":"disabled"}>Upgrade ${up} 🪙</button>`;
   return `<div class="row"><span><b>${d.n}</b> <span class="muted">· ${d.mana} mana</span><br><span class="muted">${d.d}</span></span><span>${btn}</span></div>`}).join("");
  const bl=Object.keys(S.binds).filter(a=>!SP[a]||lvlOf(a)).filter(a=>a!=="fly"||S.fly).filter(a=>a!=="smash"||S.smash).filter(a=>a!=="spear"||S.spear).map(a=>`<div class="row"><span>${ACT_NAMES[a]||SP[a].n}</span><button class="key" data-a="bind" data-id="${a}">${capturing===a?"press a key…":keyLabel(S.binds[a])}</button></div>`).join("");
