@@ -63,13 +63,14 @@ const SP={
  heal:{n:"Mend",d:"Restore health.",price:150,mana:35,cd:8,col:"#6aff9a"},
  lightning:{n:"Chain Lightning",d:"Strikes several nearby enemies.",price:200,mana:28,cd:3,col:"#e6d84a"},
  ward:{n:"Ward",d:"Absorbs damage for a few seconds.",price:200,mana:30,cd:12,col:"#c0a0ff"},
+ gust:{n:"Gust",d:"Wind burst: blasts nearby enemies away and launches you upward — dive after it for a huge smash.",price:250,mana:20,cd:3,col:"#bff0ff"},
  meteor:{n:"Meteor",d:"Huge delayed explosion at your cursor.",price:400,mana:55,cd:10,col:"#ff5a3a"},
 };
 const POW={fly:{n:"Flight",d:"Press the fly key to take off. WASD moves freely; jump does nothing while flying.",price:1500},
  smash:{n:"Smasher",d:"Melee slam. In the air it becomes a dive — the faster you go, the harder it hits.",price:1000},
  spear:{n:"Spear",d:"Lunging thrust toward your cursor. The faster you move, the more damage.",price:1000}};
 const ACT_NAMES={fly:"Fly / land",smash:"Smasher",spear:"Spear"};
-const defaultBinds=()=>({fly:"q",smash:"e",spear:"r",fireball:"1",frost:"2",lightning:"3",heal:"4",blink:"5",ward:"6",meteor:"7"});
+const defaultBinds=()=>({fly:"q",smash:"e",spear:"r",fireball:"1",frost:"2",lightning:"3",heal:"4",blink:"5",ward:"6",meteor:"7",gust:"8"});
 const defaultSave=()=>({spells:{},smash:0,spear:0,fly:false,binds:defaultBinds(),best:0});
 let S=(()=>{try{const r=localStorage.getItem(SAVE_KEY);if(r){const o=JSON.parse(r),d=defaultSave();return Object.assign(d,o,{binds:Object.assign(d.binds,o.binds||{})})}}catch(e){}return defaultSave()})();
 const save=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}};
@@ -133,6 +134,9 @@ function cast(id){const lv=lvlOf(id);if(!lv)return;const s=SP[id];if((P.cds[id]|
  else if(id==="heal"){P.hp=Math.min(100,P.hp+35+12*lv);fx.push({k:"ring",x,y,r:50,t:.4,max:.4,c:s.col})}
  else if(id==="blink"){const dx=mouse.x-x,dy=mouse.y-y,l=hyp(dx,dy)||1,m=Math.min(l,220+30*lv);fx.push({k:"ring",x,y,r:30,t:.3,max:.3,c:s.col});P.x=clamp(P.x+dx/l*m,0,W-P.w);P.y=clamp(P.y+dy/l*m,0,GY-P.h);P.vy=0;P.inv=Math.max(P.inv,.3);fx.push({k:"ring",x:cx(),y:cy(),r:30,t:.3,max:.3,c:s.col})}
  else if(id==="ward"){P.shield=40+25*lv;P.shT=8;fx.push({k:"ring",x,y,r:50,t:.4,max:.4,c:s.col})}
+ else if(id==="gust"){const r=150+15*lv;for(const e of enemies)if(!e.dead){const dx=e.x+e.w/2-x,dy=e.y+e.h/2-y,l=hyp(dx,dy);if(l<r+e.w/2){hit(e,12*k);const f=(e.type==="boss"?.4:1);e.vx+=dx/(l||1)*(700+60*lv)*f;e.vy=-260*f-Math.max(0,dy)*0;if(e.type==="flyer")e.vy=dy/(l||1)*500}}
+  for(const q of shots)if(!q.own&&hyp(q.x-x,q.y-y)<r){const dx=q.x-x,dy=q.y-y,l=hyp(dx,dy)||1;q.vx=dx/l*320;q.vy=dy/l*320;q.own=1;q.dmg=Math.max(q.dmg,6);q.aoe=0}
+  P.dive=false;P.lunge=0;P.vy=-(820+60*lv);P.onG=false;fx.push({k:"ring",x,y,r,t:.4,max:.4,c:s.col});fx.push({k:"ring",x,y:y+20,r:r*.6,t:.3,max:.3,c:"#fff"});shake=Math.max(shake,.15)}
  else if(id==="meteor"){delayed.push({x:mouse.x,y:mouse.y,t:.8,max:.8,r:120+10*lv,dmg:110*k})}}
 function hurt(d){if(P.inv>0)return;P.inv=.5;P.hitFx=.3;shake=Math.max(shake,.12);if(P.shield>0){const a=Math.min(P.shield,d);P.shield-=a;d-=a}P.hp-=d;if(P.hp<=0&&mode==="play")gameOver()}
 function impact(){const r=120+12*S.smash;aoe(cx(),P.y+P.h,r,smashDmg(),"#ffd06a",true);fx.push({k:"ring",x:cx(),y:P.y+P.h,r,t:.35,max:.35,c:"#ffd06a"});shake=.4;P.dive=false}
